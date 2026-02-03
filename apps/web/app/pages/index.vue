@@ -29,19 +29,6 @@ const tasks = [
 <template>
   <div class="min-h-svh px-10 py-10">
     <div class="mx-auto max-w-5xl space-y-10">
-      <header class="space-y-2">
-        <p class="text-sm text-slate-500">
-          Bonjour
-          <span class="font-medium text-slate-700">
-            {{
-              session?.data?.user?.name ||
-              session?.data?.user?.email ||
-              "utilisateur"
-            }}
-          </span>
-        </p>
-      </header>
-
       <section>
         <div
           class="flex h-56 items-center justify-center rounded-3xl bg-[#d7d9dd]"
