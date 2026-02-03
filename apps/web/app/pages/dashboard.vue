@@ -1,10 +1,6 @@
 <script setup lang="ts">
 const { $authClient } = useNuxtApp();
 
-definePageMeta({
-  middleware: ["auth"],
-});
-
 const session = $authClient.useSession();
 
 const tasks = [
@@ -35,8 +31,8 @@ const tasks = [
           <span class="font-medium text-slate-700">
             {{
               session?.data?.user?.name ||
-                session?.data?.user?.email ||
-                "utilisateur"
+              session?.data?.user?.email ||
+              "utilisateur"
             }}
           </span>
         </p>
@@ -53,11 +49,7 @@ const tasks = [
       </section>
 
       <section class="space-y-4">
-        <TaskCard
-          v-for="task in tasks"
-          :key="task.id"
-          v-bind="task"
-        />
+        <TaskCard v-for="task in tasks" :key="task.id" v-bind="task" />
       </section>
     </div>
   </div>

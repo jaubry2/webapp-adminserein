@@ -1,10 +1,6 @@
 <script setup lang="ts">
 const { $authClient } = useNuxtApp();
 
-definePageMeta({
-  middleware: ["auth"],
-});
-
 const session = $authClient.useSession();
 
 const tasks = [

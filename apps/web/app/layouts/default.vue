@@ -14,9 +14,21 @@
       <div
         class="w-full flex h-[70%] flex-col justify-around text-sm font-medium"
       >
-        <ButtonLayout icon="i-lucide-users" label="Liste des patients" />
-        <ButtonLayout icon="i-lucide-clipboard-list" label="Tâche à faire" />
-        <ButtonLayout icon="i-lucide-file-plus-2" label="Faire une demande" />
+        <ButtonLayout
+          icon="i-lucide-users"
+          label="Liste des patients"
+          to="/patients"
+        />
+        <ButtonLayout
+          icon="i-lucide-clipboard-list"
+          label="Tâche à faire"
+          to="/"
+        />
+        <ButtonLayout
+          icon="i-lucide-file-plus-2"
+          label="Faire une demande"
+          to="/demandes"
+        />
       </div>
 
       <div class="space-y-4 h-[15%]">

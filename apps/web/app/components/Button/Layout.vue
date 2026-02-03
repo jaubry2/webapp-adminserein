@@ -1,23 +1,38 @@
 <template>
-  <button
-    type="button"
-    class="flex w-full items-center gap-3 rounded-full px-3 py-2.5 shadow-sm hover:bg-white transition"
+  <NuxtLink
+    :to="props.to"
+    class="flex w-full items-center gap-3 rounded-full px-3 py-2.5 shadow-sm transition"
+    :class="
+      isActive
+        ? 'bg-white'
+        : 'primary--background--color hover:primary--background--color/40'
+    "
   >
     <span class="flex h-10 w-10 items-center justify-center rounded-full">
       <UIcon :name="props.icon" class="h-4 w-4 text-slate-700" />
     </span>
-    <span>{{ props.label }}</span>
-  </button>
+    <span :class="isActive ? 'font-semibold' : ''">{{ props.label }}</span>
+  </NuxtLink>
 </template>
 
 <script setup lang="ts">
-const props = withDefaults(
-  defineProps<{
-    icon: string;
-    label: string;
-  }>(),
-  {
-    icon: "i-lucide-users",
-  }
-);
+const route = useRoute();
+
+const props = defineProps({
+  icon: {
+    type: String,
+    required: true,
+  },
+  label: {
+    type: String,
+    required: true,
+  },
+  to: {
+    type: String,
+    required: true,
+  },
+});
+const isActive = computed(() => {
+  return route.path === props.to;
+});
 </script>
