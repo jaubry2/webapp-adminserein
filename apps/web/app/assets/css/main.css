@@ -1,2 +1,58 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+:root {
+  --primary-color: #a7c7e7;
+  --secondary-color: #2e3a45;
+  --tertiary-color: #f5f7fa;
+  --quaternary-color: #6a7984;
+  --corail-soft-color: #f6b8a7;
+  --terracota-color: #8e4a3b;
+  --mauve-brume-color: #ebe4ff;
+  --violet-vif-color: #6d28d9;
+  --success-bg-color: #e9f2e9;
+  --success-icon-color: #526b52;
+  --warning-bg-color: #fef9e7;
+  --warning-icon-color: #94762c;
+  --error-bg-color: #f9ebeb;
+  --error-icon-color: #7d3c3c;
+}
+
+@layer components {
+  .primary--background--color {
+    background-color: var(--primary-color);
+  }
+  .secondary--background--color {
+    background-color: var(--secondary-color);
+  }
+  .tertiary--background--color {
+    background-color: var(--tertiary-color);
+  }
+  .primary--border--color {
+    border-color: var(--primary-color);
+  }
+  .secondary--border--color {
+    border-color: var(--secondary-color);
+  }
+  .tertiary--border--color {
+    border-color: var(--tertiary-color);
+  }
+  .primary--text--color {
+    color: var(--primary-color);
+  }
+  .secondary--text--color {
+    color: var(--secondary-color);
+  }
+  .tertiary--text--color {
+    color: var(--tertiary-color);
+  }
+  .quaternary--text--color {
+    color: var(--quaternary-color);
+  }
+  .font--text {
+    font-family: "Poppins", sans-serif;
+  }
+  .font--title {
+    font-family: "Merriweather", serif;
+  }
+}
