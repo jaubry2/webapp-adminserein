@@ -3,41 +3,9 @@ const { $authClient } = useNuxtApp();
 
 const session = $authClient.useSession();
 
-// Données mockées des patients
-const patients = [
-  {
-    id: 1,
-    dossierNumber: "00000001",
-    nom: "Aubry",
-    prenom: "Jules",
-    dateNaissance: "13/03/2002",
-    dernieresModifications: "08/01/2026",
-  },
-  {
-    id: 2,
-    dossierNumber: "00000002",
-    nom: "Martin",
-    prenom: "Sophie",
-    dateNaissance: "22/05/1995",
-    dernieresModifications: "05/01/2026",
-  },
-  {
-    id: 3,
-    dossierNumber: "00000003",
-    nom: "Dubois",
-    prenom: "Pierre",
-    dateNaissance: "10/11/1988",
-    dernieresModifications: "12/01/2026",
-  },
-  {
-    id: 4,
-    dossierNumber: "00000004",
-    nom: "Bernard",
-    prenom: "Marie",
-    dateNaissance: "03/07/1992",
-    dernieresModifications: "15/01/2026",
-  },
-];
+// Import des données des patients depuis le fichier utils
+const { patientsData } = await import("~/utils/patients");
+const patients = patientsData;
 
 const searchQuery = ref("");
 
@@ -199,14 +167,14 @@ const isAllSelected = computed(() => {
                   {{ patient.dernieresModifications }}
                 </td>
                 <td class="px-6 py-4 text-right">
-                  <button
-                    type="button"
+                  <NuxtLink
+                    :to="`/patient/${patient.id}`"
                     class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
                     style="background-color: var(--primary-color)"
                   >
                     Afficher
                     <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
-                  </button>
+                  </NuxtLink>
                 </td>
               </tr>
 
