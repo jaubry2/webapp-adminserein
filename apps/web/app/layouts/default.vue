@@ -1,63 +1,25 @@
 <script setup></script>
 
 <template>
-  <div class="h-svh flex bg-[#f4f7fb] text-slate-900">
+  <div class="h-svh flex tertiary--background--color text-slate-900">
     <aside
-      class="w-64 bg-[#b7d3f1] flex flex-col justify-between py-8 px-6 shadow-[4px_0_12px_rgba(15,23,42,0.06)]"
+      class="w-64 primary--background--color flex flex-col justify-between py-8 px-6 shadow-[4px_0_12px_rgba(15,23,42,0.06)]"
     >
-      <div>
-        <div class="text-2xl font-semibold leading-tight tracking-tight">
-          Admin
-          <br />
-          Serein
-        </div>
-
-        <nav class="mt-10 space-y-3 text-sm font-medium">
-          <button
-            type="button"
-            class="flex w-full items-center gap-3 rounded-full bg-white/90 px-4 py-2.5 shadow-sm hover:bg-white transition"
-          >
-            <span
-              class="flex h-8 w-8 items-center justify-center rounded-full bg-[#e3efff]"
-            >
-              <UIcon name="i-lucide-users" class="h-4 w-4 text-slate-700" />
-            </span>
-            <span>Liste des patients</span>
-          </button>
-
-          <button
-            type="button"
-            class="flex w-full items-center gap-3 rounded-full bg-[#c4d9f3] px-4 py-2.5 hover:bg-[#bed3ed] transition"
-          >
-            <span
-              class="flex h-8 w-8 items-center justify-center rounded-full bg-[#e3efff]"
-            >
-              <UIcon
-                name="i-lucide-clipboard-list"
-                class="h-4 w-4 text-slate-700"
-              />
-            </span>
-            <span>Tâche à faire</span>
-          </button>
-
-          <button
-            type="button"
-            class="flex w-full items-center gap-3 rounded-full bg-[#c4d9f3] px-4 py-2.5 hover:bg-[#bed3ed] transition"
-          >
-            <span
-              class="flex h-8 w-8 items-center justify-center rounded-full bg-[#e3efff]"
-            >
-              <UIcon
-                name="i-lucide-file-plus-2"
-                class="h-4 w-4 text-slate-700"
-              />
-            </span>
-            <span>Faire une demande</span>
-          </button>
-        </nav>
+      <div class="h-[15%] text-2xl font-semibold leading-tight tracking-tight">
+        Admin
+        <br />
+        Serein
       </div>
 
-      <div class="space-y-4">
+      <div
+        class="w-full flex h-[70%] flex-col justify-around text-sm font-medium"
+      >
+        <ButtonLayout icon="i-lucide-users" label="Liste des patients" />
+        <ButtonLayout icon="i-lucide-clipboard-list" label="Tâche à faire" />
+        <ButtonLayout icon="i-lucide-file-plus-2" label="Faire une demande" />
+      </div>
+
+      <div class="space-y-4 h-[15%]">
         <div class="h-px w-full bg-white/70" />
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
