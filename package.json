@@ -48,6 +48,7 @@
     "@webapp-adminserein/config": "workspace:*",
     "oxfmt": "^0.26.0",
     "oxlint": "^1.41.0",
+    "shadcn-vue": "^2.4.3",
     "turbo": "^2.6.3",
     "typescript": "catalog:"
   },

@@ -1,63 +1,60 @@
 <script setup lang="ts">
-const { $orpc } = useNuxtApp();
-import { useQuery } from "@tanstack/vue-query";
+const { $authClient } = useNuxtApp();
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
+definePageMeta({
+  middleware: ["auth"],
+});
 
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+const session = $authClient.useSession();
 
-const healthCheck = useQuery($orpc.healthCheck.queryOptions());
+const tasks = [
+  {
+    id: 1,
+    label: "Démarche - Demande d'APL",
+    patientName: "Aubry Jules",
+    date: "25/12/2025",
+    accentColor: "peach",
+    statusLabel: "Accepter",
+  },
+  {
+    id: 2,
+    label: "Synthèse d’entretien",
+    patientName: "Aubry Jules",
+    date: "25/12/2025",
+    accentColor: "lavender",
+  },
+];
 </script>
 
 <template>
-  <UContainer class="py-8">
-    <pre class="overflow-x-auto font-mono text-sm whitespace-pre-wrap">{{ TITLE_TEXT }}</pre>
-
-    <div class="grid gap-6 mt-6">
-      <UCard>
-        <template #header>
-          <div class="font-medium">API Status</div>
-        </template>
-
-        <div class="flex items-center gap-2">
-          <UIcon
-            :name="
-              healthCheck.isLoading.value
-                ? 'i-lucide-loader-2'
-                : healthCheck.isSuccess.value
-                  ? 'i-lucide-check-circle'
-                  : 'i-lucide-x-circle'
-            "
-            :class="[
-              healthCheck.isLoading.value ? 'animate-spin text-muted' : '',
-              healthCheck.isSuccess.value ? 'text-success' : '',
-              healthCheck.isError.value ? 'text-error' : '',
-            ]"
-          />
-          <span class="text-sm">
-            <template v-if="healthCheck.isLoading.value"> Checking... </template>
-            <template v-else-if="healthCheck.isSuccess.value">
-              Connected ({{ healthCheck.data.value }})
-            </template>
-            <template v-else-if="healthCheck.isError.value">
-              Error: {{ healthCheck.error.value?.message || "Failed to connect" }}
-            </template>
-            <template v-else> Idle </template>
+  <div class="min-h-svh px-10 py-10">
+    <div class="mx-auto max-w-5xl space-y-10">
+      <header class="space-y-2">
+        <p class="text-sm text-slate-500">
+          Bonjour
+          <span class="font-medium text-slate-700">
+            {{
+              session?.data?.user?.name ||
+              session?.data?.user?.email ||
+              "utilisateur"
+            }}
           </span>
+        </p>
+      </header>
+
+      <section>
+        <div
+          class="flex h-56 items-center justify-center rounded-3xl bg-[#d7d9dd]"
+        >
+          <p class="text-2xl font-semibold text-slate-800">
+            Nouveautés sur application
+          </p>
         </div>
-      </UCard>
+      </section>
+
+      <section class="space-y-4">
+        <TaskCard v-for="task in tasks" :key="task.id" v-bind="task" />
+      </section>
     </div>
-  </UContainer>
+  </div>
 </template>

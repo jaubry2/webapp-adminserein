@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useQuery } from "@tanstack/vue-query";
-
-const { $authClient, $orpc } = useNuxtApp();
+const { $authClient } = useNuxtApp();
 
 definePageMeta({
   middleware: ["auth"],
@@ -9,40 +7,58 @@ definePageMeta({
 
 const session = $authClient.useSession();
 
-const privateData = useQuery({
-  ...$orpc.privateData.queryOptions(),
-  enabled: computed(() => !!session.value?.data?.user),
-});
+const tasks = [
+  {
+    id: 1,
+    label: "Démarche - Demande d'APL",
+    patientName: "Aubry Jules",
+    date: "25/12/2025",
+    accentColor: "peach",
+    statusLabel: "Accepter",
+  },
+  {
+    id: 2,
+    label: "Synthèse d’entretien",
+    patientName: "Aubry Jules",
+    date: "25/12/2025",
+    accentColor: "lavender",
+  },
+];
 </script>
 
 <template>
-  <UContainer class="py-8">
-    <UPageHeader
-      title="Dashboard"
-      :description="session?.data?.user ? `Welcome back, ${session.data.user.name}!` : 'Loading...'"
-    />
+  <div class="min-h-svh px-10 py-10">
+    <div class="mx-auto max-w-5xl space-y-10">
+      <header class="space-y-2">
+        <p class="text-sm text-slate-500">
+          Bonjour
+          <span class="font-medium text-slate-700">
+            {{
+              session?.data?.user?.name ||
+                session?.data?.user?.email ||
+                "utilisateur"
+            }}
+          </span>
+        </p>
+      </header>
 
-    <div class="mt-6 space-y-4">
-      <UCard>
-        <template #header>
-          <div class="font-medium">Private Data</div>
-        </template>
-
-        <USkeleton v-if="privateData.status.value === 'pending'" class="h-6 w-48" />
-
-        <UAlert
-          v-else-if="privateData.status.value === 'error'"
-          color="error"
-          icon="i-lucide-alert-circle"
-          title="Error loading data"
-          :description="privateData.error.value?.message || 'Failed to load private data'"
-        />
-
-        <div v-else-if="privateData.data.value" class="flex items-center gap-2">
-          <UIcon name="i-lucide-check-circle" class="text-success" />
-          <span>{{ privateData.data.value.message }}</span>
+      <section>
+        <div
+          class="flex h-56 items-center justify-center rounded-3xl bg-[#d7d9dd]"
+        >
+          <p class="text-2xl font-semibold text-slate-800">
+            Nouveautés sur application
+          </p>
         </div>
-      </UCard>
+      </section>
+
+      <section class="space-y-4">
+        <TaskCard
+          v-for="task in tasks"
+          :key="task.id"
+          v-bind="task"
+        />
+      </section>
     </div>
-  </UContainer>
+  </div>
 </template>
