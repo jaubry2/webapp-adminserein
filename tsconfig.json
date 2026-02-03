@@ -1,0 +1,3 @@
+{
+  "extends": "@webapp-adminserein/config/tsconfig.base.json"
+}

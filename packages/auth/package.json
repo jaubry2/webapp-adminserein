@@ -1,0 +1,24 @@
+{
+  "name": "@webapp-adminserein/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@webapp-adminserein/db": "workspace:*",
+    "@webapp-adminserein/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@webapp-adminserein/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

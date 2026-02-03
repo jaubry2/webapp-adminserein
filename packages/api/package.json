@@ -1,0 +1,29 @@
+{
+  "name": "@webapp-adminserein/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "@webapp-adminserein/auth": "workspace:*",
+    "@webapp-adminserein/db": "workspace:*",
+    "@webapp-adminserein/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@webapp-adminserein/config": "workspace:*",
+    "hono": "catalog:",
+    "typescript": "catalog:"
+  }
+}
