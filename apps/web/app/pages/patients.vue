@@ -51,11 +51,11 @@ const isAllSelected = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white px-8 py-8">
+  <div class="min-h-screen bg-white px-8 py-8 text--color">
     <div class="mx-auto max-w-7xl">
       <!-- En-tête de la page -->
       <header class="mb-6">
-        <h1 class="text-3xl font-bold secondary--text--color mb-4">
+        <h1 class="text-3xl font-bold secondary--text--color mb-4 font--title">
           Liste de mes patients
         </h1>
 
@@ -63,7 +63,7 @@ const isAllSelected = computed(() => {
           icon="i-lucide-plus"
           label="Ajouter un nouveau patient"
           bg_color="corail-soft-color"
-          text_color="terracota-color"
+          text_color="tertiary-color"
         />
       </header>
 

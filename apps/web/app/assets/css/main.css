@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap");
 
 :root {
   --primary-color: #a7c7e7;
@@ -9,6 +10,7 @@
   --corail-soft-color: #f6b8a7;
   --terracota-color: #8e4a3b;
   --mauve-brume-color: #ebe4ff;
+  --sage-color: #bfd8c0;
   --violet-vif-color: #6d28d9;
   --success-bg-color: #e9f2e9;
   --success-icon-color: #526b52;

@@ -23,7 +23,7 @@ const tasks = [
 </script>
 
 <template>
-  <div class="min-h-svh px-10 py-10">
+  <div class="min-h-svh px-10 py-10 font--text">
     <div class="mx-auto max-w-5xl space-y-10">
       <header class="space-y-2">
         <p class="text-sm text-slate-500">
