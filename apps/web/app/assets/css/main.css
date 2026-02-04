@@ -57,3 +57,16 @@
     font-family: "Merriweather", serif;
   }
 }
+@layer utilities {
+  .scrollbar-hide {
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE et Edge */
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    /* Chrome, Safari et Opera */
+    display: none;
+  }
+}
