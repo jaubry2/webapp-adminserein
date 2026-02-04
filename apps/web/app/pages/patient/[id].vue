@@ -90,16 +90,15 @@ const tabs = [
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
-                type="button"
                 @click="activeTab = tab.id"
-                class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                class="cursor-pointer inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
                 :class="
                   activeTab === tab.id
-                    ? 'secondary--background--color text-white'
+                    ? 'bg-[#2e3a45] text-[#f5f7fa]'
                     : 'bg-gray-100 primary--text--color hover:bg-gray-200'
                 "
               >
-                <UIcon :name="tab.icon" class="h-4 w-4" />
+                <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
                 {{ tab.label }}
               </button>
             </div>
