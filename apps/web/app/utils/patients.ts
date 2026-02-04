@@ -105,3 +105,34 @@ export function calculateAge(dateNaissance: string): number {
   }
   return age;
 }
+
+// Données d'exemple pour l'historique des patients
+import type { EvenementHistorique } from "../types/historique";
+
+const historiqueData: Record<number, EvenementHistorique[]> = {
+  1: [
+    {
+      id: 1,
+      date: "25/12/2025",
+      heure: "12h00",
+      titre: "Demande d'aide",
+      description: "Demande d'APL",
+    },
+    {
+      id: 2,
+      date: "13/03/2025",
+      heure: "14h00",
+      titre: "Fête d'anniversaire",
+      description: "Grosse dépense",
+    },
+  ],
+  2: [],
+  3: [],
+  4: [],
+};
+
+export function getHistoriqueByPatientId(
+  patientId: number
+): EvenementHistorique[] {
+  return historiqueData[patientId] || [];
+}

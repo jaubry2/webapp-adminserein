@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const route = useRoute();
-const { getPatientById, calculateAge } = await import("~/utils/patients");
+const { getPatientById, calculateAge, getHistoriqueByPatientId } = await import(
+  "~/utils/patients"
+);
 
 const patientId = computed(() => Number(route.params.id));
 const patient = computed(() => getPatientById(patientId.value));
@@ -22,6 +24,9 @@ const age = computed(() => {
 const activeTab = ref("information");
 const identiteExpanded = ref(true);
 const coordonneesExpanded = ref(true);
+
+// Récupération de l'historique du patient
+const historique = computed(() => getHistoriqueByPatientId(patientId.value));
 
 const tabs = [
   { id: "information", label: "Information", icon: "i-lucide-info" },
@@ -129,6 +134,11 @@ const tabs = [
               <OngletInformationIdentite :patient="patient" />
               <!-- Section Coordonnées -->
               <OngletInformationCoordonnee :patient="patient" />
+            </div>
+
+            <!-- Contenu de l'onglet Historique -->
+            <div v-else-if="activeTab === 'historique'" class="pb-6">
+              <OngletHistoriqueTimeline :evenements="historique" />
             </div>
 
             <!-- Contenu des autres onglets -->
