@@ -3,11 +3,12 @@
     <!-- Bouton Ajouter un patient -->
     <button
       type="button"
-      class="inline-flex items-center gap-2 rounded-md px-2 py-1 font-medium transition-colors"
+      class="inline-flex items-center gap-2 rounded-md px-2 py-1 font-medium transition-colors cursor-pointer"
       :style="{
         backgroundColor: `var(--${props.bg_color})`,
         color: `var(--${props.text_color})`,
       }"
+      @click="$emit('click')"
     >
       <UIcon :name="props.icon" class="h-5 w-5" />
       <span class="text-xs font-medium">{{ props.label }}</span>
@@ -34,6 +35,10 @@ const props = defineProps({
     required: true,
   },
 });
+
+defineEmits<{
+  click: [];
+}>();
 </script>
 
 <style></style>

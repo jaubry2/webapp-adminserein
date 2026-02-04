@@ -48,6 +48,23 @@ const isAllSelected = computed(() => {
     selectedPatients.value.length === filteredPatients.value.length
   );
 });
+
+// État du modal d'ajout de patient
+const isModalOpen = ref(false);
+
+const openModal = () => {
+  isModalOpen.value = true;
+};
+
+const closeModal = () => {
+  isModalOpen.value = false;
+};
+
+const handleSubmitPatient = (data: any) => {
+  // TODO: Implémenter la logique d'ajout du patient
+  console.log("Données du nouveau patient:", data);
+  // Ici vous pourrez appeler une API ou mettre à jour le store
+};
 </script>
 
 <template>
@@ -64,6 +81,7 @@ const isAllSelected = computed(() => {
           label="Ajouter un nouveau patient"
           bg_color="corail-soft-color"
           text_color="tertiary-color"
+          @click="openModal"
         />
       </header>
 
@@ -191,5 +209,12 @@ const isAllSelected = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Modal d'ajout de patient -->
+    <ModalAddPatient
+      :is-open="isModalOpen"
+      @close="closeModal"
+      @submit="handleSubmitPatient"
+    />
   </div>
 </template>

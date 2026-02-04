@@ -69,4 +69,13 @@
     /* Chrome, Safari et Opera */
     display: none;
   }
+
+  .input-focus-primary {
+    @apply focus:outline-none focus:ring-2;
+  }
+
+  .input-focus-primary:focus {
+    border-color: var(--primary-color);
+    --tw-ring-color: rgba(167, 199, 231, 0.2);
+  }
 }
