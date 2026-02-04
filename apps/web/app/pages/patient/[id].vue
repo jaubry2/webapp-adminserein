@@ -32,7 +32,7 @@ const tabs = [
 </script>
 
 <template>
-  <div v-if="patient" class="min-h-screen bg-white">
+  <div v-if="patient" class="min-h-screen bg-white font--text">
     <div class="flex">
       <!-- Contenu principal -->
       <div class="flex-1">
@@ -40,12 +40,14 @@ const tabs = [
         <header class="border-b border-gray-200 bg-white px-8 py-6">
           <div class="flex items-center justify-between">
             <div>
-              <h1 class="text-3xl font-bold secondary--text--color">
+              <h1 class="text-3xl font-bold secondary--text--color font--title">
                 {{ patient.nom.toUpperCase() }} {{ patient.prenom }}
-                <span v-if="age" class="text-xl font-normal">
+                <span v-if="age" class="text-xl font-normal font--title">
                   ({{ age }} ans)
                 </span>
               </h1>
+            </div>
+            <div>
               <div class="mt-2 flex items-center gap-6">
                 <span class="text-sm quaternary--text--color">
                   Dossier n°{{ patient.dossierNumber }}
@@ -59,36 +61,24 @@ const tabs = [
             <span class="text-sm font-medium secondary--text--color"
               >Créer :</span
             >
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-              style="
-                background-color: var(--corail-soft-color);
-                color: var(--terracota-color);
-              "
-            >
-              <UIcon name="i-lucide-plus" class="h-4 w-4" />
-              Nouvelle demande
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-              style="background-color: var(--sage); color: #526b52"
-            >
-              <UIcon name="i-lucide-plus" class="h-4 w-4" />
-              Nouvel évènement
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-              style="
-                background-color: var(--mauve-brume-color);
-                color: var(--violet-vif-color);
-              "
-            >
-              <UIcon name="i-lucide-plus" class="h-4 w-4" />
-              Demander des informations
-            </button>
+            <ButtonSecondary
+              icon="i-lucide-plus"
+              label="Nouvelle demande"
+              bg_color="corail-soft-color"
+              text_color="tertiary-color"
+            />
+            <ButtonSecondary
+              icon="i-lucide-plus"
+              label="Nouvel évènement"
+              bg_color="sage-color"
+              text_color="tertiary-color"
+            />
+            <ButtonSecondary
+              icon="i-lucide-plus"
+              label="Nouvel évènement"
+              bg_color="mauve-brume-color"
+              text_color="tertiary-color"
+            />
           </div>
         </header>
 
