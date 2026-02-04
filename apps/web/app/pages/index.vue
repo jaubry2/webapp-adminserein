@@ -27,9 +27,9 @@ const tasks = [
     <div class="mx-auto max-w-5xl space-y-10">
       <section>
         <div
-          class="flex h-56 items-center justify-center rounded-3xl bg-[#d7d9dd]"
+          class="flex h-56 items-center justify-center rounded-3xl tertiary--background--color"
         >
-          <p class="text-2xl font-semibold text-slate-800">
+          <p class="text-2xl font-semibold secondary--text--color">
             Nouveautés sur application
           </p>
         </div>
