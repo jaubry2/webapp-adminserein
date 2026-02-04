@@ -14,4 +14,15 @@ export default defineNuxtConfig({
       serverUrl: process.env.NUXT_PUBLIC_SERVER_URL,
     },
   },
+  app: {
+    head: {
+      title: "Admin Serein",
+      meta: [
+        { name: "description", content: "Admin Serein" },
+      ],
+      link: [
+        { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" }
+      ],
+    },
+  },
 });
