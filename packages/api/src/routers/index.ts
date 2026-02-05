@@ -1,5 +1,5 @@
 import type { RouterClient } from "@orpc/server";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -242,6 +242,123 @@ export const appRouter = {
         ...p,
         informationIdentite: info,
       };
+    }),
+
+  // Ajouter un patient existant à la liste du professionnel connecté
+  addPatientToProfessional: protectedProcedure
+    .input(
+      z.object({
+        numeroDossier: z.string(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Trouver le patient par son numéro de dossier
+      const [existingPatient] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.numeroDossier, input.numeroDossier))
+        .limit(1);
+
+      if (!existingPatient) {
+        throw new Error("Patient non trouvé avec ce numéro de dossier");
+      }
+
+      // Vérifier si le patient n'est pas déjà lié à ce professionnel
+      const [existingLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, existingPatient.id),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (existingLink) {
+        throw new Error("Ce patient est déjà dans votre liste");
+      }
+
+      // Créer le lien patient-professionnel
+      await db.insert(patientProfessionnel).values({
+        patientId: existingPatient.id,
+        professionnelId: prof.id,
+      });
+
+      // Récupérer les informations d'identité pour le retour
+      const [info] = await db
+        .select()
+        .from(informationIdentite)
+        .where(eq(informationIdentite.id, existingPatient.informationIdentiteId))
+        .limit(1);
+
+      return {
+        ...existingPatient,
+        informationIdentite: info,
+      };
+    }),
+
+  // Rechercher un patient par ses informations uniques
+  searchPatientByInfo: protectedProcedure
+    .input(
+      z.object({
+        dateNaissance: z.string(), // format ISO YYYY-MM-DD
+        prenom: z.string(),
+        nom: z.string(), // nomUsage ou nomNaissance
+        numeroSecuriteSociale: z.string(),
+      })
+    )
+    .handler(async ({ input }) => {
+      // Rechercher dans informationIdentite avec les critères
+      // Le nom peut être soit nomUsage soit nomNaissance
+      const matchingInfos = await db
+        .select()
+        .from(informationIdentite)
+        .where(
+          and(
+            eq(informationIdentite.dateNaissance, input.dateNaissance),
+            eq(informationIdentite.prenom, input.prenom),
+            or(
+              eq(informationIdentite.nomUsage, input.nom),
+              eq(informationIdentite.nomNaissance, input.nom)
+            ),
+            eq(informationIdentite.numeroSecuriteSociale, input.numeroSecuriteSociale)
+          )
+        );
+
+      if (matchingInfos.length === 0) {
+        return [];
+      }
+
+      // Récupérer les patients associés à ces informations d'identité
+      const infoIds = matchingInfos.map((info) => info.id);
+      const patients = await db
+        .select()
+        .from(patient)
+        .where(inArray(patient.informationIdentiteId, infoIds));
+
+      // Créer un map pour associer les informations aux patients
+      const infoById = new Map(matchingInfos.map((i) => [i.id, i]));
+
+      return patients.map((p) => ({
+        ...p,
+        informationIdentite: infoById.get(p.informationIdentiteId),
+      }));
     }),
 
   // Lister tous les patients suivis par le professionnel connecté
