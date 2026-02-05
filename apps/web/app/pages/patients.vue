@@ -327,6 +327,16 @@ const handleSubmitPatient = async (data: any) => {
           | "PACSE"
           | "CONCUBINAGE",
       },
+      informationCoordonnee: {
+        adresse: data.adresse || "",
+        informationComplementaires: data.informationComplementaires || undefined,
+        codePostal: data.codePostal || "",
+        ville: data.ville || "",
+        departement: data.departement || "",
+        pays: data.pays || "",
+        numeroTelephone: data.numeroTelephone || "",
+        adresseMail: data.adresseMail || "",
+      },
     };
 
     await createPatientMutation.mutateAsync(patientData);

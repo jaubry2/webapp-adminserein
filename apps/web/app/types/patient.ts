@@ -13,8 +13,11 @@ export interface Patient {
   telephone?: string;
   email?: string;
   adresse?: string;
+  informationComplementaires?: string;
   codePostal?: string;
   ville?: string;
+  departement?: string;
+  pays?: string;
   dernieresModifications: string;
 }
 

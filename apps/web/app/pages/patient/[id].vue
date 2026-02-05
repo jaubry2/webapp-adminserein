@@ -29,6 +29,7 @@ const patient = computed<Patient | null>(() => {
 
   const p = apiPatient.value;
   const info = p.informationIdentite;
+  const coord = p.informationCoordonnee;
 
   const dateNaissance =
     info?.dateNaissance instanceof Date
@@ -56,11 +57,14 @@ const patient = computed<Patient | null>(() => {
           : info?.genre
             ? "Autre"
             : undefined,
-    telephone: undefined,
-    email: undefined,
-    adresse: undefined,
-    codePostal: undefined,
-    ville: undefined,
+    telephone: coord?.numeroTelephone ?? undefined,
+    email: coord?.adresseMail ?? undefined,
+    adresse: coord?.adresse ?? undefined,
+    informationComplementaires: coord?.informationComplementaires ?? undefined,
+    codePostal: coord?.codePostal ?? undefined,
+    ville: coord?.ville ?? undefined,
+    departement: coord?.departement ?? undefined,
+    pays: coord?.pays ?? undefined,
     dernieresModifications: "",
   };
 });

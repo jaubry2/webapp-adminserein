@@ -506,6 +506,149 @@
                 </div>
               </div>
 
+              <!-- Section Coordonnées -->
+              <div class="border-b border-gray-200 pb-4">
+                <h3 class="mb-4 text-lg font-semibold secondary--text--color">
+                  Coordonnées
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="col-span-2">
+                    <label
+                      for="adresse"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Adresse <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="adresse"
+                      v-model="formData.adresse"
+                      type="text"
+                      placeholder="Numéro et nom de rue"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div class="col-span-2">
+                    <label
+                      for="information-complementaires"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Informations complémentaires
+                    </label>
+                    <input
+                      id="information-complementaires"
+                      v-model="formData.informationComplementaires"
+                      type="text"
+                      placeholder="Appartement, étage, etc."
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="code-postal"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Code postal <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="code-postal"
+                      v-model="formData.codePostal"
+                      type="text"
+                      placeholder="Ex: 75001"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="ville"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Ville <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="ville"
+                      v-model="formData.ville"
+                      type="text"
+                      placeholder="Ville"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="departement"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Département <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="departement"
+                      v-model="formData.departement"
+                      type="text"
+                      placeholder="Ex: 75, 69"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="pays"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Pays <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="pays"
+                      v-model="formData.pays"
+                      type="text"
+                      placeholder="Pays"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="numero-telephone"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Numéro de téléphone <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="numero-telephone"
+                      v-model="formData.numeroTelephone"
+                      type="tel"
+                      placeholder="Ex: 0612345678"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="adresse-mail"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Adresse mail <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="adresse-mail"
+                      v-model="formData.adresseMail"
+                      type="email"
+                      placeholder="exemple@email.com"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -563,6 +706,14 @@ const emit = defineEmits<{
       nationalites?: string;
       numeroSecuriteSociale?: string;
       situationFamiliale?: string;
+      adresse?: string;
+      informationComplementaires?: string;
+      codePostal?: string;
+      ville?: string;
+      departement?: string;
+      pays?: string;
+      numeroTelephone?: string;
+      adresseMail?: string;
       connaitDossierNumber: boolean;
       patientADossier?: "oui" | "je-sais-pas" | "non";
       searchMode?: boolean; // true si recherche par infos, false si création
@@ -588,6 +739,14 @@ const formData = ref({
   nationalites: "",
   numeroSecuriteSociale: "",
   situationFamiliale: "",
+  adresse: "",
+  informationComplementaires: "",
+  codePostal: "",
+  ville: "",
+  departement: "",
+  pays: "",
+  numeroTelephone: "",
+  adresseMail: "",
 });
 
 const closeModal = () => {
@@ -610,6 +769,14 @@ const closeModal = () => {
     nationalites: "",
     numeroSecuriteSociale: "",
     situationFamiliale: "",
+    adresse: "",
+    informationComplementaires: "",
+    codePostal: "",
+    ville: "",
+    departement: "",
+    pays: "",
+    numeroTelephone: "",
+    adresseMail: "",
   };
 };
 
@@ -673,7 +840,14 @@ const handleSubmit = () => {
     !formData.value.departementNaissance ||
     !formData.value.paysNaissance ||
     !formData.value.numeroSecuriteSociale ||
-    !formData.value.situationFamiliale
+    !formData.value.situationFamiliale ||
+    !formData.value.adresse ||
+    !formData.value.codePostal ||
+    !formData.value.ville ||
+    !formData.value.departement ||
+    !formData.value.pays ||
+    !formData.value.numeroTelephone ||
+    !formData.value.adresseMail
   ) {
     toast.add({
       title: "Erreur de validation",
@@ -696,6 +870,14 @@ const handleSubmit = () => {
     nationalites: formData.value.nationalites,
     numeroSecuriteSociale: formData.value.numeroSecuriteSociale,
     situationFamiliale: formData.value.situationFamiliale,
+    adresse: formData.value.adresse,
+    informationComplementaires: formData.value.informationComplementaires,
+    codePostal: formData.value.codePostal,
+    ville: formData.value.ville,
+    departement: formData.value.departement,
+    pays: formData.value.pays,
+    numeroTelephone: formData.value.numeroTelephone,
+    adresseMail: formData.value.adresseMail,
     connaitDossierNumber: false,
     patientADossier: patientADossier.value,
     searchMode: false,

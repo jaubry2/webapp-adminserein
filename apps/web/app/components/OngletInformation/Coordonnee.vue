@@ -31,8 +31,20 @@
         <div v-if="patient.adresse">
           <span class="text-sm quaternary--text--color">Adresse :</span>
           <p class="mt-1 font-semibold secondary--text--color">
-            {{ patient.adresse }}, {{ patient.codePostal }}
-            {{ patient.ville }}
+            {{ patient.adresse }}
+            <span v-if="patient.informationComplementaires">
+              , {{ patient.informationComplementaires }}
+            </span>
+            <br />
+            <span v-if="patient.codePostal || patient.ville">
+              {{ patient.codePostal }} {{ patient.ville }}
+            </span>
+            <span v-if="patient.departement">
+              ({{ patient.departement }})
+            </span>
+            <span v-if="patient.pays">
+              , {{ patient.pays }}
+            </span>
           </p>
         </div>
       </div>

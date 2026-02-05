@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   db,
   informationIdentite,
+  informationCoordonnee,
   patient,
   professionnel,
   patientProfessionnel,
@@ -34,9 +35,21 @@ const informationIdentiteInputSchema = z.object({
   ]),
 });
 
+const informationCoordonneeInputSchema = z.object({
+  adresse: z.string(),
+  informationComplementaires: z.string().optional(),
+  codePostal: z.string(),
+  ville: z.string(),
+  departement: z.string(),
+  pays: z.string(),
+  numeroTelephone: z.string(),
+  adresseMail: z.string(),
+});
+
 const patientCreateInputSchema = z.object({
   numeroDossier: z.string(),
   informationIdentite: informationIdentiteInputSchema,
+  informationCoordonnee: informationCoordonneeInputSchema,
 });
 
 const patientUpdateInputSchema = z.object({
@@ -44,6 +57,7 @@ const patientUpdateInputSchema = z.object({
   // Champs optionnels : on ne met à jour que ceux présents
   numeroDossier: z.string().optional(),
   informationIdentite: informationIdentiteInputSchema.partial().optional(),
+  informationCoordonnee: informationCoordonneeInputSchema.partial().optional(),
 });
 
 export const appRouter = {
@@ -81,7 +95,11 @@ export const appRouter = {
         throw new Error("Aucun professionnel associé à ce compte");
       }
 
-      const { numeroDossier, informationIdentite: info } = input;
+      const {
+        numeroDossier,
+        informationIdentite: info,
+        informationCoordonnee: coord,
+      } = input;
 
       const [createdInfo] = await db
         .insert(informationIdentite)
@@ -101,11 +119,26 @@ export const appRouter = {
         })
         .returning();
 
+      const [createdCoordonnee] = await db
+        .insert(informationCoordonnee)
+        .values({
+          adresse: coord.adresse,
+          informationComplementaires: coord.informationComplementaires,
+          codePostal: coord.codePostal,
+          ville: coord.ville,
+          departement: coord.departement,
+          pays: coord.pays,
+          numeroTelephone: coord.numeroTelephone,
+          adresseMail: coord.adresseMail,
+        })
+        .returning();
+
       const [createdPatient] = await db
         .insert(patient)
         .values({
           numeroDossier,
           informationIdentiteId: createdInfo.id,
+          informationCoordonneeId: createdCoordonnee.id,
         })
         .returning();
 
@@ -118,14 +151,20 @@ export const appRouter = {
       return {
         ...createdPatient,
         informationIdentite: createdInfo,
+        informationCoordonnee: createdCoordonnee,
       };
     }),
 
-  // Mettre à jour un patient et/ou ses informations d'identité
+  // Mettre à jour un patient et/ou ses informations d'identité et coordonnées
   updatePatient: protectedProcedure
     .input(patientUpdateInputSchema)
     .handler(async ({ input }) => {
-      const { patientId, numeroDossier, informationIdentite: info } = input;
+      const {
+        patientId,
+        numeroDossier,
+        informationIdentite: info,
+        informationCoordonnee: coord,
+      } = input;
 
       const [existing] = await db
         .select()
@@ -173,6 +212,28 @@ export const appRouter = {
           .where(eq(informationIdentite.id, existing.informationIdentiteId));
       }
 
+      if (coord && Object.keys(coord).length > 0) {
+        await db
+          .update(informationCoordonnee)
+          .set({
+            ...(coord.adresse && { adresse: coord.adresse }),
+            ...(coord.informationComplementaires !== undefined && {
+              informationComplementaires: coord.informationComplementaires,
+            }),
+            ...(coord.codePostal && { codePostal: coord.codePostal }),
+            ...(coord.ville && { ville: coord.ville }),
+            ...(coord.departement && { departement: coord.departement }),
+            ...(coord.pays && { pays: coord.pays }),
+            ...(coord.numeroTelephone && {
+              numeroTelephone: coord.numeroTelephone,
+            }),
+            ...(coord.adresseMail && { adresseMail: coord.adresseMail }),
+          })
+          .where(
+            eq(informationCoordonnee.id, existing.informationCoordonneeId)
+          );
+      }
+
       const [updatedPatient] = await db
         .select()
         .from(patient)
@@ -183,9 +244,17 @@ export const appRouter = {
         .from(informationIdentite)
         .where(eq(informationIdentite.id, updatedPatient.informationIdentiteId));
 
+      const [updatedCoordonnee] = await db
+        .select()
+        .from(informationCoordonnee)
+        .where(
+          eq(informationCoordonnee.id, updatedPatient.informationCoordonneeId)
+        );
+
       return {
         ...updatedPatient,
         informationIdentite: updatedInfo,
+        informationCoordonnee: updatedCoordonnee,
       };
     }),
 
@@ -238,9 +307,15 @@ export const appRouter = {
         .from(informationIdentite)
         .where(eq(informationIdentite.id, p.informationIdentiteId));
 
+      const [coordonnee] = await db
+        .select()
+        .from(informationCoordonnee)
+        .where(eq(informationCoordonnee.id, p.informationCoordonneeId));
+
       return {
         ...p,
         informationIdentite: info,
+        informationCoordonnee: coordonnee,
       };
     }),
 
@@ -442,7 +517,7 @@ export const appRouter = {
       return [];
     }
 
-    // Récupérer les patients et leurs informations d'identité
+    // Récupérer les patients et leurs informations d'identité et coordonnées
     const patients = await db
       .select()
       .from(patient)
@@ -451,9 +526,13 @@ export const appRouter = {
     const infos = await db.select().from(informationIdentite);
     const infoById = new Map(infos.map((i) => [i.id, i]));
 
+    const coordonnees = await db.select().from(informationCoordonnee);
+    const coordonneeById = new Map(coordonnees.map((c) => [c.id, c]));
+
     return patients.map((p) => ({
       ...p,
       informationIdentite: infoById.get(p.informationIdentiteId),
+      informationCoordonnee: coordonneeById.get(p.informationCoordonneeId),
     }));
   }),
 };

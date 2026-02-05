@@ -1,5 +1,9 @@
-import { db, informationIdentite, patient } from "@webapp-adminserein/db";
-import { eq } from "drizzle-orm";
+import {
+  db,
+  informationIdentite,
+  informationCoordonnee,
+  patient,
+} from "@webapp-adminserein/db";
 
 // Création de quelques patients de démonstration au démarrage
 export async function seedPatientsIfEmpty() {
@@ -17,13 +21,23 @@ export async function seedPatientsIfEmpty() {
         prenom: "Marie",
         autresPrenoms: ["Claire"],
         genre: "FEMININ" as const,
-        dateNaissance: new Date("1990-01-15"),
+        dateNaissance: "1990-01-15",
         villeNaissance: "Paris",
         departementNaissance: "75",
         paysNaissance: "France",
         nationalites: ["Française"],
         numeroSecuriteSociale: "2900115123456",
         situationFamiliale: "CELIBATAIRE" as const,
+      },
+      informationCoordonnee: {
+        adresse: "123 Rue de la République",
+        informationComplementaires: "Appartement 4B",
+        codePostal: "75001",
+        ville: "Paris",
+        departement: "75",
+        pays: "France",
+        numeroTelephone: "0612345678",
+        adresseMail: "marie.dupont@example.com",
       },
     },
     {
@@ -34,7 +48,7 @@ export async function seedPatientsIfEmpty() {
         prenom: "Jean",
         autresPrenoms: [],
         genre: "MASCULIN" as const,
-        dateNaissance: new Date("1985-06-30"),
+        dateNaissance: "1985-06-30",
         villeNaissance: "Lyon",
         departementNaissance: "69",
         paysNaissance: "France",
@@ -42,18 +56,41 @@ export async function seedPatientsIfEmpty() {
         numeroSecuriteSociale: "1850630123456",
         situationFamiliale: "MARIE" as const,
       },
+      informationCoordonnee: {
+        adresse: "45 Avenue des Champs-Élysées",
+        informationComplementaires: "",
+        codePostal: "69001",
+        ville: "Lyon",
+        departement: "69",
+        pays: "France",
+        numeroTelephone: "0698765432",
+        adresseMail: "jean.martin@example.com",
+      },
     },
   ];
 
   for (const demo of demoPatients) {
-    const [info] = await db
+    const infoResult = await db
       .insert(informationIdentite)
       .values(demo.informationIdentite)
       .returning();
 
+    const coordonneeResult = await db
+      .insert(informationCoordonnee)
+      .values(demo.informationCoordonnee)
+      .returning();
+
+    const info = infoResult[0];
+    const coordonnee = coordonneeResult[0];
+
+    if (!info || !coordonnee) {
+      throw new Error("Erreur lors de la création des données de démonstration");
+    }
+
     await db.insert(patient).values({
       numeroDossier: demo.numeroDossier,
       informationIdentiteId: info.id,
+      informationCoordonneeId: coordonnee.id,
     });
   }
 }
