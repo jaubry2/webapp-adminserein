@@ -24,7 +24,7 @@
             <h2
               class="text-xl font-semibold secondary--text--color font--title"
             >
-              Ajouter un nouveau patient
+              Ajouter un patient
             </h2>
             <button
               @click="closeModal"
@@ -46,7 +46,7 @@
               </label>
               <div class="flex gap-2">
                 <button
-                  @click="connaitDossierNumber = true"
+                  @click="connaitDossierNumber = true; errorMessage = ''"
                   type="button"
                   class="flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
                   :class="
@@ -65,7 +65,7 @@
                   Oui
                 </button>
                 <button
-                  @click="connaitDossierNumber = false"
+                  @click="connaitDossierNumber = false; errorMessage = ''"
                   type="button"
                   class="flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
                   :class="
@@ -87,20 +87,35 @@
             </div>
 
             <!-- Champ numéro de dossier (si Oui) -->
-            <div v-if="connaitDossierNumber" class="mb-6">
-              <label
-                for="dossier-number"
-                class="mb-2 block text-sm font-medium secondary--text--color"
-              >
-                Numéro de dossier du patient :
-              </label>
-              <input
-                id="dossier-number"
-                v-model="formData.dossierNumber"
-                type="text"
-                placeholder="Entrez le numéro de dossier"
-                class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
-              />
+            <div v-if="connaitDossierNumber" class="mb-6 space-y-4">
+              <div>
+                <label
+                  for="dossier-number"
+                  class="mb-2 block text-sm font-medium secondary--text--color"
+                >
+                  Numéro de dossier du patient :
+                </label>
+                <input
+                  id="dossier-number"
+                  v-model="formData.dossierNumber"
+                  type="text"
+                  placeholder="Entrez le numéro de dossier"
+                  class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                  :class="errorMessage ? 'border-red-500' : ''"
+                />
+              </div>
+
+              <!-- Message d'erreur si numéro invalide -->
+              <div v-if="displayedError" class="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p class="mb-2 text-sm text-red-800">{{ displayedError }}</p>
+                <button
+                  @click="connaitDossierNumber = false; errorMessage = ''"
+                  type="button"
+                  class="text-sm font-medium text-red-600 underline hover:text-red-800"
+                >
+                  Je ne connais pas le numéro de dossier
+                </button>
+              </div>
             </div>
 
             <!-- Séparateur -->
@@ -177,8 +192,86 @@
               </div>
             </div>
 
-            <!-- Champs de formulaire complets -->
-            <div v-if="!connaitDossierNumber" class="space-y-4">
+            <!-- Formulaire de recherche (si patient a un dossier mais on ne connaît pas le numéro) -->
+            <div v-if="!connaitDossierNumber && patientADossier === 'oui'" class="space-y-4">
+              <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p class="text-sm text-blue-800">
+                  Veuillez remplir les informations suivantes pour rechercher le patient dans le système :
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    for="search-date-naissance"
+                    class="mb-2 block text-sm font-medium secondary--text--color"
+                  >
+                    Date de naissance <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="search-date-naissance"
+                    v-model="formData.dateNaissance"
+                    type="date"
+                    required
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="search-prenom"
+                    class="mb-2 block text-sm font-medium secondary--text--color"
+                  >
+                    Prénom <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="search-prenom"
+                    v-model="formData.prenom"
+                    type="text"
+                    placeholder="Prénom"
+                    required
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="search-nom"
+                    class="mb-2 block text-sm font-medium secondary--text--color"
+                  >
+                    Nom <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="search-nom"
+                    v-model="formData.nomUsage"
+                    type="text"
+                    placeholder="Nom d'usage ou nom de naissance"
+                    required
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="search-numero-secu"
+                    class="mb-2 block text-sm font-medium secondary--text--color"
+                  >
+                    Numéro de sécurité sociale <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="search-numero-secu"
+                    v-model="formData.numeroSecuriteSociale"
+                    type="text"
+                    placeholder="13 chiffres"
+                    required
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Champs de formulaire complets (si pas de dossier ou je ne sais pas) -->
+            <div v-if="!connaitDossierNumber && (patientADossier === 'non' || patientADossier === 'je-sais-pas')" class="space-y-4">
               <!-- Section Identité -->
               <div class="border-b border-gray-200 pb-4">
                 <h3 class="mb-4 text-lg font-semibold secondary--text--color">
@@ -413,22 +506,6 @@
                 </div>
               </div>
 
-              <!-- Numéro de dossier (si patient a un dossier) -->
-              <div v-if="patientADossier === 'oui'">
-                <label
-                  for="dossier-number-new"
-                  class="mb-2 block text-sm font-medium secondary--text--color"
-                >
-                  Numéro de dossier :
-                </label>
-                <input
-                  id="dossier-number-new"
-                  v-model="formData.dossierNumber"
-                  type="text"
-                  placeholder="Entrez le numéro de dossier"
-                  class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
-                />
-              </div>
             </div>
           </div>
 
@@ -441,8 +518,16 @@
               class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style="background-color: var(--primary-color)"
             >
-              <span v-if="props.isLoading">Création en cours...</span>
-              <span v-else>Valider</span>
+              <span v-if="props.isLoading">
+                <span v-if="connaitDossierNumber">Ajout en cours...</span>
+                <span v-else-if="!connaitDossierNumber && patientADossier === 'oui'">Recherche en cours...</span>
+                <span v-else>Création en cours...</span>
+              </span>
+              <span v-else>
+                <span v-if="connaitDossierNumber">Ajouter à ma liste</span>
+                <span v-else-if="!connaitDossierNumber && patientADossier === 'oui'">Rechercher</span>
+                <span v-else>Créer le patient</span>
+              </span>
             </button>
           </div>
         </div>
@@ -455,7 +540,11 @@
 const props = defineProps<{
   isOpen: boolean;
   isLoading?: boolean;
+  errorMessage?: string;
 }>();
+
+// Exposer l'erreur pour l'afficher dans le template
+const displayedError = computed(() => props.errorMessage || errorMessage.value);
 
 const emit = defineEmits<{
   close: [];
@@ -476,12 +565,14 @@ const emit = defineEmits<{
       situationFamiliale?: string;
       connaitDossierNumber: boolean;
       patientADossier?: "oui" | "je-sais-pas" | "non";
+      searchMode?: boolean; // true si recherche par infos, false si création
     }
   ];
 }>();
 
 const connaitDossierNumber = ref(true);
 const patientADossier = ref<"oui" | "je-sais-pas" | "non">("non");
+const errorMessage = ref("");
 
 const formData = ref({
   dossierNumber: "",
@@ -504,6 +595,7 @@ const closeModal = () => {
   // Reset form
   connaitDossierNumber.value = true;
   patientADossier.value = "non";
+  errorMessage.value = "";
   formData.value = {
     dossierNumber: "",
     nomUsage: "",
@@ -524,28 +616,8 @@ const closeModal = () => {
 const toast = useToast();
 
 const handleSubmit = () => {
-  // Validation basique
-  if (!connaitDossierNumber.value) {
-    if (
-      !formData.value.nomUsage ||
-      !formData.value.nomNaissance ||
-      !formData.value.prenom ||
-      !formData.value.genre ||
-      !formData.value.dateNaissance ||
-      !formData.value.villeNaissance ||
-      !formData.value.departementNaissance ||
-      !formData.value.paysNaissance ||
-      !formData.value.numeroSecuriteSociale ||
-      !formData.value.situationFamiliale
-    ) {
-      toast.add({
-        title: "Erreur de validation",
-        description: "Veuillez remplir tous les champs obligatoires",
-        color: "error",
-      });
-      return;
-    }
-  } else {
+  // Cas 1 : Connaît le numéro de dossier
+  if (connaitDossierNumber.value) {
     if (!formData.value.dossierNumber) {
       toast.add({
         title: "Erreur de validation",
@@ -554,10 +626,64 @@ const handleSubmit = () => {
       });
       return;
     }
+    emit("submit", {
+      dossierNumber: formData.value.dossierNumber,
+      connaitDossierNumber: true,
+    });
+    closeModal();
+    return;
+  }
+
+  // Cas 2 : Recherche par informations (patient a un dossier mais on ne connaît pas le numéro)
+  if (patientADossier.value === "oui") {
+    if (
+      !formData.value.dateNaissance ||
+      !formData.value.prenom ||
+      !formData.value.nomUsage ||
+      !formData.value.numeroSecuriteSociale
+    ) {
+      toast.add({
+        title: "Erreur de validation",
+        description: "Veuillez remplir tous les champs de recherche",
+        color: "error",
+      });
+      return;
+    }
+    emit("submit", {
+      dateNaissance: formData.value.dateNaissance,
+      prenom: formData.value.prenom,
+      nomUsage: formData.value.nomUsage,
+      numeroSecuriteSociale: formData.value.numeroSecuriteSociale,
+      connaitDossierNumber: false,
+      patientADossier: "oui",
+      searchMode: true,
+    });
+    closeModal();
+    return;
+  }
+
+  // Cas 3 : Création d'un nouveau patient (pas de dossier ou je ne sais pas)
+  if (
+    !formData.value.nomUsage ||
+    !formData.value.nomNaissance ||
+    !formData.value.prenom ||
+    !formData.value.genre ||
+    !formData.value.dateNaissance ||
+    !formData.value.villeNaissance ||
+    !formData.value.departementNaissance ||
+    !formData.value.paysNaissance ||
+    !formData.value.numeroSecuriteSociale ||
+    !formData.value.situationFamiliale
+  ) {
+    toast.add({
+      title: "Erreur de validation",
+      description: "Veuillez remplir tous les champs obligatoires",
+      color: "error",
+    });
+    return;
   }
 
   emit("submit", {
-    dossierNumber: formData.value.dossierNumber,
     nomUsage: formData.value.nomUsage,
     nomNaissance: formData.value.nomNaissance,
     prenom: formData.value.prenom,
@@ -570,8 +696,9 @@ const handleSubmit = () => {
     nationalites: formData.value.nationalites,
     numeroSecuriteSociale: formData.value.numeroSecuriteSociale,
     situationFamiliale: formData.value.situationFamiliale,
-    connaitDossierNumber: connaitDossierNumber.value,
+    connaitDossierNumber: false,
     patientADossier: patientADossier.value,
+    searchMode: false,
   });
   closeModal();
 };
