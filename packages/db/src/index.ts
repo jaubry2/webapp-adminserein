@@ -4,3 +4,6 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
 
 export const db = drizzle(env.DATABASE_URL, { schema });
+
+// Ré-export des schémas pour les utiliser côté API/serveur
+export * from "./schema";
