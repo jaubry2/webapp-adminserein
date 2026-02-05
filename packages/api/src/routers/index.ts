@@ -361,6 +361,58 @@ export const appRouter = {
       }));
     }),
 
+  // Retirer un patient de la liste du professionnel connecté
+  removePatientFromProfessional: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le lien existe
+      const [existingLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!existingLink) {
+        throw new Error("Ce patient n'est pas dans votre liste");
+      }
+
+      // Supprimer le lien patient-professionnel
+      await db
+        .delete(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        );
+
+      return { success: true };
+    }),
+
   // Lister tous les patients suivis par le professionnel connecté
   listPatients: protectedProcedure.handler(async ({ context }) => {
     if (!context.session?.user?.id) {

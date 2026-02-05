@@ -206,6 +206,29 @@ const searchPatientMutation = useMutation({
   },
 });
 
+// Mutation pour retirer un patient de la liste
+const removePatientMutationOptions = $orpc.removePatientFromProfessional.mutationOptions();
+const removePatientMutation = useMutation({
+  ...removePatientMutationOptions,
+  onSuccess: () => {
+    // Rafraîchir la liste des patients
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listPatients.queryKey(),
+    });
+    toast.add({
+      title: "Patient retiré",
+      description: "Le patient a été retiré de votre liste.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la suppression",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
 // État pour le popup de confirmation
 const showSearchResult = ref(false);
 const searchResultPatient = ref<any>(null);
@@ -324,6 +347,35 @@ const handleConfirmSearchResult = async () => {
 const handleCancelSearchResult = () => {
   showSearchResult.value = false;
   searchResultPatient.value = null;
+};
+
+// État pour la confirmation de suppression
+const showDeleteConfirm = ref(false);
+const patientToDelete = ref<{ id: string; nom: string; prenom: string } | null>(null);
+
+// Gérer la suppression d'un patient
+const handleRemovePatient = (patientId: string, nom: string, prenom: string) => {
+  patientToDelete.value = { id: patientId, nom, prenom };
+  showDeleteConfirm.value = true;
+};
+
+const confirmDeletePatient = async () => {
+  if (!patientToDelete.value) return;
+
+  try {
+    await removePatientMutation.mutateAsync({
+      patientId: patientToDelete.value.id,
+    });
+    showDeleteConfirm.value = false;
+    patientToDelete.value = null;
+  } catch (error: any) {
+    // L'erreur est déjà gérée dans la mutation
+  }
+};
+
+const cancelDeletePatient = () => {
+  showDeleteConfirm.value = false;
+  patientToDelete.value = null;
 };
 </script>
 
@@ -460,14 +512,24 @@ const handleCancelSearchResult = () => {
                   {{ patient.dernieresModifications }}
                 </td>
                 <td class="px-6 py-4 text-right">
-                  <NuxtLink
-                    :to="`/patient/${patient.id}`"
-                    class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
-                    style="background-color: var(--primary-color)"
-                  >
-                    Afficher
-                    <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
-                  </NuxtLink>
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      @click="handleRemovePatient(patient.id, patient.nom, patient.prenom)"
+                      type="button"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                      title="Retirer de ma liste"
+                    >
+                      <UIcon name="i-lucide-trash-2" class="h-4 w-4" />
+                    </button>
+                    <NuxtLink
+                      :to="`/patient/${patient.id}`"
+                      class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                      style="background-color: var(--primary-color)"
+                    >
+                      Afficher
+                      <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
+                    </NuxtLink>
+                  </div>
                 </td>
               </tr>
 
@@ -502,5 +564,107 @@ const handleCancelSearchResult = () => {
       @confirm="handleConfirmSearchResult"
       @cancel="handleCancelSearchResult"
     />
+
+    <!-- Modal de confirmation de suppression -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showDeleteConfirm"
+          class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+        >
+          <!-- Overlay -->
+          <div
+            class="pointer-events-auto absolute inset-0 bg-black/30 backdrop-blur-sm"
+            @click="cancelDeletePatient"
+          ></div>
+
+          <!-- Modal -->
+          <div
+            class="pointer-events-auto relative z-10 w-full max-w-md rounded-lg border-2 tertiary--background--color secondary--border--color shadow-xl bg-white"
+            @click.stop
+          >
+            <!-- En-tête -->
+            <div
+              class="flex items-center justify-between border-b border-gray-200 px-6 py-4"
+            >
+              <h2
+                class="text-xl font-semibold secondary--text--color font--title"
+              >
+                Confirmer la suppression
+              </h2>
+              <button
+                @click="cancelDeletePatient"
+                class="text-gray-400 hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <UIcon name="i-lucide-x" class="h-6 w-6" />
+              </button>
+            </div>
+
+            <!-- Contenu -->
+            <div class="px-6 py-6">
+              <p class="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir retirer
+                <span class="font-semibold"
+                  >{{ patientToDelete?.prenom }} {{ patientToDelete?.nom }}</span
+                >
+                de votre liste ?
+              </p>
+              <p class="mt-2 text-xs text-gray-500">
+                Cette action ne supprime pas le patient du système, mais le retire uniquement de votre liste personnelle.
+              </p>
+            </div>
+
+            <!-- Boutons -->
+            <div class="border-t border-gray-200 px-6 py-4">
+              <div class="flex gap-3">
+                <button
+                  @click="cancelDeletePatient"
+                  type="button"
+                  class="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  @click="confirmDeletePatient"
+                  type="button"
+                  :disabled="removePatientMutation.isPending.value"
+                  class="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span v-if="removePatientMutation.isPending.value"
+                    >Suppression...</span
+                  >
+                  <span v-else>Retirer de ma liste</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* Animation d'entrée/sortie du modal */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .relative,
+.modal-leave-active .relative {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.modal-enter-from .relative,
+.modal-leave-to .relative {
+  opacity: 0;
+  transform: scale(0.95);
+}
+</style>
