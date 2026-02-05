@@ -1,8 +1,14 @@
 import type { RouterClient } from "@orpc/server";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { db, informationIdentite, patient } from "@webapp-adminserein/db";
+import {
+  db,
+  informationIdentite,
+  patient,
+  professionnel,
+  patientProfessionnel,
+} from "@webapp-adminserein/db";
 import { protectedProcedure, publicProcedure } from "../index";
 
 // Schémas Zod pour (dé)sérialiser les données côté API
@@ -162,10 +168,41 @@ export const appRouter = {
       };
     }),
 
-  // Récupérer un patient par son ID
+  // Récupérer un patient par son ID (filtré selon le professionnel connecté)
   getPatientById: protectedProcedure
     .input(z.object({ patientId: z.string().uuid() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le patient appartient au professionnel
+      const [patientLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!patientLink) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
       const [p] = await db
         .select()
         .from(patient)
@@ -186,9 +223,40 @@ export const appRouter = {
       };
     }),
 
-  // Lister tous les patients (utile pour l'UI)
-  listPatients: protectedProcedure.handler(async () => {
-    const patients = await db.select().from(patient);
+  // Lister tous les patients suivis par le professionnel connecté
+  listPatients: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    // Récupérer le professionnel lié à l'utilisateur
+    const [prof] = await db
+      .select()
+      .from(professionnel)
+      .where(eq(professionnel.userId, context.session.user.id))
+      .limit(1);
+
+    if (!prof) {
+      throw new Error("Aucun professionnel associé à ce compte");
+    }
+
+    // Récupérer les IDs des patients suivis par ce professionnel
+    const patientLinks = await db
+      .select({ patientId: patientProfessionnel.patientId })
+      .from(patientProfessionnel)
+      .where(eq(patientProfessionnel.professionnelId, prof.id));
+
+    const patientIds = patientLinks.map((link) => link.patientId);
+
+    if (patientIds.length === 0) {
+      return [];
+    }
+
+    // Récupérer les patients et leurs informations d'identité
+    const patients = await db
+      .select()
+      .from(patient)
+      .where(inArray(patient.id, patientIds));
 
     const infos = await db.select().from(informationIdentite);
     const infoById = new Map(infos.map((i) => [i.id, i]));

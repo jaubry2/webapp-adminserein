@@ -64,11 +64,12 @@ export const patient = pgTable("patient", {
 });
 
 // Relations Drizzle
-export const patientRelations = relations(patient, ({ one }) => ({
+export const patientRelations = relations(patient, ({ one, many }) => ({
   informationIdentite: one(informationIdentite, {
     fields: [patient.informationIdentiteId],
     references: [informationIdentite.id],
   }),
+  professionnels: many("patientProfessionnel"),
 }));
 
 export const informationIdentiteRelations = relations(

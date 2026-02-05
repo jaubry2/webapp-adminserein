@@ -10,7 +10,7 @@ export async function seedPatientsIfEmpty() {
 
   const demoPatients = [
     {
-      numeroDossier: "DOSSIER-0001",
+      numeroDossier: "0000-0001",
       informationIdentite: {
         nomUsage: "DUPONT",
         nomNaissance: "DUPONT",
@@ -27,7 +27,7 @@ export async function seedPatientsIfEmpty() {
       },
     },
     {
-      numeroDossier: "DOSSIER-0002",
+      numeroDossier: "0000-0002",
       informationIdentite: {
         nomUsage: "MARTIN",
         nomNaissance: "MARTIN",
