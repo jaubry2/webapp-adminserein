@@ -115,6 +115,7 @@ const openModal = () => {
 
 const closeModal = () => {
   isModalOpen.value = false;
+  modalError.value = "";
 };
 
 // Mutation pour créer un patient
@@ -142,6 +143,73 @@ const createPatientMutation = useMutation({
   },
 });
 
+// État pour gérer l'erreur de numéro invalide dans le modal
+const modalError = ref("");
+
+// Mutation pour ajouter un patient existant à la liste du professionnel
+const addPatientMutationOptions = $orpc.addPatientToProfessional.mutationOptions();
+const addPatientMutation = useMutation({
+  ...addPatientMutationOptions,
+  onSuccess: () => {
+    // Rafraîchir la liste des patients
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listPatients.queryKey(),
+    });
+    toast.add({
+      title: "Patient ajouté avec succès",
+      description: "Le patient a été ajouté à votre liste.",
+    });
+    closeModal();
+    // Fermer aussi le popup de confirmation si ouvert
+    showSearchResult.value = false;
+    searchResultPatient.value = null;
+    modalError.value = "";
+  },
+  onError: (error: any) => {
+    // Si le patient n'est pas trouvé, afficher l'erreur dans le modal
+    if (error?.message?.includes("non trouvé")) {
+      modalError.value = "Numéro de dossier incorrect. Ce patient n'existe pas dans le système.";
+      // Ne pas fermer le modal pour permettre à l'utilisateur de corriger
+    } else {
+      toast.add({
+        title: "Erreur lors de l'ajout",
+        description: error?.message || "Une erreur est survenue.",
+        color: "error",
+      });
+    }
+  },
+});
+
+// Mutation pour rechercher un patient par ses informations
+const searchPatientMutationOptions = $orpc.searchPatientByInfo.mutationOptions();
+const searchPatientMutation = useMutation({
+  ...searchPatientMutationOptions,
+  onSuccess: (results) => {
+    if (results && results.length > 0) {
+      // Afficher le popup de confirmation avec le premier résultat
+      searchResultPatient.value = results[0];
+      showSearchResult.value = true;
+    } else {
+      toast.add({
+        title: "Aucun patient trouvé",
+        description: "Aucun patient ne correspond aux informations fournies. Vous pouvez créer un nouveau patient.",
+        color: "warning",
+      });
+    }
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la recherche",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+// État pour le popup de confirmation
+const showSearchResult = ref(false);
+const searchResultPatient = ref<any>(null);
+
 // Fonction pour générer un numéro de dossier automatique
 const generateDossierNumber = async (): Promise<string> => {
   // Récupérer la liste des patients depuis le cache ou l'API
@@ -159,7 +227,7 @@ const generateDossierNumber = async (): Promise<string> => {
       const dossierNum = p.numeroDossier;
       if (!dossierNum) return 0;
       const match = dossierNum.match(/(\d+)$/);
-      return match ? parseInt(match[1], 10) : 0;
+      return match ? parseInt(match[1] as string, 10) : 0;
     })
     .filter((n) => n > 0);
 
@@ -169,40 +237,46 @@ const generateDossierNumber = async (): Promise<string> => {
 };
 
 const handleSubmitPatient = async (data: any) => {
+  // Réinitialiser l'erreur du modal
+  modalError.value = "";
+  
   try {
-    // Si l'utilisateur connaît le numéro de dossier, utiliser celui-ci
-    let numeroDossier = data.dossierNumber;
-
-    // Si l'utilisateur ne connaît pas le numéro de dossier
-    if (!data.connaitDossierNumber) {
-      // Si le patient a un dossier mais on ne connaît pas le numéro, générer un nouveau
-      if (data.patientADossier === "non" || data.patientADossier === "je-sais-pas") {
-        numeroDossier = await generateDossierNumber();
-      } else if (data.patientADossier === "oui" && data.dossierNumber) {
-        numeroDossier = data.dossierNumber;
-      } else {
-        numeroDossier = await generateDossierNumber();
-      }
-    }
-
-    if (!numeroDossier) {
-      toast.add({
-        title: "Erreur",
-        description: "Le numéro de dossier est requis",
-        color: "error",
+    // Cas 1 : Connaît le numéro de dossier
+    if (data.connaitDossierNumber && data.dossierNumber) {
+      await addPatientMutation.mutateAsync({
+        numeroDossier: data.dossierNumber as string,
       });
       return;
     }
 
+    // Cas 2 : Recherche par informations (patient a un dossier mais on ne connaît pas le numéro)
+    if (!data.connaitDossierNumber && data.searchMode && data.patientADossier === "oui") {
+      // Convertir la date au format ISO si nécessaire
+      let dateNaissanceISO = data.dateNaissance;
+      if (dateNaissanceISO && dateNaissanceISO.includes("/")) {
+        const [day, month, year] = dateNaissanceISO.split("/");
+        dateNaissanceISO = `${year}-${month}-${day}`;
+      }
+
+      await searchPatientMutation.mutateAsync({
+        dateNaissance: dateNaissanceISO,
+        prenom: data.prenom,
+        nom: data.nomUsage,
+        numeroSecuriteSociale: data.numeroSecuriteSociale,
+      });
+      return;
+    }
+
+    // Cas 3 : Création d'un nouveau patient (pas de dossier ou je ne sais pas)
+    let numeroDossier = await generateDossierNumber();
+
     // Convertir la date de naissance au format ISO si nécessaire
     let dateNaissanceISO = data.dateNaissance;
     if (dateNaissanceISO && dateNaissanceISO.includes("/")) {
-      // Format JJ/MM/AAAA -> AAAA-MM-JJ
       const [day, month, year] = dateNaissanceISO.split("/");
       dateNaissanceISO = `${year}-${month}-${day}`;
     }
 
-    // Préparer les données pour l'API
     const patientData = {
       numeroDossier,
       informationIdentite: {
@@ -232,11 +306,24 @@ const handleSubmitPatient = async (data: any) => {
       },
     };
 
-    // Créer le patient
     await createPatientMutation.mutateAsync(patientData);
   } catch (error: any) {
-    console.error("Erreur lors de la création du patient:", error);
+    console.error("Erreur lors du traitement:", error);
   }
+};
+
+// Gérer la confirmation du popup de recherche
+const handleConfirmSearchResult = async () => {
+  if (searchResultPatient.value?.numeroDossier) {
+    await addPatientMutation.mutateAsync({
+      numeroDossier: searchResultPatient.value.numeroDossier,
+    });
+  }
+};
+
+const handleCancelSearchResult = () => {
+  showSearchResult.value = false;
+  searchResultPatient.value = null;
 };
 </script>
 
@@ -401,9 +488,19 @@ const handleSubmitPatient = async (data: any) => {
     <!-- Modal d'ajout de patient -->
     <ModalAddPatient
       :is-open="isModalOpen"
-      :is-loading="createPatientMutation.isPending.value"
+      :is-loading="createPatientMutation.isPending.value || addPatientMutation.isPending.value || searchPatientMutation.isPending.value"
+      :error-message="modalError"
       @close="closeModal"
       @submit="handleSubmitPatient"
+    />
+
+    <!-- Popup de confirmation pour les résultats de recherche -->
+    <PatientSearchResult
+      :is-open="showSearchResult"
+      :patient="searchResultPatient"
+      :is-loading="addPatientMutation.isPending.value"
+      @confirm="handleConfirmSearchResult"
+      @cancel="handleCancelSearchResult"
     />
   </div>
 </template>
