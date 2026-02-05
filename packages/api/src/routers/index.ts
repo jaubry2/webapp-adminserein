@@ -62,10 +62,25 @@ export const appRouter = {
 
   // --- PATIENTS ---
 
-  // Créer un patient avec ses informations d'identité
+  // Créer un patient avec ses informations d'identité et le lier au professionnel connecté
   createPatient: protectedProcedure
     .input(patientCreateInputSchema)
-    .handler(async ({ input }) => {
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
       const { numeroDossier, informationIdentite: info } = input;
 
       const [createdInfo] = await db
@@ -93,6 +108,12 @@ export const appRouter = {
           informationIdentiteId: createdInfo.id,
         })
         .returning();
+
+      // Lier automatiquement le patient au professionnel connecté
+      await db.insert(patientProfessionnel).values({
+        patientId: createdPatient.id,
+        professionnelId: prof.id,
+      });
 
       return {
         ...createdPatient,

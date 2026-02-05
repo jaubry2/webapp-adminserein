@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Patient } from "~/types/patient";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 
 const { $authClient, $orpc } = useNuxtApp();
+const queryClient = useQueryClient();
+const toast = useToast();
 
 definePageMeta({
   middleware: ["auth"],
@@ -24,8 +26,8 @@ const patients = computed<Patient[]>(() => {
 
     // Formatage simple de la date au format JJ/MM/AAAA
     const dateNaissance =
-      info?.dateNaissance instanceof Date
-        ? info.dateNaissance.toLocaleDateString("fr-FR")
+      info?.dateNaissance && typeof info.dateNaissance === "object" && "toLocaleDateString" in info.dateNaissance
+        ? (info.dateNaissance as Date).toLocaleDateString("fr-FR")
         : typeof info?.dateNaissance === "string"
           ? new Date(info.dateNaissance).toLocaleDateString("fr-FR")
           : "";
@@ -115,10 +117,126 @@ const closeModal = () => {
   isModalOpen.value = false;
 };
 
-const handleSubmitPatient = (data: any) => {
-  // TODO: Implémenter la logique d'ajout du patient
-  console.log("Données du nouveau patient:", data);
-  // Ici vous pourrez appeler une API ou mettre à jour le store
+// Mutation pour créer un patient
+// Utiliser mutationOptions pour obtenir la mutationFn qui gère correctement les credentials
+const mutationOptions = $orpc.createPatient.mutationOptions();
+const createPatientMutation = useMutation({
+  ...mutationOptions,
+  onSuccess: () => {
+    // Rafraîchir la liste des patients
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listPatients.queryKey(),
+    });
+    toast.add({
+      title: "Patient créé avec succès",
+      description: "Le patient a été ajouté à votre liste.",
+    });
+    closeModal();
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la création",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+// Fonction pour générer un numéro de dossier automatique
+const generateDossierNumber = async (): Promise<string> => {
+  // Récupérer la liste des patients depuis le cache ou l'API
+  const patients =
+    apiPatients.value ||
+    (await queryClient.fetchQuery($orpc.listPatients.queryOptions()));
+
+  if (!patients || patients.length === 0) {
+    return "DOSSIER-0001";
+  }
+
+  // Extraire les numéros et trouver le plus grand
+  const numbers = patients
+    .map((p) => {
+      const dossierNum = p.numeroDossier;
+      if (!dossierNum) return 0;
+      const match = dossierNum.match(/(\d+)$/);
+      return match ? parseInt(match[1], 10) : 0;
+    })
+    .filter((n) => n > 0);
+
+  const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
+  const nextNumber = maxNumber + 1;
+  return `DOSSIER-${String(nextNumber).padStart(4, "0")}`;
+};
+
+const handleSubmitPatient = async (data: any) => {
+  try {
+    // Si l'utilisateur connaît le numéro de dossier, utiliser celui-ci
+    let numeroDossier = data.dossierNumber;
+
+    // Si l'utilisateur ne connaît pas le numéro de dossier
+    if (!data.connaitDossierNumber) {
+      // Si le patient a un dossier mais on ne connaît pas le numéro, générer un nouveau
+      if (data.patientADossier === "non" || data.patientADossier === "je-sais-pas") {
+        numeroDossier = await generateDossierNumber();
+      } else if (data.patientADossier === "oui" && data.dossierNumber) {
+        numeroDossier = data.dossierNumber;
+      } else {
+        numeroDossier = await generateDossierNumber();
+      }
+    }
+
+    if (!numeroDossier) {
+      toast.add({
+        title: "Erreur",
+        description: "Le numéro de dossier est requis",
+        color: "error",
+      });
+      return;
+    }
+
+    // Convertir la date de naissance au format ISO si nécessaire
+    let dateNaissanceISO = data.dateNaissance;
+    if (dateNaissanceISO && dateNaissanceISO.includes("/")) {
+      // Format JJ/MM/AAAA -> AAAA-MM-JJ
+      const [day, month, year] = dateNaissanceISO.split("/");
+      dateNaissanceISO = `${year}-${month}-${day}`;
+    }
+
+    // Préparer les données pour l'API
+    const patientData = {
+      numeroDossier,
+      informationIdentite: {
+        nomUsage: data.nomUsage || "",
+        nomNaissance: data.nomNaissance || data.nomUsage || "",
+        prenom: data.prenom || "",
+        autresPrenoms: data.autresPrenoms
+          ? data.autresPrenoms.split(",").map((p: string) => p.trim())
+          : [],
+        genre: (data.genre || "AUTRE") as "MASCULIN" | "FEMININ" | "AUTRE",
+        dateNaissance: dateNaissanceISO,
+        villeNaissance: data.villeNaissance || "",
+        departementNaissance: data.departementNaissance || "",
+        paysNaissance: data.paysNaissance || "",
+        nationalites: data.nationalites
+          ? data.nationalites.split(",").map((n: string) => n.trim())
+          : [],
+        numeroSecuriteSociale: data.numeroSecuriteSociale || "",
+        situationFamiliale: (data.situationFamiliale ||
+          "CELIBATAIRE") as
+          | "CELIBATAIRE"
+          | "MARIE"
+          | "DIVORCE"
+          | "VEUF"
+          | "PACSE"
+          | "CONCUBINAGE",
+      },
+    };
+
+    // Créer le patient
+    await createPatientMutation.mutateAsync(patientData);
+  } catch (error: any) {
+    console.error("Erreur lors de la création du patient:", error);
+  }
 };
 </script>
 
@@ -283,6 +401,7 @@ const handleSubmitPatient = (data: any) => {
     <!-- Modal d'ajout de patient -->
     <ModalAddPatient
       :is-open="isModalOpen"
+      :is-loading="createPatientMutation.isPending.value"
       @close="closeModal"
       @submit="handleSubmitPatient"
     />

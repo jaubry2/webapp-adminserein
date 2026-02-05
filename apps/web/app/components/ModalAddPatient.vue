@@ -14,7 +14,7 @@
 
         <!-- Modal : clics actifs, bordure secondary -->
         <div
-          class="pointer-events-auto relative z-10 w-full max-w-lg rounded-lg border-2 tertiary--background--color secondary--border--color shadow-xl"
+          class="pointer-events-auto relative z-10 w-full max-w-2xl max-h-[90vh] rounded-lg border-2 tertiary--background--color secondary--border--color shadow-xl flex flex-col"
           @click.stop
         >
           <!-- En-tête du modal -->
@@ -36,7 +36,7 @@
           </div>
 
           <!-- Contenu du modal -->
-          <div class="px-6 py-6">
+          <div class="px-6 py-6 overflow-y-auto flex-1">
             <!-- Première question -->
             <div class="mb-6">
               <label
@@ -177,52 +177,255 @@
               </div>
             </div>
 
-            <!-- Champs de formulaire (si Non à la première question) -->
+            <!-- Champs de formulaire complets -->
             <div v-if="!connaitDossierNumber" class="space-y-4">
-              <div>
-                <label
-                  for="nom"
-                  class="mb-2 block text-sm font-medium secondary--text--color"
-                >
-                  Nom :
-                </label>
-                <input
-                  id="nom"
-                  v-model="formData.nom"
-                  type="text"
-                  placeholder="Entrez le nom"
-                  class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
-                />
+              <!-- Section Identité -->
+              <div class="border-b border-gray-200 pb-4">
+                <h3 class="mb-4 text-lg font-semibold secondary--text--color">
+                  Identité
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="nom-usage"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Nom d'usage <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="nom-usage"
+                      v-model="formData.nomUsage"
+                      type="text"
+                      placeholder="Nom d'usage"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="nom-naissance"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Nom de naissance <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="nom-naissance"
+                      v-model="formData.nomNaissance"
+                      type="text"
+                      placeholder="Nom de naissance"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="prenom"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Prénom <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="prenom"
+                      v-model="formData.prenom"
+                      type="text"
+                      placeholder="Prénom"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="autres-prenoms"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Autres prénoms (séparés par des virgules)
+                    </label>
+                    <input
+                      id="autres-prenoms"
+                      v-model="formData.autresPrenoms"
+                      type="text"
+                      placeholder="Ex: Marie, Claire"
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="genre"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Genre <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="genre"
+                      v-model="formData.genre"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    >
+                      <option value="">Sélectionner</option>
+                      <option value="MASCULIN">Masculin</option>
+                      <option value="FEMININ">Féminin</option>
+                      <option value="AUTRE">Autre</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      for="date-naissance"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Date de naissance <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="date-naissance"
+                      v-model="formData.dateNaissance"
+                      type="date"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label
-                  for="prenom"
-                  class="mb-2 block text-sm font-medium secondary--text--color"
-                >
-                  Prénom :
-                </label>
-                <input
-                  id="prenom"
-                  v-model="formData.prenom"
-                  type="text"
-                  placeholder="Entrez le prénom"
-                  class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
-                />
+              <!-- Section Naissance -->
+              <div class="border-b border-gray-200 pb-4">
+                <h3 class="mb-4 text-lg font-semibold secondary--text--color">
+                  Naissance
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="ville-naissance"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Ville de naissance <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="ville-naissance"
+                      v-model="formData.villeNaissance"
+                      type="text"
+                      placeholder="Ville"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="departement-naissance"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Département de naissance <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="departement-naissance"
+                      v-model="formData.departementNaissance"
+                      type="text"
+                      placeholder="Ex: 75, 69"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="pays-naissance"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Pays de naissance <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="pays-naissance"
+                      v-model="formData.paysNaissance"
+                      type="text"
+                      placeholder="Pays"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="nationalites"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Nationalités (séparées par des virgules)
+                    </label>
+                    <input
+                      id="nationalites"
+                      v-model="formData.nationalites"
+                      type="text"
+                      placeholder="Ex: Française, Espagnole"
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
+              <!-- Section Autres informations -->
+              <div class="border-b border-gray-200 pb-4">
+                <h3 class="mb-4 text-lg font-semibold secondary--text--color">
+                  Autres informations
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="numero-secu"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Numéro de sécurité sociale <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="numero-secu"
+                      v-model="formData.numeroSecuriteSociale"
+                      type="text"
+                      placeholder="13 chiffres"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      for="situation-familiale"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Situation familiale <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="situation-familiale"
+                      v-model="formData.situationFamiliale"
+                      required
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    >
+                      <option value="">Sélectionner</option>
+                      <option value="CELIBATAIRE">Célibataire</option>
+                      <option value="MARIE">Marié(e)</option>
+                      <option value="DIVORCE">Divorcé(e)</option>
+                      <option value="VEUF">Veuf(ve)</option>
+                      <option value="PACSE">Pacsé(e)</option>
+                      <option value="CONCUBINAGE">Concubinage</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Numéro de dossier (si patient a un dossier) -->
+              <div v-if="patientADossier === 'oui'">
                 <label
-                  for="date-naissance"
+                  for="dossier-number-new"
                   class="mb-2 block text-sm font-medium secondary--text--color"
                 >
-                  Date de naissance :
+                  Numéro de dossier :
                 </label>
                 <input
-                  id="date-naissance"
-                  v-model="formData.dateNaissance"
+                  id="dossier-number-new"
+                  v-model="formData.dossierNumber"
                   type="text"
-                  placeholder="JJ/MM/AAAA"
+                  placeholder="Entrez le numéro de dossier"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
                 />
               </div>
@@ -234,10 +437,12 @@
             <button
               @click="handleSubmit"
               type="button"
-              class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+              :disabled="props.isLoading"
+              class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style="background-color: var(--primary-color)"
             >
-              Valider
+              <span v-if="props.isLoading">Création en cours...</span>
+              <span v-else>Valider</span>
             </button>
           </div>
         </div>
@@ -249,6 +454,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   isOpen: boolean;
+  isLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -256,9 +462,18 @@ const emit = defineEmits<{
   submit: [
     data: {
       dossierNumber?: string;
-      nom?: string;
+      nomUsage?: string;
+      nomNaissance?: string;
       prenom?: string;
+      autresPrenoms?: string;
+      genre?: string;
       dateNaissance?: string;
+      villeNaissance?: string;
+      departementNaissance?: string;
+      paysNaissance?: string;
+      nationalites?: string;
+      numeroSecuriteSociale?: string;
+      situationFamiliale?: string;
       connaitDossierNumber: boolean;
       patientADossier?: "oui" | "je-sais-pas" | "non";
     }
@@ -270,9 +485,18 @@ const patientADossier = ref<"oui" | "je-sais-pas" | "non">("non");
 
 const formData = ref({
   dossierNumber: "",
-  nom: "",
+  nomUsage: "",
+  nomNaissance: "",
   prenom: "",
+  autresPrenoms: "",
+  genre: "",
   dateNaissance: "",
+  villeNaissance: "",
+  departementNaissance: "",
+  paysNaissance: "",
+  nationalites: "",
+  numeroSecuriteSociale: "",
+  situationFamiliale: "",
 });
 
 const closeModal = () => {
@@ -282,18 +506,70 @@ const closeModal = () => {
   patientADossier.value = "non";
   formData.value = {
     dossierNumber: "",
-    nom: "",
+    nomUsage: "",
+    nomNaissance: "",
     prenom: "",
+    autresPrenoms: "",
+    genre: "",
     dateNaissance: "",
+    villeNaissance: "",
+    departementNaissance: "",
+    paysNaissance: "",
+    nationalites: "",
+    numeroSecuriteSociale: "",
+    situationFamiliale: "",
   };
 };
 
+const toast = useToast();
+
 const handleSubmit = () => {
+  // Validation basique
+  if (!connaitDossierNumber.value) {
+    if (
+      !formData.value.nomUsage ||
+      !formData.value.nomNaissance ||
+      !formData.value.prenom ||
+      !formData.value.genre ||
+      !formData.value.dateNaissance ||
+      !formData.value.villeNaissance ||
+      !formData.value.departementNaissance ||
+      !formData.value.paysNaissance ||
+      !formData.value.numeroSecuriteSociale ||
+      !formData.value.situationFamiliale
+    ) {
+      toast.add({
+        title: "Erreur de validation",
+        description: "Veuillez remplir tous les champs obligatoires",
+        color: "error",
+      });
+      return;
+    }
+  } else {
+    if (!formData.value.dossierNumber) {
+      toast.add({
+        title: "Erreur de validation",
+        description: "Veuillez entrer un numéro de dossier",
+        color: "error",
+      });
+      return;
+    }
+  }
+
   emit("submit", {
     dossierNumber: formData.value.dossierNumber,
-    nom: formData.value.nom,
+    nomUsage: formData.value.nomUsage,
+    nomNaissance: formData.value.nomNaissance,
     prenom: formData.value.prenom,
+    autresPrenoms: formData.value.autresPrenoms,
+    genre: formData.value.genre,
     dateNaissance: formData.value.dateNaissance,
+    villeNaissance: formData.value.villeNaissance,
+    departementNaissance: formData.value.departementNaissance,
+    paysNaissance: formData.value.paysNaissance,
+    nationalites: formData.value.nationalites,
+    numeroSecuriteSociale: formData.value.numeroSecuriteSociale,
+    situationFamiliale: formData.value.situationFamiliale,
     connaitDossierNumber: connaitDossierNumber.value,
     patientADossier: patientADossier.value,
   });
