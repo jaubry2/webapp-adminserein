@@ -7,11 +7,16 @@ import { createContext } from "@webapp-adminserein/api/context";
 import { appRouter } from "@webapp-adminserein/api/routers/index";
 import { auth } from "@webapp-adminserein/auth";
 import { env } from "@webapp-adminserein/env/server";
+import { seedPatientsIfEmpty } from "@webapp-adminserein/db/seedPatients";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
 const app = new Hono();
+
+// Initialisation des données au démarrage de l'application
+// (création de quelques patients de démonstration si la table est vide)
+void seedPatientsIfEmpty();
 
 app.use(logger());
 app.use(
