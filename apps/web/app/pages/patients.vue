@@ -1,31 +1,86 @@
 <script setup lang="ts">
-const { $authClient } = useNuxtApp();
+import type { Patient } from "~/types/patient";
+import { useQuery } from "@tanstack/vue-query";
 
-const session = $authClient.useSession();
+const { $authClient, $orpc } = useNuxtApp();
 
-// Import des données des patients depuis le fichier utils
-const { patientsData } = await import("~/utils/patients");
-const patients = patientsData;
+definePageMeta({
+  middleware: ["auth"],
+});
+
+// Récupération des patients depuis l'API oRPC
+const {
+  data: apiPatients,
+  isLoading,
+  isError,
+} = useQuery($orpc.listPatients.queryOptions());
+
+// Mapping des données API -> type Patient utilisé par l'UI
+const patients = computed<Patient[]>(() => {
+  if (!apiPatients.value) return [];
+
+  return apiPatients.value.map((p) => {
+    const info = p.informationIdentite;
+
+    // Formatage simple de la date au format JJ/MM/AAAA
+    const dateNaissance =
+      info?.dateNaissance instanceof Date
+        ? info.dateNaissance.toLocaleDateString("fr-FR")
+        : typeof info?.dateNaissance === "string"
+          ? new Date(info.dateNaissance).toLocaleDateString("fr-FR")
+          : "";
+
+    return {
+      id: p.id,
+      dossierNumber: p.numeroDossier,
+      nom: info?.nomUsage ?? "",
+      prenom: info?.prenom ?? "",
+      dateNaissance,
+      lieuNaissance: info?.villeNaissance,
+      departementNaissance: info?.departementNaissance,
+      paysNaissance: info?.paysNaissance,
+      nomNaissance: info?.nomNaissance,
+      autresPrenoms: info?.autresPrenoms?.join(", "),
+      sexe:
+        info?.genre === "MASCULIN"
+          ? "Homme"
+          : info?.genre === "FEMININ"
+            ? "Femme"
+            : info?.genre
+              ? "Autre"
+              : undefined,
+      // Champs non encore présents en base
+      telephone: undefined,
+      email: undefined,
+      adresse: undefined,
+      codePostal: undefined,
+      ville: undefined,
+      // TODO: utiliser un champ "updatedAt" en base si besoin
+      dernieresModifications: "",
+    };
+  });
+});
 
 const searchQuery = ref("");
 
 // Filtrer les patients selon la recherche
 const filteredPatients = computed(() => {
+  const all = patients.value;
   if (!searchQuery.value) {
-    return patients;
+    return all;
   }
   const query = searchQuery.value.toLowerCase();
-  return patients.filter(
+  return all.filter(
     (patient) =>
       patient.nom.toLowerCase().includes(query) ||
       patient.prenom.toLowerCase().includes(query) ||
-      patient.dossierNumber.includes(query)
+      patient.dossierNumber.includes(query),
   );
 });
 
-const selectedPatients = ref<number[]>([]);
+const selectedPatients = ref<string[]>([]);
 
-const togglePatientSelection = (patientId: number) => {
+const togglePatientSelection = (patientId: string) => {
   const index = selectedPatients.value.indexOf(patientId);
   if (index > -1) {
     selectedPatients.value.splice(index, 1);
@@ -152,8 +207,23 @@ const handleSubmitPatient = (data: any) => {
 
             <!-- Corps du tableau -->
             <tbody class="divide-y divide-gray-200 bg-white">
+              <tr v-if="isLoading">
+                <td colspan="7" class="px-6 py-12 text-center">
+                  <p class="text-sm quaternary--text--color">
+                    Chargement des patients...
+                  </p>
+                </td>
+              </tr>
+              <tr v-else-if="isError">
+                <td colspan="7" class="px-6 py-12 text-center">
+                  <p class="text-sm text-red-500">
+                    Erreur lors du chargement des patients.
+                  </p>
+                </td>
+              </tr>
               <tr
                 v-for="patient in filteredPatients"
+                v-else
                 :key="patient.id"
                 class="hover:bg-gray-50 transition-colors"
               >

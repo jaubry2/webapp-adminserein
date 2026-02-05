@@ -1,18 +1,69 @@
 <script setup lang="ts">
+import type { Patient } from "~/types/patient";
+import { useQuery } from "@tanstack/vue-query";
+
 const route = useRoute();
-const { getPatientById, calculateAge, getHistoriqueByPatientId } = await import(
-  "~/utils/patients"
+const { $authClient, $orpc } = useNuxtApp();
+const { calculateAge, getHistoriqueByPatientId } =
+  await import("~/utils/patients");
+
+const patientId = computed(() => String(route.params.id));
+
+// Récupération du patient depuis l'API
+const {
+  data: apiPatient,
+  isLoading,
+  isError,
+  error,
+} = useQuery(
+  $orpc.getPatientById.queryOptions({
+    input: {
+      patientId: patientId.value,
+    },
+  }),
 );
 
-const patientId = computed(() => Number(route.params.id));
-const patient = computed(() => getPatientById(patientId.value));
+// Mapping API -> type Patient utilisé par l'UI
+const patient = computed<Patient | null>(() => {
+  if (!apiPatient.value) return null;
 
-if (!patient.value) {
-  throw createError({
-    statusCode: 404,
-    statusMessage: "Patient non trouvé",
-  });
-}
+  const p = apiPatient.value;
+  const info = p.informationIdentite;
+
+  const dateNaissance =
+    info?.dateNaissance instanceof Date
+      ? info.dateNaissance.toLocaleDateString("fr-FR")
+      : typeof info?.dateNaissance === "string"
+        ? new Date(info.dateNaissance).toLocaleDateString("fr-FR")
+        : "";
+
+  return {
+    id: p.id,
+    dossierNumber: p.numeroDossier,
+    nom: info?.nomUsage ?? "",
+    prenom: info?.prenom ?? "",
+    dateNaissance,
+    lieuNaissance: info?.villeNaissance,
+    departementNaissance: info?.departementNaissance,
+    paysNaissance: info?.paysNaissance,
+    nomNaissance: info?.nomNaissance,
+    autresPrenoms: info?.autresPrenoms?.join(", "),
+    sexe:
+      info?.genre === "MASCULIN"
+        ? "Homme"
+        : info?.genre === "FEMININ"
+          ? "Femme"
+          : info?.genre
+            ? "Autre"
+            : undefined,
+    telephone: undefined,
+    email: undefined,
+    adresse: undefined,
+    codePostal: undefined,
+    ville: undefined,
+    dernieresModifications: "",
+  };
+});
 
 const age = computed(() => {
   if (patient.value?.dateNaissance) {
@@ -25,8 +76,10 @@ const activeTab = ref("information");
 const identiteExpanded = ref(true);
 const coordonneesExpanded = ref(true);
 
-// Récupération de l'historique du patient
-const historique = computed(() => getHistoriqueByPatientId(patientId.value));
+// Récupération de l'historique du patient (mock pour le moment)
+const historique = computed(() =>
+  getHistoriqueByPatientId(Number(patientId.value)),
+);
 
 const tabs = [
   { id: "information", label: "Information", icon: "i-lucide-info" },
@@ -37,7 +90,21 @@ const tabs = [
 </script>
 
 <template>
-  <div v-if="patient" class="h-screen bg-white font--text">
+  <div
+    v-if="isLoading"
+    class="h-screen bg-white font--text flex items-center justify-center"
+  >
+    <p class="text-sm quaternary--text--color">Chargement du patient...</p>
+  </div>
+  <div
+    v-else-if="isError || !patient"
+    class="h-screen bg-white font--text flex items-center justify-center"
+  >
+    <p class="text-sm text-red-500">
+      Patient non trouvé ou erreur de chargement.
+    </p>
+  </div>
+  <div v-else class="h-screen bg-white font--text">
     <div class="flex h-full">
       <!-- Contenu principal -->
       <div class="flex-1 flex flex-col max-h-full">

@@ -1,4 +1,5 @@
 import type { RouterClient } from "@orpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, informationIdentite, patient } from "@webapp-adminserein/db";
@@ -102,7 +103,7 @@ export const appRouter = {
       const [existing] = await db
         .select()
         .from(patient)
-        .where(patient.id.eq(patientId));
+        .where(eq(patient.id, patientId));
 
       if (!existing) {
         throw new Error("Patient non trouvé");
@@ -112,7 +113,7 @@ export const appRouter = {
         await db
           .update(patient)
           .set({ numeroDossier })
-          .where(patient.id.eq(patientId));
+          .where(eq(patient.id, patientId));
       }
 
       if (info && Object.keys(info).length > 0) {
@@ -142,18 +143,18 @@ export const appRouter = {
               situationFamiliale: info.situationFamiliale,
             }),
           })
-          .where(informationIdentite.id.eq(existing.informationIdentiteId));
+          .where(eq(informationIdentite.id, existing.informationIdentiteId));
       }
 
       const [updatedPatient] = await db
         .select()
         .from(patient)
-        .where(patient.id.eq(patientId));
+        .where(eq(patient.id, patientId));
 
       const [updatedInfo] = await db
         .select()
         .from(informationIdentite)
-        .where(informationIdentite.id.eq(updatedPatient.informationIdentiteId));
+        .where(eq(informationIdentite.id, updatedPatient.informationIdentiteId));
 
       return {
         ...updatedPatient,
@@ -168,7 +169,7 @@ export const appRouter = {
       const [p] = await db
         .select()
         .from(patient)
-        .where(patient.id.eq(input.patientId));
+        .where(eq(patient.id, input.patientId));
 
       if (!p) {
         throw new Error("Patient non trouvé");
@@ -177,7 +178,7 @@ export const appRouter = {
       const [info] = await db
         .select()
         .from(informationIdentite)
-        .where(informationIdentite.id.eq(p.informationIdentiteId));
+        .where(eq(informationIdentite.id, p.informationIdentiteId));
 
       return {
         ...p,
