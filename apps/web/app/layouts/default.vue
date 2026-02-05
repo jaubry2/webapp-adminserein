@@ -1,4 +1,32 @@
-<script setup></script>
+<script setup lang="ts">
+const { $authClient } = useNuxtApp();
+const session = $authClient.useSession();
+const toast = useToast();
+
+const handleSignOut = async () => {
+  try {
+    await $authClient.signOut({
+      fetchOptions: {
+        onSuccess: async () => {
+          toast.add({ title: "Déconnexion réussie" });
+          await navigateTo("/login", { replace: true });
+        },
+        onError: (error) => {
+          toast.add({
+            title: "Erreur de déconnexion",
+            description: error?.error?.message || "Erreur inconnue",
+          });
+        },
+      },
+    });
+  } catch (error: any) {
+    toast.add({
+      title: "Une erreur est survenue lors de la déconnexion",
+      description: error.message || "Veuillez réessayer.",
+    });
+  }
+};
+</script>
 
 <template>
   <div
@@ -60,7 +88,9 @@
             </button>
             <button
               type="button"
-              class="hover:secondary--text--color transition"
+              class="hover:secondary--text--color transition cursor-pointer"
+              @click="handleSignOut"
+              title="Déconnexion"
             >
               <UIcon name="i-lucide-log-out" class="h-5 w-5" />
             </button>
