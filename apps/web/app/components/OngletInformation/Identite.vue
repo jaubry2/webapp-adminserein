@@ -18,13 +18,13 @@
           <div>
             <span class="text-sm quaternary--text--color">Nom :</span>
             <p class="mt-1 font-semibold secondary--text--color">
-              {{ patient.nom }}
+              {{ patient.nom || "Non renseigné" }}
             </p>
           </div>
           <div>
             <span class="text-sm quaternary--text--color">Prénom :</span>
             <p class="mt-1 font-semibold secondary--text--color">
-              {{ patient.prenom }}
+              {{ patient.prenom || "Non renseigné" }}
             </p>
           </div>
           <div>

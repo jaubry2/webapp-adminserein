@@ -13,39 +13,58 @@
     </button>
 
     <div v-if="coordonneesExpanded" class="p-6">
-      <div class="space-y-4">
-        <div>
-          <span class="text-sm quaternary--text--color"
-            >Numéro de téléphone :</span
-          >
-          <p class="mt-1 font-semibold secondary--text--color">
-            {{ patient.telephone || "Non renseigné" }}
-          </p>
+      <div class="grid grid-cols-2 gap-6">
+        <!-- Colonne gauche -->
+        <div class="space-y-4">
+          <div>
+            <span class="text-sm quaternary--text--color"
+              >Numéro de téléphone :</span
+            >
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.telephone || "Non renseigné" }}
+            </p>
+          </div>
+          <div>
+            <span class="text-sm quaternary--text--color">Adresse :</span>
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.adresse || "Non renseigné" }}
+            </p>
+          </div>
+          <div>
+            <span class="text-sm quaternary--text--color">Code postal :</span>
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.codePostal || "Non renseigné" }}
+            </p>
+          </div>
+          <div>
+            <span class="text-sm quaternary--text--color">Ville :</span>
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.vile || "Non renseigné" }}
+            </p>
+          </div>
         </div>
-        <div>
-          <span class="text-sm quaternary--text--color">Adresse mail :</span>
-          <p class="mt-1 font-semibold secondary--text--color">
-            {{ patient.email || "Non renseigné" }}
-          </p>
-        </div>
-        <div v-if="patient.adresse">
-          <span class="text-sm quaternary--text--color">Adresse :</span>
-          <p class="mt-1 font-semibold secondary--text--color">
-            {{ patient.adresse }}
-            <span v-if="patient.informationComplementaires">
-              , {{ patient.informationComplementaires }}
-            </span>
-            <br />
-            <span v-if="patient.codePostal || patient.ville">
-              {{ patient.codePostal }} {{ patient.ville }}
-            </span>
-            <span v-if="patient.departement">
-              ({{ patient.departement }})
-            </span>
-            <span v-if="patient.pays">
-              , {{ patient.pays }}
-            </span>
-          </p>
+        <!-- Colonne droite -->
+        <div class="space-y-4">
+          <div>
+            <span class="text-sm quaternary--text--color">Adresse mail :</span>
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.email || "Non renseigné" }}
+            </p>
+          </div>
+          <div>
+            <span class="text-sm quaternary--text--color"
+              >Informations complémentaires :</span
+            >
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.informationComplementaires || "Non renseigné" }}
+            </p>
+          </div>
+          <div>
+            <span class="text-sm quaternary--text--color">Département :</span>
+            <p class="mt-1 font-semibold secondary--text--color">
+              {{ patient.departement || "Non renseigné" }}
+            </p>
+          </div>
         </div>
       </div>
     </div>
