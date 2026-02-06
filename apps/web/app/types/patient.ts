@@ -18,6 +18,9 @@ export interface Patient {
   ville?: string;
   departement?: string;
   pays?: string;
+  numeroSecuriteSociale?: string;
+  nationalites?: string;
+  situationFamiliale?: string;
   dernieresModifications: string;
 }
 

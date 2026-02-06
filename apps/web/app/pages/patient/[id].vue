@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Patient } from "~/types/patient";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import type { Change } from "~/components/OngletInformation/ModificationSummary.vue";
 
 const route = useRoute();
 const { $authClient, $orpc } = useNuxtApp();
+const queryClient = useQueryClient();
+const toast = useToast();
 const { calculateAge, getHistoriqueByPatientId } =
   await import("~/utils/patients");
 
@@ -65,6 +68,22 @@ const patient = computed<Patient | null>(() => {
     ville: coord?.ville ?? undefined,
     departement: coord?.departement ?? undefined,
     pays: coord?.pays ?? undefined,
+    numeroSecuriteSociale: info?.numeroSecuriteSociale ?? undefined,
+    nationalites: info?.nationalites?.join(", ") ?? undefined,
+    situationFamiliale:
+      info?.situationFamiliale === "CELIBATAIRE"
+        ? "Célibataire"
+        : info?.situationFamiliale === "MARIE"
+          ? "Marié(e)"
+          : info?.situationFamiliale === "DIVORCE"
+            ? "Divorcé(e)"
+            : info?.situationFamiliale === "VEUF"
+              ? "Veuf(ve)"
+              : info?.situationFamiliale === "PACSE"
+                ? "Pacsé(e)"
+                : info?.situationFamiliale === "CONCUBINAGE"
+                  ? "Concubinage"
+                  : undefined,
     dernieresModifications: "",
   };
 });
@@ -91,6 +110,260 @@ const tabs = [
   { id: "historique", label: "Historique", icon: "i-lucide-clock" },
   { id: "tache", label: "Tâche", icon: "i-lucide-check-square" },
 ];
+
+// État d'édition
+const isEditingIdentite = ref(false);
+const isEditingCoordonnee = ref(false);
+const pendingChanges = ref<{
+  identite?: Record<string, any>;
+  coordonnee?: Record<string, any>;
+}>({});
+
+// Modal de résumé
+const showSummaryModal = ref(false);
+const summaryChanges = ref<Change[]>([]);
+
+// Mutation pour mettre à jour le patient
+const updatePatientMutationOptions = $orpc.updatePatient.mutationOptions();
+const updatePatientMutation = useMutation({
+  ...updatePatientMutationOptions,
+  onSuccess: () => {
+    // Rafraîchir les données du patient
+    queryClient.invalidateQueries({
+      queryKey: $orpc.getPatientById.queryKey({
+        input: { patientId: patientId.value },
+      }),
+    });
+    toast.add({
+      title: "Modifications enregistrées",
+      description: "Les informations du patient ont été mises à jour.",
+    });
+    // Réinitialiser l'état
+    isEditingIdentite.value = false;
+    isEditingCoordonnee.value = false;
+    pendingChanges.value = {};
+    showSummaryModal.value = false;
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la mise à jour",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+// Fonction pour générer le résumé des modifications
+const generateSummary = (
+  identiteChanges?: Record<string, any>,
+  coordonneeChanges?: Record<string, any>
+): Change[] => {
+  const changes: Change[] = [];
+  const fieldLabels: Record<string, string> = {
+    // Identité
+    nomUsage: "Nom d'usage",
+    nomNaissance: "Nom de naissance",
+    prenom: "Prénom",
+    autresPrenoms: "Autres prénoms",
+    genre: "Genre",
+    dateNaissance: "Date de naissance",
+    villeNaissance: "Ville de naissance",
+    departementNaissance: "Département de naissance",
+    paysNaissance: "Pays de naissance",
+    nationalites: "Nationalités",
+    numeroSecuriteSociale: "Numéro de sécurité sociale",
+    situationFamiliale: "Situation familiale",
+    // Coordonnées
+    adresse: "Adresse",
+    informationComplementaires: "Informations complémentaires",
+    codePostal: "Code postal",
+    ville: "Ville",
+    departement: "Département",
+    pays: "Pays",
+    numeroTelephone: "Numéro de téléphone",
+    adresseMail: "Adresse mail",
+  };
+
+  if (identiteChanges && patient.value) {
+    Object.keys(identiteChanges).forEach((key) => {
+      const label = fieldLabels[key] || key;
+      let oldValue = "";
+      let newValue = String(identiteChanges[key] || "");
+
+      // Récupérer l'ancienne valeur
+      switch (key) {
+        case "nomUsage":
+          oldValue = patient.value?.nom || "";
+          break;
+        case "nomNaissance":
+          oldValue = patient.value?.nomNaissance || "";
+          break;
+        case "prenom":
+          oldValue = patient.value?.prenom || "";
+          break;
+        case "autresPrenoms":
+          oldValue = patient.value?.autresPrenoms || "";
+          break;
+        case "genre":
+          oldValue = patient.value?.sexe || "";
+          newValue =
+            identiteChanges[key] === "MASCULIN"
+              ? "Masculin"
+              : identiteChanges[key] === "FEMININ"
+                ? "Féminin"
+                : "Autre";
+          break;
+        case "dateNaissance":
+          oldValue = patient.value?.dateNaissance || "";
+          break;
+        case "villeNaissance":
+          oldValue = patient.value?.lieuNaissance || "";
+          break;
+        case "departementNaissance":
+          oldValue = patient.value?.departementNaissance || "";
+          break;
+        case "paysNaissance":
+          oldValue = patient.value?.paysNaissance || "";
+          break;
+        case "nationalites":
+          oldValue = patient.value?.nationalites || "";
+          break;
+        case "numeroSecuriteSociale":
+          oldValue = patient.value?.numeroSecuriteSociale || "";
+          break;
+        case "situationFamiliale":
+          oldValue = patient.value?.situationFamiliale || "";
+          break;
+      }
+
+      changes.push({
+        field: key,
+        label,
+        oldValue: oldValue || "Non renseigné",
+        newValue: newValue || "Non renseigné",
+      });
+    });
+  }
+
+  if (coordonneeChanges && patient.value) {
+    Object.keys(coordonneeChanges).forEach((key) => {
+      const label = fieldLabels[key] || key;
+      let oldValue = "";
+      let newValue = String(coordonneeChanges[key] || "");
+
+      switch (key) {
+        case "adresse":
+          oldValue = patient.value?.adresse || "";
+          break;
+        case "informationComplementaires":
+          oldValue = patient.value?.informationComplementaires || "";
+          break;
+        case "codePostal":
+          oldValue = patient.value?.codePostal || "";
+          break;
+        case "ville":
+          oldValue = patient.value?.ville || "";
+          break;
+        case "departement":
+          oldValue = patient.value?.departement || "";
+          break;
+        case "pays":
+          oldValue = patient.value?.pays || "";
+          break;
+        case "numeroTelephone":
+          oldValue = patient.value?.telephone || "";
+          break;
+        case "adresseMail":
+          oldValue = patient.value?.email || "";
+          break;
+      }
+
+      changes.push({
+        field: key,
+        label,
+        oldValue: oldValue || "Non renseigné",
+        newValue: newValue || "Non renseigné",
+      });
+    });
+  }
+
+  return changes;
+};
+
+// Gérer les changements d'identité
+const handleIdentiteChanges = (changes: Record<string, any>) => {
+  pendingChanges.value.identite = changes;
+  // Générer le résumé avec tous les changements (identité + coordonnées si présents)
+  summaryChanges.value = generateSummary(
+    pendingChanges.value.identite,
+    pendingChanges.value.coordonnee
+  );
+  // Afficher le modal seulement s'il y a des changements
+  if (summaryChanges.value.length > 0) {
+    showSummaryModal.value = true;
+  }
+};
+
+// Gérer les changements de coordonnées
+const handleCoordonneeChanges = (changes: Record<string, any>) => {
+  pendingChanges.value.coordonnee = changes;
+  // Générer le résumé avec tous les changements (identité + coordonnées si présents)
+  summaryChanges.value = generateSummary(
+    pendingChanges.value.identite,
+    pendingChanges.value.coordonnee
+  );
+  // Afficher le modal seulement s'il y a des changements
+  if (summaryChanges.value.length > 0) {
+    showSummaryModal.value = true;
+  }
+};
+
+// Confirmer les modifications
+const confirmModifications = async () => {
+  if (!patient.value) return;
+
+  const updateData: any = {
+    patientId: patient.value.id,
+  };
+
+  // Préparer les données d'identité
+  if (pendingChanges.value.identite) {
+    const identiteData: any = { ...pendingChanges.value.identite };
+    
+    // Convertir autresPrenoms et nationalites en tableaux si nécessaire
+    if (identiteData.autresPrenoms && typeof identiteData.autresPrenoms === "string") {
+      identiteData.autresPrenoms = identiteData.autresPrenoms
+        .split(",")
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+    }
+    if (identiteData.nationalites && typeof identiteData.nationalites === "string") {
+      identiteData.nationalites = identiteData.nationalites
+        .split(",")
+        .map((n: string) => n.trim())
+        .filter((n: string) => n.length > 0);
+    }
+
+    updateData.informationIdentite = identiteData;
+  }
+
+  // Préparer les données de coordonnées
+  if (pendingChanges.value.coordonnee) {
+    updateData.informationCoordonnee = {
+      ...pendingChanges.value.coordonnee,
+    };
+  }
+
+  await updatePatientMutation.mutateAsync(updateData);
+};
+
+// Annuler les modifications
+const cancelModifications = () => {
+  showSummaryModal.value = false;
+  pendingChanges.value = {};
+  isEditingIdentite.value = false;
+  isEditingCoordonnee.value = false;
+};
 </script>
 
 <template>
@@ -188,13 +461,6 @@ const tabs = [
               <UIcon name="i-lucide-printer" class="h-4 w-4" />
               Imprimer
             </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium secondary--text--color transition-colors hover:bg-gray-50"
-            >
-              <UIcon name="i-lucide-pencil" class="h-4 w-4" />
-              Modifier
-            </button>
           </div>
 
           <!-- Contenu de l'onglet -->
@@ -202,9 +468,19 @@ const tabs = [
             <!-- Contenu de l'onglet Information -->
             <div v-if="activeTab === 'information'" class="space-y-4 pb-6">
               <!-- Section Identité -->
-              <OngletInformationIdentite :patient="patient" />
+              <OngletInformationIdentite
+                :patient="patient"
+                :is-editing="isEditingIdentite"
+                :on-save="handleIdentiteChanges"
+                @update:is-editing="isEditingIdentite = $event"
+              />
               <!-- Section Coordonnées -->
-              <OngletInformationCoordonnee :patient="patient" />
+              <OngletInformationCoordonnee
+                :patient="patient"
+                :is-editing="isEditingCoordonnee"
+                :on-save="handleCoordonneeChanges"
+                @update:is-editing="isEditingCoordonnee = $event"
+              />
             </div>
 
             <!-- Contenu de l'onglet Historique -->
@@ -227,5 +503,14 @@ const tabs = [
         </main>
       </div>
     </div>
+
+    <!-- Modal de résumé des modifications -->
+    <OngletInformationModificationSummary
+      :is-open="showSummaryModal"
+      :changes="summaryChanges"
+      :is-loading="updatePatientMutation.isPending.value"
+      @confirm="confirmModifications"
+      @cancel="cancelModifications"
+    />
   </div>
 </template>
