@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Tache } from "~/types/tache";
+
 const props = withDefaults(
   defineProps<{
     label: string;
@@ -6,11 +8,25 @@ const props = withDefaults(
     date: string;
     accentColor?: "peach" | "lavender";
     statusLabel?: string;
+    tache?: Tache;
   }>(),
   {
     accentColor: "peach",
   },
 );
+
+const professionnelName = computed(() => {
+  if (props.tache?.professionnel) {
+    return `${props.tache.professionnel.prenom} ${props.tache.professionnel.nom}`;
+  }
+  return "";
+});
+
+const handleViewPatient = () => {
+  if (props.tache?.patientId) {
+    navigateTo(`/patient/${props.tache.patientId}`);
+  }
+};
 </script>
 
 <template>
@@ -57,6 +73,13 @@ const props = withDefaults(
         <p class="text-base font-semibold text-slate-900">
           {{ props.patientName }} – {{ props.date }}
         </p>
+        <div v-if="professionnelName" class="flex items-center gap-2 text-sm text-slate-600">
+          <UIcon name="i-lucide-user" class="h-4 w-4" />
+          <span>Assistante sociale : {{ professionnelName }}</span>
+        </div>
+        <div v-if="props.tache?.details" class="mt-2 text-sm text-slate-600 line-clamp-2">
+          {{ props.tache.details }}
+        </div>
       </div>
     </div>
 
@@ -72,15 +95,16 @@ const props = withDefaults(
       </UButton>
 
       <UButton
+        v-if="props.tache?.patientId"
         variant="outline"
         color="gray"
         size="sm"
         trailing-icon="i-lucide-arrow-right"
         class="rounded-full bg-white/70 border-slate-300 hover:bg-white"
+        @click="handleViewPatient"
       >
         Afficher profil patient
       </UButton>
     </div>
   </div>
 </template>
-

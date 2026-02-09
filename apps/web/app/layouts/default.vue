@@ -52,7 +52,7 @@ const handleSignOut = async () => {
         <ButtonLayout
           icon="i-lucide-clipboard-list"
           label="Tâche à faire"
-          to="/"
+          to="/taches"
         />
         <ButtonLayout
           icon="i-lucide-file-plus-2"

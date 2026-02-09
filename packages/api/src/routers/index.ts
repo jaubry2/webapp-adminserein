@@ -1,5 +1,5 @@
 import type { RouterClient } from "@orpc/server";
-import { eq, and, inArray, or } from "drizzle-orm";
+import { eq, and, inArray, or, desc } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -9,6 +9,7 @@ import {
   patient,
   professionnel,
   patientProfessionnel,
+  tache,
 } from "@webapp-adminserein/db";
 import { protectedProcedure, publicProcedure } from "../index";
 
@@ -535,6 +536,128 @@ export const appRouter = {
       informationCoordonnee: coordonneeById.get(p.informationCoordonneeId),
     }));
   }),
+
+  // Récupérer les tâches du professionnel connecté
+  listTachesByProfessionnel: protectedProcedure.handler(
+    async ({ context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Récupérer les tâches du professionnel
+      const taches = await db
+        .select()
+        .from(tache)
+        .where(eq(tache.professionnelId, prof.id))
+        .orderBy(desc(tache.date));
+
+      // Récupérer les patients associés
+      const patientIds = [...new Set(taches.map((t) => t.patientId))];
+      const patients = await db
+        .select()
+        .from(patient)
+        .where(inArray(patient.id, patientIds));
+
+      const infos = await db
+        .select()
+        .from(informationIdentite)
+        .where(
+          inArray(
+            informationIdentite.id,
+            patients.map((p) => p.informationIdentiteId)
+          )
+        );
+      const infoById = new Map(infos.map((i) => [i.id, i]));
+
+      // Construire la réponse avec les informations du patient
+      return taches.map((t) => {
+        const p = patients.find((pat) => pat.id === t.patientId);
+        const info = p ? infoById.get(p.informationIdentiteId) : null;
+        return {
+          ...t,
+          patient: p
+            ? {
+                ...p,
+                informationIdentite: info,
+              }
+            : null,
+          professionnel: prof,
+        };
+      });
+    }
+  ),
+
+  // Récupérer les tâches d'un patient spécifique
+  listTachesByPatient: protectedProcedure
+    .input(z.object({ patientId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le patient appartient au professionnel
+      const [patientLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!patientLink) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      // Récupérer les tâches du patient
+      const taches = await db
+        .select()
+        .from(tache)
+        .where(eq(tache.patientId, input.patientId))
+        .orderBy(desc(tache.date));
+
+      // Récupérer les professionnels associés
+      const professionnelIds = [
+        ...new Set(taches.map((t) => t.professionnelId)),
+      ];
+      const professionnels = await db
+        .select()
+        .from(professionnel)
+        .where(inArray(professionnel.id, professionnelIds));
+      const profById = new Map(
+        professionnels.map((p) => [p.id, p])
+      );
+
+      // Construire la réponse avec les informations du professionnel
+      return taches.map((t) => ({
+        ...t,
+        professionnel: profById.get(t.professionnelId) || null,
+      }));
+    }),
 };
 
 export type AppRouter = typeof appRouter;

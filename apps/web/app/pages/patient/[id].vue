@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Patient } from "~/types/patient";
+import type { Tache } from "~/types/tache";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import type { Change } from "~/components/OngletInformation/ModificationSummary.vue";
 
@@ -12,19 +13,26 @@ const { calculateAge, getHistoriqueByPatientId } =
 
 const patientId = computed(() => String(route.params.id));
 
+// Vérifier la session avant de faire les requêtes
+const session = $authClient.useSession();
+
 // Récupération du patient depuis l'API
+// Ne faire la requête que si la session est chargée et valide
 const {
   data: apiPatient,
   isLoading,
   isError,
   error,
-} = useQuery(
-  $orpc.getPatientById.queryOptions({
+} = useQuery({
+  ...$orpc.getPatientById.queryOptions({
     input: {
       patientId: patientId.value,
     },
   }),
-);
+  enabled: computed(() => {
+    return !!session.value?.data && !session.value.isPending && !!patientId.value;
+  }),
+});
 
 // Mapping API -> type Patient utilisé par l'UI
 const patient = computed<Patient | null>(() => {
@@ -103,6 +111,78 @@ const coordonneesExpanded = ref(true);
 const historique = computed(() =>
   getHistoriqueByPatientId(Number(patientId.value)),
 );
+
+// Récupération des tâches du patient
+// Ne faire la requête que si la session est chargée et valide
+const {
+  data: patientTaches,
+  isLoading: isLoadingTaches,
+  isError: isErrorTaches,
+} = useQuery({
+  ...$orpc.listTachesByPatient.queryOptions({
+    input: {
+      patientId: patientId.value,
+    },
+  }),
+  enabled: computed(() => {
+    return !!session.value?.data && !session.value.isPending && !!patientId.value;
+  }),
+});
+
+// Formater les tâches pour l'affichage
+const formattedPatientTaches = computed(() => {
+  if (!patientTaches.value) return [];
+
+  return patientTaches.value.map((tache: Tache) => {
+    const date = tache.date instanceof Date
+      ? tache.date.toLocaleDateString("fr-FR")
+      : typeof tache.date === "string"
+        ? new Date(tache.date).toLocaleDateString("fr-FR")
+        : "";
+
+    const accentColor =
+      tache.typeDemarche === "ADMINISTRATIVE" ||
+      tache.typeDemarche === "SOCIALE" ||
+      tache.typeDemarche === "LOGEMENT"
+        ? "peach"
+        : "lavender";
+
+    const statusLabel =
+      tache.etat === "TERMINEE"
+        ? "Terminée"
+        : tache.etat === "EN_COURS"
+          ? "En cours"
+          : tache.etat === "ANNULEE"
+            ? "Annulée"
+            : undefined;
+
+    return {
+      id: tache.id,
+      label: `Démarche - ${getTypeDemarcheLabel(tache.typeDemarche)}`,
+      patientName: `${patient.value?.nom} ${patient.value?.prenom}`,
+      date,
+      accentColor,
+      statusLabel,
+      tache,
+    };
+  });
+});
+
+// Fonction pour obtenir le label du type de démarche
+const getTypeDemarcheLabel = (
+  type: Tache["typeDemarche"]
+): string => {
+  const labels: Record<Tache["typeDemarche"], string> = {
+    ADMINISTRATIVE: "Administrative",
+    MEDICALE: "Médicale",
+    SOCIALE: "Sociale",
+    JURIDIQUE: "Juridique",
+    LOGEMENT: "Logement",
+    EMPLOI: "Emploi",
+    AUTRE: "Autre",
+  };
+  return labels[type] || type;
+};
 
 const tabs = [
   { id: "information", label: "Information", icon: "i-lucide-info" },
@@ -486,6 +566,35 @@ const cancelModifications = () => {
             <!-- Contenu de l'onglet Historique -->
             <div v-else-if="activeTab === 'historique'" class="pb-6">
               <OngletHistoriqueTimeline :evenements="historique" />
+            </div>
+
+            <!-- Contenu de l'onglet Tâche -->
+            <div v-else-if="activeTab === 'tache'" class="pb-6 space-y-4">
+              <div v-if="isLoadingTaches" class="rounded-lg border border-gray-200 bg-white p-8 text-center">
+                <p class="text-sm quaternary--text--color">
+                  Chargement des tâches...
+                </p>
+              </div>
+
+              <div v-else-if="isErrorTaches" class="rounded-lg border border-gray-200 bg-white p-8 text-center">
+                <p class="text-sm text-red-500">
+                  Erreur lors du chargement des tâches.
+                </p>
+              </div>
+
+              <div v-else-if="formattedPatientTaches.length === 0" class="rounded-lg border border-gray-200 bg-white p-8 text-center">
+                <p class="text-sm quaternary--text--color">
+                  Aucune tâche pour ce patient.
+                </p>
+              </div>
+
+              <div v-else class="space-y-4">
+                <TaskCard
+                  v-for="task in formattedPatientTaches"
+                  :key="task.id"
+                  v-bind="task"
+                />
+              </div>
             </div>
 
             <!-- Contenu des autres onglets -->
