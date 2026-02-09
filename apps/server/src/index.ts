@@ -8,6 +8,7 @@ import { appRouter } from "@webapp-adminserein/api/routers/index";
 import { auth } from "@webapp-adminserein/auth";
 import { env } from "@webapp-adminserein/env/server";
 import { seedPatientsIfEmpty } from "@webapp-adminserein/db/seedPatients";
+import { seedTachesIfEmpty } from "@webapp-adminserein/db/seedTaches";
 import { seedTestUser } from "./seedUser";
 import { seedProfessionnel } from "./seedProfessionnel";
 import { Hono } from "hono";
@@ -17,13 +18,16 @@ import { logger } from "hono/logger";
 const app = new Hono();
 
 // Initialisation des données au démarrage de l'application
-// Ordre important : utilisateur -> patients -> professionnel
+// Ordre important : utilisateur -> patients -> professionnel -> tâches
 (async () => {
   await seedTestUser();
   await seedPatientsIfEmpty();
   // Attendre un peu pour s'assurer que les patients sont créés
   await new Promise((resolve) => setTimeout(resolve, 500));
   await seedProfessionnel();
+  // Attendre un peu pour s'assurer que le professionnel est créé et lié aux patients
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await seedTachesIfEmpty();
 })();
 
 app.use(logger());
