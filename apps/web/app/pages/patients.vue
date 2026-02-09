@@ -210,15 +210,29 @@ const searchPatientMutation = useMutation({
 const removePatientMutationOptions = $orpc.removePatientFromProfessional.mutationOptions();
 const removePatientMutation = useMutation({
   ...removePatientMutationOptions,
-  onSuccess: () => {
-    // Rafraîchir la liste des patients
+  onSuccess: (response: any) => {
+    // Rafraîchir la liste des patients et des tâches
     queryClient.invalidateQueries({
       queryKey: $orpc.listPatients.queryKey(),
     });
-    toast.add({
-      title: "Patient retiré",
-      description: "Le patient a été retiré de votre liste.",
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listTachesByProfessionnel.queryKey(),
     });
+
+    // Afficher la notification si des tâches ont été supprimées
+    if (response?.notification) {
+      toast.add({
+        title: "Patient retiré",
+        description: response.notification.message,
+        color: "warning",
+        timeout: 8000, // Afficher plus longtemps pour une notification importante
+      });
+    } else {
+      toast.add({
+        title: "Patient retiré",
+        description: "Le patient a été retiré de votre liste.",
+      });
+    }
   },
   onError: (error: any) => {
     toast.add({

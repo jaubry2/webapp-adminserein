@@ -476,6 +476,33 @@ export const appRouter = {
         throw new Error("Ce patient n'est pas dans votre liste");
       }
 
+      // Vérifier s'il y a des tâches non terminées pour ce patient et ce professionnel
+      const tachesNonTerminees = await db
+        .select()
+        .from(tache)
+        .where(
+          and(
+            eq(tache.patientId, input.patientId),
+            eq(tache.professionnelId, prof.id),
+            or(
+              eq(tache.etat, "A_FAIRE"),
+              eq(tache.etat, "EN_COURS")
+            )
+          )
+        );
+
+      const nombreTachesNonTerminees = tachesNonTerminees.length;
+
+      // Supprimer toutes les tâches liées à ce patient et ce professionnel
+      await db
+        .delete(tache)
+        .where(
+          and(
+            eq(tache.patientId, input.patientId),
+            eq(tache.professionnelId, prof.id)
+          )
+        );
+
       // Supprimer le lien patient-professionnel
       await db
         .delete(patientProfessionnel)
@@ -486,7 +513,35 @@ export const appRouter = {
           )
         );
 
-      return { success: true };
+      // Récupérer les informations du patient pour la notification
+      const [patientInfo] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.id, input.patientId))
+        .limit(1);
+
+      let patientNom = "Ce patient";
+      if (patientInfo) {
+        const [info] = await db
+          .select()
+          .from(informationIdentite)
+          .where(eq(informationIdentite.id, patientInfo.informationIdentiteId))
+          .limit(1);
+        if (info) {
+          patientNom = `${info.prenom} ${info.nomUsage}`;
+        }
+      }
+
+      return {
+        success: true,
+        notification: nombreTachesNonTerminees > 0
+          ? {
+              type: "warning" as const,
+              message: `Le patient ${patientNom} a été retiré de votre liste. ${nombreTachesNonTerminees} tâche(s) non terminée(s) ${nombreTachesNonTerminees > 1 ? "ont été" : "a été"} supprimée(s).`,
+              nombreTachesSupprimees: nombreTachesNonTerminees,
+            }
+          : null,
+      };
     }),
 
   // Lister tous les patients suivis par le professionnel connecté
