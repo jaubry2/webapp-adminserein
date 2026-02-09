@@ -713,6 +713,26 @@ export const appRouter = {
         professionnel: profById.get(t.professionnelId) || null,
       }));
     }),
+
+  // Récupérer le professionnel connecté
+  getCurrentProfessionnel: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    // Récupérer le professionnel lié à l'utilisateur
+    const [prof] = await db
+      .select()
+      .from(professionnel)
+      .where(eq(professionnel.userId, context.session.user.id))
+      .limit(1);
+
+    if (!prof) {
+      throw new Error("Aucun professionnel associé à ce compte");
+    }
+
+    return prof;
+  }),
 };
 
 export type AppRouter = typeof appRouter;

@@ -1,7 +1,20 @@
 <script setup lang="ts">
-const { $authClient } = useNuxtApp();
+import { useQuery } from "@tanstack/vue-query";
+
+const { $authClient, $orpc } = useNuxtApp();
 const session = $authClient.useSession();
 const toast = useToast();
+
+// Récupérer le professionnel connecté
+const { data: currentProfessionnel } = useQuery({
+  ...$orpc.getCurrentProfessionnel.queryOptions(),
+  enabled: computed(() => !!session.value?.data && !session.value.isPending),
+});
+
+const professionnelName = computed(() => {
+  if (!currentProfessionnel.value) return "Profil";
+  return `${currentProfessionnel.value.prenom} ${currentProfessionnel.value.nom}`;
+});
 
 const handleSignOut = async () => {
   try {
@@ -74,7 +87,7 @@ const handleSignOut = async () => {
               />
             </div>
             <div class="text-xs leading-tight">
-              <p class="font-semibold">Profil</p>
+              <p class="font-semibold">{{ professionnelName }}</p>
               <p>Paramètres et compte</p>
             </div>
           </div>
