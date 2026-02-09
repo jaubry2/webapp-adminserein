@@ -84,7 +84,7 @@ export const patient = pgTable("patient", {
 });
 
 // Relations Drizzle
-export const patientRelations = relations(patient, ({ one }) => ({
+export const patientRelations = relations(patient, ({ one, many }) => ({
   informationIdentite: one(informationIdentite, {
     fields: [patient.informationIdentiteId],
     references: [informationIdentite.id],
@@ -95,6 +95,7 @@ export const patientRelations = relations(patient, ({ one }) => ({
   }),
   // Note: La relation many-to-many avec professionnel est définie dans professionnel.ts
   // pour éviter les dépendances circulaires
+  // La relation avec tâche est définie dans tache.ts pour éviter les dépendances circulaires
 }));
 
 export const informationIdentiteRelations = relations(

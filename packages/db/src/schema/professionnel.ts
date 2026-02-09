@@ -52,6 +52,7 @@ export const professionnelRelations = relations(professionnel, ({ one, many }) =
     references: [user.id],
   }),
   patients: many(patientProfessionnel),
+  // La relation avec tâche est définie dans tache.ts
 }));
 
 export const patientProfessionnelRelations = relations(
