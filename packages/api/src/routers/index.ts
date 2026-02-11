@@ -10,6 +10,7 @@ import {
   professionnel,
   patientProfessionnel,
   tache,
+  document,
 } from "@webapp-adminserein/db";
 import { protectedProcedure, publicProcedure } from "../index";
 
@@ -733,6 +734,175 @@ export const appRouter = {
 
     return prof;
   }),
+
+  // --- DOCUMENTS ---
+
+  // Récupérer les documents d'un patient spécifique
+  listDocumentsByPatient: protectedProcedure
+    .input(z.object({ patientId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le patient appartient au professionnel
+      const [patientLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!patientLink) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      // Récupérer les documents du patient, triés par date de création (plus récent en premier)
+      const documents = await db
+        .select()
+        .from(document)
+        .where(eq(document.patientId, input.patientId))
+        .orderBy(desc(document.createdAt));
+
+      return documents;
+    }),
+
+  // Créer un nouveau document
+  createDocument: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string().uuid(),
+        nom: z.string(),
+        categorie: z.enum([
+          "IDENTITE",
+          "MEDICAL",
+          "ADMINISTRATIF",
+          "JURIDIQUE",
+          "LOGEMENT",
+          "EMPLOI",
+          "AUTRE",
+        ]),
+        cheminFichier: z.string(),
+        typeMime: z.string(),
+        taille: z.string(),
+        description: z.string().optional(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le patient appartient au professionnel
+      const [patientLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!patientLink) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      // Créer le document
+      const [newDocument] = await db
+        .insert(document)
+        .values({
+          patientId: input.patientId,
+          nom: input.nom,
+          categorie: input.categorie,
+          cheminFichier: input.cheminFichier,
+          typeMime: input.typeMime,
+          taille: input.taille,
+          description: input.description,
+        })
+        .returning();
+
+      return newDocument;
+    }),
+
+  // Supprimer un document
+  deleteDocument: protectedProcedure
+    .input(z.object({ documentId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Récupérer le document pour vérifier qu'il appartient à un patient du professionnel
+      const [doc] = await db
+        .select()
+        .from(document)
+        .where(eq(document.id, input.documentId))
+        .limit(1);
+
+      if (!doc) {
+        throw new Error("Document non trouvé");
+      }
+
+      // Vérifier que le patient appartient au professionnel
+      const [patientLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, doc.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!patientLink) {
+        throw new Error("Document non autorisé");
+      }
+
+      // Supprimer le document
+      await db.delete(document).where(eq(document.id, input.documentId));
+
+      return { success: true };
+    }),
 };
 
 export type AppRouter = typeof appRouter;
