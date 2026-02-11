@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Patient } from "~/types/patient";
 import type { Tache } from "~/types/tache";
+import type { Document } from "~/types/document";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import type { Change } from "~/components/OngletInformation/ModificationSummary.vue";
 
@@ -120,6 +121,23 @@ const {
   isError: isErrorTaches,
 } = useQuery({
   ...$orpc.listTachesByPatient.queryOptions({
+    input: {
+      patientId: patientId.value,
+    },
+  }),
+  enabled: computed(() => {
+    return !!session.value?.data && !session.value.isPending && !!patientId.value;
+  }),
+});
+
+// Récupération des documents du patient
+// Ne faire la requête que si la session est chargée et valide
+const {
+  data: patientDocuments,
+  isLoading: isLoadingDocuments,
+  isError: isErrorDocuments,
+} = useQuery({
+  ...$orpc.listDocumentsByPatient.queryOptions({
     input: {
       patientId: patientId.value,
     },
@@ -566,6 +584,16 @@ const cancelModifications = () => {
             <!-- Contenu de l'onglet Historique -->
             <div v-else-if="activeTab === 'historique'" class="pb-6">
               <OngletHistoriqueTimeline :evenements="historique" />
+            </div>
+
+            <!-- Contenu de l'onglet Document -->
+            <div v-else-if="activeTab === 'document'" class="pb-6">
+              <OngletInformationDocument
+                :patient-id="patientId"
+                :documents="patientDocuments"
+                :is-loading="isLoadingDocuments"
+                :is-error="isErrorDocuments"
+              />
             </div>
 
             <!-- Contenu de l'onglet Tâche -->
