@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  middleware: ["auth"],
+});
+
 const { getAllDemandes } = await import("~/utils/demandes");
 
 const toutesLesDemandes = getAllDemandes();

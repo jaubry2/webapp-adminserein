@@ -5,6 +5,10 @@ import type { Document } from "~/types/document";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import type { Change } from "~/components/OngletInformation/ModificationSummary.vue";
 
+definePageMeta({
+  middleware: ["auth"],
+});
+
 const route = useRoute();
 const { $authClient, $orpc } = useNuxtApp();
 const queryClient = useQueryClient();

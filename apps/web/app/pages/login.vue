@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  layout: "login",
+});
+
 const { $authClient } = useNuxtApp();
 import SignInForm from "~/components/SignInForm.vue";
 import SignUpForm from "~/components/SignUpForm.vue";

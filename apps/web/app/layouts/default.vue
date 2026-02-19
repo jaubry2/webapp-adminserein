@@ -1,30 +1,69 @@
 <script setup lang="ts">
 import { useQuery } from "@tanstack/vue-query";
 import type { Notification } from "~/types/notification";
+import type { Particulier } from "~/types/particulier";
 
 const { $authClient, $orpc } = useNuxtApp();
 const session = $authClient.useSession();
 const toast = useToast();
 
+// Rediriger vers login si non connecté
+watchEffect(() => {
+  if (!session.value.isPending && !session.value.data) {
+    navigateTo("/login", { replace: true });
+  }
+});
+
 // État du dropdown de notifications
 const isNotificationDropdownOpen = ref(false);
 
-// Récupérer le professionnel connecté
-const { data: currentProfessionnel } = useQuery({
-  ...$orpc.getCurrentProfessionnel.queryOptions(),
+// Récupérer le type d'utilisateur
+const { data: userTypeData } = useQuery({
+  ...$orpc.getUserType.queryOptions(),
   enabled: computed(() => !!session.value?.data && !session.value.isPending),
 });
 
-// Récupérer le nombre de notifications non lues avec polling (toutes les 5 secondes)
+const userType = computed(() => userTypeData.value?.type || null);
+const isProfessionnel = computed(() => userType.value === "PROFESSIONNEL");
+const isParticulier = computed(() => userType.value === "PARTICULIER");
+
+// Récupérer le professionnel connecté (seulement si professionnel)
+const { data: currentProfessionnel } = useQuery({
+  ...$orpc.getCurrentProfessionnel.queryOptions(),
+  enabled: computed(
+    () =>
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isProfessionnel.value
+  ),
+});
+
+// Récupérer le particulier connecté (seulement si particulier)
+const { data: currentParticulier } = useQuery({
+  ...$orpc.getCurrentParticulier.queryOptions(),
+  enabled: computed(
+    () =>
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isParticulier.value
+  ),
+}) as { data: Ref<Particulier | undefined> };
+
+// Récupérer le nombre de notifications non lues avec polling (toutes les 5 secondes) - seulement pour professionnels
 const { data: unreadCountData } = useQuery({
   ...$orpc.getUnreadNotificationsCount.queryOptions(),
-  enabled: computed(() => !!session.value?.data && !session.value.isPending),
+  enabled: computed(
+    () =>
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isProfessionnel.value
+  ),
   refetchInterval: 5000, // Polling toutes les 5 secondes
 });
 
 const unreadCount = computed(() => unreadCountData.value?.count || 0);
 
-// Récupérer la liste des notifications avec polling (toutes les 10 secondes)
+// Récupérer la liste des notifications avec polling (toutes les 10 secondes) - seulement pour professionnels
 const {
   data: notifications,
   isLoading: isLoadingNotifications,
@@ -35,14 +74,21 @@ const {
     () =>
       !!session.value?.data &&
       !session.value.isPending &&
+      isProfessionnel.value &&
       isNotificationDropdownOpen.value
   ),
   refetchInterval: 10000, // Polling toutes les 10 secondes
 });
 
-const professionnelName = computed(() => {
-  if (!currentProfessionnel.value) return "Profil";
-  return `${currentProfessionnel.value.prenom} ${currentProfessionnel.value.nom}`;
+const displayName = computed(() => {
+  if (isProfessionnel.value && currentProfessionnel.value) {
+    return `${currentProfessionnel.value.prenom} ${currentProfessionnel.value.nom}`;
+  }
+  if (isParticulier.value && currentParticulier.value?.patient?.informationIdentite) {
+    const info = currentParticulier.value.patient.informationIdentite;
+    return `${info.prenom} ${info.nomUsage}`;
+  }
+  return "Profil";
 });
 
 const toggleNotificationDropdown = () => {
@@ -94,21 +140,37 @@ const handleSignOut = async () => {
       <div
         class="w-full flex h-[70%] flex-col justify-around text-sm font-medium"
       >
-        <ButtonLayout
-          icon="i-lucide-users"
-          label="Liste des patients"
-          to="/patients"
-        />
-        <ButtonLayout
-          icon="i-lucide-clipboard-list"
-          label="Tâche à faire"
-          to="/taches"
-        />
-        <ButtonLayout
-          icon="i-lucide-file-plus-2"
-          label="Faire une demande"
-          to="/demandes"
-        />
+        <!-- Menu pour professionnels -->
+        <template v-if="isProfessionnel">
+          <ButtonLayout
+            icon="i-lucide-users"
+            label="Liste des patients"
+            to="/patients"
+          />
+          <ButtonLayout
+            icon="i-lucide-clipboard-list"
+            label="Tâche à faire"
+            to="/taches"
+          />
+          <ButtonLayout
+            icon="i-lucide-file-plus-2"
+            label="Faire une demande"
+            to="/demandes"
+          />
+        </template>
+        <!-- Menu pour particuliers -->
+        <template v-else-if="isParticulier">
+          <ButtonLayout
+            icon="i-lucide-user"
+            label="Mes informations"
+            to="/mes-informations"
+          />
+          <ButtonLayout
+            icon="i-lucide-clipboard-list"
+            label="Mes tâches"
+            to="/dashboard"
+          />
+        </template>
       </div>
 
       <div class="space-y-4 h-[15%]">
@@ -124,13 +186,15 @@ const handleSignOut = async () => {
               />
             </div>
             <div class="text-xs leading-tight">
-              <p class="font-semibold">{{ professionnelName }}</p>
+              <p class="font-semibold">{{ displayName }}</p>
               <p>Paramètres et compte</p>
             </div>
           </div>
 
           <div class="flex flex-col items-center gap-3">
+            <!-- Notifications seulement pour professionnels -->
             <NotificationBell
+              v-if="isProfessionnel"
               :unread-count="unreadCount"
               :is-open="isNotificationDropdownOpen"
               @toggle="toggleNotificationDropdown"
@@ -159,8 +223,9 @@ const handleSignOut = async () => {
       <slot />
     </UMain>
 
-    <!-- Dropdown de notifications -->
+    <!-- Dropdown de notifications (seulement pour professionnels) -->
     <NotificationDropdown
+      v-if="isProfessionnel"
       :is-open="isNotificationDropdownOpen"
       :notifications="notifications"
       :is-loading="isLoadingNotifications"
