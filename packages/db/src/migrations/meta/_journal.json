@@ -43,6 +43,13 @@
       "when": 1771506255198,
       "tag": "0005_shiny_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771508747535,
+      "tag": "0006_yummy_deadpool",
+      "breakpoints": true
     }
   ]
 }
