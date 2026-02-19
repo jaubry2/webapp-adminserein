@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { useQuery } from "@tanstack/vue-query";
+import type { Notification } from "~/types/notification";
 
 const { $authClient, $orpc } = useNuxtApp();
 const session = $authClient.useSession();
 const toast = useToast();
+
+// État du dropdown de notifications
+const isNotificationDropdownOpen = ref(false);
 
 // Récupérer le professionnel connecté
 const { data: currentProfessionnel } = useQuery({
@@ -11,10 +15,43 @@ const { data: currentProfessionnel } = useQuery({
   enabled: computed(() => !!session.value?.data && !session.value.isPending),
 });
 
+// Récupérer le nombre de notifications non lues avec polling (toutes les 5 secondes)
+const { data: unreadCountData } = useQuery({
+  ...$orpc.getUnreadNotificationsCount.queryOptions(),
+  enabled: computed(() => !!session.value?.data && !session.value.isPending),
+  refetchInterval: 5000, // Polling toutes les 5 secondes
+});
+
+const unreadCount = computed(() => unreadCountData.value?.count || 0);
+
+// Récupérer la liste des notifications avec polling (toutes les 10 secondes)
+const {
+  data: notifications,
+  isLoading: isLoadingNotifications,
+  isError: isErrorNotifications,
+} = useQuery({
+  ...$orpc.listNotificationsByProfessionnel.queryOptions(),
+  enabled: computed(
+    () =>
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isNotificationDropdownOpen.value
+  ),
+  refetchInterval: 10000, // Polling toutes les 10 secondes
+});
+
 const professionnelName = computed(() => {
   if (!currentProfessionnel.value) return "Profil";
   return `${currentProfessionnel.value.prenom} ${currentProfessionnel.value.nom}`;
 });
+
+const toggleNotificationDropdown = () => {
+  isNotificationDropdownOpen.value = !isNotificationDropdownOpen.value;
+};
+
+const closeNotificationDropdown = () => {
+  isNotificationDropdownOpen.value = false;
+};
 
 const handleSignOut = async () => {
   try {
@@ -93,6 +130,12 @@ const handleSignOut = async () => {
           </div>
 
           <div class="flex flex-col items-center gap-3">
+            <NotificationBell
+              :unread-count="unreadCount"
+              :is-open="isNotificationDropdownOpen"
+              @toggle="toggleNotificationDropdown"
+              @update:is-open="isNotificationDropdownOpen = $event"
+            />
             <button
               type="button"
               class="hover:secondary--text--color transition"
@@ -115,5 +158,16 @@ const handleSignOut = async () => {
     <UMain class="flex-1 overflow-y-auto">
       <slot />
     </UMain>
+
+    <!-- Dropdown de notifications -->
+    <NotificationDropdown
+      :is-open="isNotificationDropdownOpen"
+      :notifications="notifications"
+      :is-loading="isLoadingNotifications"
+      :is-error="isErrorNotifications"
+      :unread-count="unreadCount"
+      @update:is-open="isNotificationDropdownOpen = $event"
+      @close="closeNotificationDropdown"
+    />
   </div>
 </template>

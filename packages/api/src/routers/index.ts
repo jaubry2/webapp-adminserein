@@ -11,6 +11,7 @@ import {
   patientProfessionnel,
   tache,
   document,
+  notification,
 } from "@webapp-adminserein/db";
 import { protectedProcedure, publicProcedure } from "../index";
 
@@ -533,12 +534,25 @@ export const appRouter = {
         }
       }
 
+      // Créer une notification pour le professionnel
+      const messageNotification = nombreTachesNonTerminees > 0
+        ? `Le patient ${patientNom} a été retiré de votre liste. ${nombreTachesNonTerminees} tâche(s) non terminée(s) ${nombreTachesNonTerminees > 1 ? "ont été" : "a été"} supprimée(s).`
+        : `Le patient ${patientNom} a été retiré de votre liste.`;
+
+      await db.insert(notification).values({
+        professionnelId: prof.id,
+        type: nombreTachesNonTerminees > 0 ? "WARNING" : "INFO",
+        titre: "Patient retiré",
+        message: messageNotification,
+        lien: null, // Le patient n'est plus accessible, donc pas de lien
+      });
+
       return {
         success: true,
         notification: nombreTachesNonTerminees > 0
           ? {
               type: "warning" as const,
-              message: `Le patient ${patientNom} a été retiré de votre liste. ${nombreTachesNonTerminees} tâche(s) non terminée(s) ${nombreTachesNonTerminees > 1 ? "ont été" : "a été"} supprimée(s).`,
+              message: messageNotification,
               nombreTachesSupprimees: nombreTachesNonTerminees,
             }
           : null,
@@ -902,6 +916,270 @@ export const appRouter = {
       await db.delete(document).where(eq(document.id, input.documentId));
 
       return { success: true };
+    }),
+
+  // --- NOTIFICATIONS ---
+
+  // Récupérer les notifications du professionnel connecté
+  listNotificationsByProfessionnel: protectedProcedure.handler(
+    async ({ context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Récupérer les notifications du professionnel, triées par date (non lues en premier)
+      const notifications = await db
+        .select()
+        .from(notification)
+        .where(eq(notification.professionnelId, prof.id))
+        .orderBy(desc(notification.createdAt));
+
+      // Trier pour mettre les non lues en premier
+      return notifications.sort((a, b) => {
+        if (a.lue === b.lue) {
+          return 0;
+        }
+        return a.lue ? 1 : -1;
+      });
+    }
+  ),
+
+  // Récupérer le nombre de notifications non lues
+  getUnreadNotificationsCount: protectedProcedure.handler(
+    async ({ context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Compter les notifications non lues
+      const unreadNotifications = await db
+        .select()
+        .from(notification)
+        .where(
+          and(
+            eq(notification.professionnelId, prof.id),
+            eq(notification.lue, false)
+          )
+        );
+
+      return { count: unreadNotifications.length };
+    }
+  ),
+
+  // Marquer une notification comme lue
+  markNotificationAsRead: protectedProcedure
+    .input(z.object({ notificationId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que la notification appartient au professionnel
+      const [notif] = await db
+        .select()
+        .from(notification)
+        .where(
+          and(
+            eq(notification.id, input.notificationId),
+            eq(notification.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!notif) {
+        throw new Error("Notification non trouvée ou non autorisée");
+      }
+
+      // Marquer comme lue
+      await db
+        .update(notification)
+        .set({ lue: true })
+        .where(eq(notification.id, input.notificationId));
+
+      return { success: true };
+    }),
+
+  // Marquer toutes les notifications comme lues
+  markAllNotificationsAsRead: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    // Récupérer le professionnel lié à l'utilisateur
+    const [prof] = await db
+      .select()
+      .from(professionnel)
+      .where(eq(professionnel.userId, context.session.user.id))
+      .limit(1);
+
+    if (!prof) {
+      throw new Error("Aucun professionnel associé à ce compte");
+    }
+
+    // Marquer toutes les notifications non lues comme lues
+    await db
+      .update(notification)
+      .set({ lue: true })
+      .where(
+        and(
+          eq(notification.professionnelId, prof.id),
+          eq(notification.lue, false)
+        )
+      );
+
+    return { success: true };
+  }),
+
+  // Créer une notification
+  createNotification: protectedProcedure
+    .input(
+      z.object({
+        professionnelId: z.string().uuid().optional(),
+        patientId: z.string().uuid().optional(),
+        type: z.enum(["INFO", "WARNING", "ERROR", "SUCCESS"]),
+        titre: z.string(),
+        message: z.string(),
+        lien: z.string().optional(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Si professionnelId est fourni, vérifier qu'il correspond au professionnel connecté
+      if (input.professionnelId) {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || prof.id !== input.professionnelId) {
+          throw new Error("Non autorisé à créer une notification pour ce professionnel");
+        }
+      }
+
+      // Si patientId est fourni, vérifier que le patient appartient au professionnel connecté
+      if (input.patientId) {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof) {
+          throw new Error("Aucun professionnel associé à ce compte");
+        }
+
+        const [patientLink] = await db
+          .select()
+          .from(patientProfessionnel)
+          .where(
+            and(
+              eq(patientProfessionnel.patientId, input.patientId),
+              eq(patientProfessionnel.professionnelId, prof.id)
+            )
+          )
+          .limit(1);
+
+        if (!patientLink) {
+          throw new Error("Patient non trouvé ou non autorisé");
+        }
+      }
+
+      // Créer la notification
+      const [newNotification] = await db
+        .insert(notification)
+        .values({
+          professionnelId: input.professionnelId || null,
+          patientId: input.patientId || null,
+          type: input.type,
+          titre: input.titre,
+          message: input.message,
+          lien: input.lien || null,
+        })
+        .returning();
+
+      return newNotification;
+    }),
+
+  // Récupérer les notifications d'un patient spécifique
+  listNotificationsByPatient: protectedProcedure
+    .input(z.object({ patientId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Récupérer le professionnel lié à l'utilisateur
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le patient appartient au professionnel
+      const [patientLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!patientLink) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      // Récupérer les notifications du patient
+      const notifications = await db
+        .select()
+        .from(notification)
+        .where(eq(notification.patientId, input.patientId))
+        .orderBy(desc(notification.createdAt));
+
+      return notifications;
     }),
 };
 
