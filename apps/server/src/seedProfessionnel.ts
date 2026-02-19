@@ -19,6 +19,15 @@ export async function seedProfessionnel() {
     return;
   }
 
+  // Mettre à jour le type de l'utilisateur à PROFESSIONNEL s'il n'est pas déjà défini
+  if (!testUser.type || testUser.type !== "PROFESSIONNEL") {
+    await db
+      .update(user)
+      .set({ type: "PROFESSIONNEL" })
+      .where(eq(user.id, testUser.id));
+    console.log(`✅ Type utilisateur mis à jour à PROFESSIONNEL pour ${testUser.email}`);
+  }
+
   // Vérifier si le professionnel existe déjà
   const [existing] = await db
     .select()

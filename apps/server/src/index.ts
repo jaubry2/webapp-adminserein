@@ -12,6 +12,7 @@ import { seedTachesIfEmpty } from "@webapp-adminserein/db/seedTaches";
 import { seedDocumentsIfEmpty } from "@webapp-adminserein/db/seedDocuments";
 import { seedTestUser } from "./seedUser";
 import { seedProfessionnel } from "./seedProfessionnel";
+import { seedParticulierIfEmpty } from "./seedParticulier";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -32,6 +33,9 @@ const app = new Hono();
   // Attendre un peu pour s'assurer que les tâches sont créées
   await new Promise((resolve) => setTimeout(resolve, 500));
   await seedDocumentsIfEmpty();
+  // Attendre un peu pour s'assurer que les documents sont créés
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await seedParticulierIfEmpty();
 })();
 
 app.use(logger());
