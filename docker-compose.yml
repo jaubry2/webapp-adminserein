@@ -1,0 +1,6 @@
+name: webapp-adminserein-stack
+
+networks:
+  webapp-adminserein-net:
+    driver: bridge
+
