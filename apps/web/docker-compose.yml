@@ -1,0 +1,36 @@
+name: webapp-adminserein-web
+
+services:
+  web:
+    image: oven/bun:1
+    container_name: webapp-adminserein-web
+    working_dir: /usr/src/web
+
+    # On monte tout le monorepo dans le conteneur
+    volumes:
+      - ../..:/usr/src/web
+      # Empêche de réutiliser les node_modules de l'hôte (macOS) dans le conteneur (Linux),
+      # pour éviter les erreurs de version/binaire (esbuild, etc.)
+      - /usr/src/web/node_modules
+      - /usr/src/web/apps/web/node_modules
+
+    # Démarrage du frontend en mode dev, accessible depuis l'extérieur
+    command: >
+      bash -lc "bun install && cd apps/web && bun run dev -- --host 0.0.0.0 --port 3001"
+
+    # Charge les variables d'environnement depuis ces fichiers si présents
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+
+    ports:
+      - "3001:3001"
+
+    restart: unless-stopped
+
+networks:
+  default:
+    name: webapp-adminserein-net
+    external: true
