@@ -1,0 +1,33 @@
+name: webapp-adminserein-server
+
+services:
+  server:
+    image: oven/bun:1
+    container_name: webapp-adminserein-server
+    working_dir: /usr/src/app
+
+    # On monte tout le monorepo dans le conteneur
+    volumes:
+      - ../..:/usr/src/app
+
+    # Démarrage "prod" : install + build + start du serveur
+    command: >
+      bash -lc "bun install && cd apps/server && bun run dev"
+
+    # Charge les variables d'environnement depuis ces fichiers si présents
+    # (par exemple DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, CORS_ORIGIN, NODE_ENV)
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+
+    ports:
+      - "3000:3000"
+
+    restart: unless-stopped
+
+networks:
+  default:
+    name: webapp-adminserein-net
+    external: true
