@@ -55,3 +55,8 @@ temp
 /AGENTS.md
 /AGENTS.md.bak
 # END Ruler Generated Files
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
