@@ -29,14 +29,3 @@ module "compute" {
   subnet_self_link = module.network.subnet_self_link
 }
 
-module "sql" {
-  source          = "../../modules/sql"
-  project_id      = var.project_id
-  region          = var.region
-  db_tier         = var.db_tier
-  db_disk_size    = var.db_disk_size
-
-  # à surcharger par variable ou tfvars
-  db_user_password = "CHANGE_ME"
-}
-

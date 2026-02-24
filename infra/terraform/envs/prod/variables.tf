@@ -22,18 +22,6 @@ variable "machine_type" {
   default     = "e2-micro"
 }
 
-variable "db_tier" {
-  description = "Tier pour l’instance Cloud SQL PostgreSQL"
-  type        = string
-  default     = "db-f1-micro"
-}
-
-variable "db_disk_size" {
-  description = "Taille du disque (Go) pour Cloud SQL"
-  type        = number
-  default     = 20
-}
-
 variable "network_name" {
   description = "Nom du VPC"
   type        = string
