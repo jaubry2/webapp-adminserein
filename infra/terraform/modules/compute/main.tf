@@ -25,7 +25,7 @@ resource "google_compute_instance" "app" {
   zone         = var.zone
   project      = var.project_id
 
-  tags = ["web"]
+  tags = ["web", "http-server", "ansible-target", "ssh-access"]
 
   boot_disk {
     initialize_params {
@@ -38,7 +38,7 @@ resource "google_compute_instance" "app" {
   network_interface {
     subnetwork = var.subnet_self_link
 
-    access_config {} # IP publique
+    access_config {}
   }
 
   metadata = {
