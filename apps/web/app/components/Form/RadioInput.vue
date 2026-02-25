@@ -22,6 +22,7 @@
             :value="value"
             :name="props.question"
             class="form-radio text-blue-600 border-gray-300 focus:ring-blue-500"
+            :checked="props.modelValue === value"
             @change="handleChange(value)"
           />
           <span class="text-medium text-gray-700">
@@ -37,7 +38,6 @@
 /*******************************************************************************************************************/
 /* IMPORTS */
 /*******************************************************************************************************************/
-import { List } from "lucide-vue-next";
 import { defineProps, defineEmits } from "vue";
 /*******************************************************************************************************************/
 /* PARAMETRES */
@@ -46,6 +46,7 @@ const props = defineProps({
   question: { type: String, required: true },
   options: { type: Object as () => Record<string, string>, required: true },
   col: { type: Boolean, default: false },
+  modelValue: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update"]);
