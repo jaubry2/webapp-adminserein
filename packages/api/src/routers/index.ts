@@ -61,12 +61,27 @@ const patientCreateInputSchema = z.object({
   informationCoordonnee: informationCoordonneeInputSchema,
 });
 
+const informationConjointInputSchema = z.object({
+  nomUsage: z.string(),
+  nomNaissance: z.string(),
+  prenom: z.string(),
+  autresPrenoms: z.array(z.string()).optional().default([]),
+  genre: z.enum(["MASCULIN", "FEMININ", "AUTRE"]),
+  dateNaissance: z.string(), // format ISO (YYYY-MM-DD)
+  villeNaissance: z.string(),
+  departementNaissance: z.string(),
+  paysNaissance: z.string(),
+  nationalites: z.array(z.string()).optional().default([]),
+  numeroSecuriteSociale: z.string(),
+});
+
 const patientUpdateInputSchema = z.object({
   patientId: z.string().uuid(),
   // Champs optionnels : on ne met à jour que ceux présents
   numeroDossier: z.string().optional(),
   informationIdentite: informationIdentiteInputSchema.partial().optional(),
   informationCoordonnee: informationCoordonneeInputSchema.partial().optional(),
+  informationConjoint: informationConjointInputSchema.partial().optional(),
 });
 
 export const appRouter = {
@@ -174,6 +189,7 @@ export const appRouter = {
         numeroDossier,
         informationIdentite: info,
         informationCoordonnee: coord,
+        informationConjoint: conjoint,
       } = input;
 
       const [existing] = await db
@@ -247,6 +263,75 @@ export const appRouter = {
           );
       }
 
+      if (conjoint && Object.keys(conjoint).length > 0) {
+        // Normaliser les tableaux
+        const autresPrenoms =
+          conjoint.autresPrenoms && conjoint.autresPrenoms.length > 0
+            ? conjoint.autresPrenoms
+            : [];
+        const nationalites =
+          conjoint.nationalites && conjoint.nationalites.length > 0
+            ? conjoint.nationalites
+            : [];
+
+        if (existing.informationConjointId) {
+          await db
+            .update(informationConjoint)
+            .set({
+              ...(conjoint.nomUsage && { nomUsage: conjoint.nomUsage }),
+              ...(conjoint.nomNaissance && {
+                nomNaissance: conjoint.nomNaissance,
+              }),
+              ...(conjoint.prenom && { prenom: conjoint.prenom }),
+              ...(conjoint.autresPrenoms && {
+                autresPrenoms,
+              }),
+              ...(conjoint.genre && { genre: conjoint.genre }),
+              ...(conjoint.dateNaissance && {
+                dateNaissance: new Date(conjoint.dateNaissance),
+              }),
+              ...(conjoint.villeNaissance && {
+                villeNaissance: conjoint.villeNaissance,
+              }),
+              ...(conjoint.departementNaissance && {
+                departementNaissance: conjoint.departementNaissance,
+              }),
+              ...(conjoint.paysNaissance && {
+                paysNaissance: conjoint.paysNaissance,
+              }),
+              ...(conjoint.nationalites && { nationalites }),
+              ...(conjoint.numeroSecuriteSociale && {
+                numeroSecuriteSociale: conjoint.numeroSecuriteSociale,
+              }),
+            })
+            .where(eq(informationConjoint.id, existing.informationConjointId));
+        } else {
+          const [createdConjoint] = await db
+            .insert(informationConjoint)
+            .values({
+              nomUsage: conjoint.nomUsage ?? "",
+              nomNaissance: conjoint.nomNaissance ?? "",
+              prenom: conjoint.prenom ?? "",
+              autresPrenoms,
+              genre: conjoint.genre ?? "AUTRE",
+              dateNaissance: conjoint.dateNaissance
+                ? new Date(conjoint.dateNaissance)
+                : new Date(),
+              villeNaissance: conjoint.villeNaissance ?? "",
+              departementNaissance: conjoint.departementNaissance ?? "",
+              paysNaissance: conjoint.paysNaissance ?? "",
+              nationalites,
+              numeroSecuriteSociale: conjoint.numeroSecuriteSociale ?? "",
+            })
+            .returning();
+
+          await db
+            .update(patient)
+            .set({ informationConjointId: createdConjoint.id })
+            .where(eq(patient.id, patientId));
+        }
+      }
+
       const [updatedPatient] = await db
         .select()
         .from(patient)
@@ -264,10 +349,21 @@ export const appRouter = {
           eq(informationCoordonnee.id, updatedPatient.informationCoordonneeId)
         );
 
+      const [updatedConjoint] =
+        updatedPatient.informationConjointId != null
+          ? await db
+              .select()
+              .from(informationConjoint)
+              .where(
+                eq(informationConjoint.id, updatedPatient.informationConjointId)
+              )
+          : [undefined];
+
       return {
         ...updatedPatient,
         informationIdentite: updatedInfo,
         informationCoordonnee: updatedCoordonnee,
+        informationConjoint: updatedConjoint ?? null,
       };
     }),
 

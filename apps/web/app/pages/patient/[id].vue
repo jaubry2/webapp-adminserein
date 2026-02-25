@@ -269,6 +269,7 @@ const isEditingCoordonnee = ref(false);
 const pendingChanges = ref<{
   identite?: Record<string, any>;
   coordonnee?: Record<string, any>;
+  conjoint?: Record<string, any>;
 }>({});
 
 // Modal de résumé
@@ -470,6 +471,38 @@ const handleCoordonneeChanges = (changes: Record<string, any>) => {
   }
 };
 
+// Gérer les changements de conjoint (mise à jour directe sans résumé)
+const handleConjointChanges = async (changes: Record<string, any>) => {
+  if (!patient.value) return;
+
+  const conjointData: any = { ...changes };
+
+  // Normaliser les champs liste
+  if (
+    conjointData.autresPrenoms &&
+    typeof conjointData.autresPrenoms === "string"
+  ) {
+    conjointData.autresPrenoms = conjointData.autresPrenoms
+      .split(",")
+      .map((p: string) => p.trim())
+      .filter((p: string) => p.length > 0);
+  }
+  if (
+    conjointData.nationalites &&
+    typeof conjointData.nationalites === "string"
+  ) {
+    conjointData.nationalites = conjointData.nationalites
+      .split(",")
+      .map((n: string) => n.trim())
+      .filter((n: string) => n.length > 0);
+  }
+
+  await updatePatientMutation.mutateAsync({
+    patientId: patient.value.id,
+    informationConjoint: conjointData,
+  });
+};
+
 // Confirmer les modifications
 const confirmModifications = async () => {
   if (!patient.value) return;
@@ -629,6 +662,7 @@ const cancelModifications = () => {
               <!-- Section Conjoint -->
               <OngletInformationConjoint
                 :patient="patient"
+                @save="handleConjointChanges"
               />
               <!-- Section Coordonnées -->
               <OngletInformationCoordonnee
