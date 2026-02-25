@@ -1,0 +1,5 @@
+---
+- name: Installation des playbooks sur la vm
+  hosts: vm
+  roles:
+    - common
