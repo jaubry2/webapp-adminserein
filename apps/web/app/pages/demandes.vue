@@ -17,7 +17,7 @@ const filteredDemandes = computed(() => {
   return toutesLesDemandes.filter(
     (demande) =>
       demande.titre.toLowerCase().includes(query) ||
-      demande.organisme.toLowerCase().includes(query)
+      demande.organisme.toLowerCase().includes(query),
   );
 });
 </script>
@@ -29,14 +29,6 @@ const filteredDemandes = computed(() => {
       <section
         class="relative w-full rounded-md border secondary--border--color bg-tertiary px-10 py-10 shadow-sm"
       >
-        <!-- Bouton fermer -->
-        <NuxtLink
-          to="/patients"
-          class="absolute right-6 top-6 text-red-500 transition-colors hover:text-red-700"
-        >
-          <UIcon name="i-lucide-x" class="h-7 w-7" />
-        </NuxtLink>
-
         <!-- Titre -->
         <h1
           class="mb-10 text-center text-4xl font-semibold secondary--text--color font--title"
@@ -106,12 +98,12 @@ const filteredDemandes = computed(() => {
 
             <!-- Bouton action -->
             <div class="mt-auto flex justify-center">
-              <button
-                type="button"
+              <NuxtLink
                 class="rounded-full border border-gray-300 bg-[#a7c7e7] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:opacity-90"
+                :to="`/demande/${demande.id}`"
               >
                 Faire la demande
-              </button>
+              </NuxtLink>
             </div>
           </article>
 
