@@ -41,6 +41,8 @@
   "dependencies": {
     "@webapp-adminserein/env": "workspace:*",
     "dotenv": "catalog:",
+    "html2pdf.js": "^0.14.0",
+    "pdf-lib": "^1.17.1",
     "zod": "catalog:"
   },
   "devDependencies": {
