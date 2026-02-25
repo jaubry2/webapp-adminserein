@@ -43,9 +43,25 @@ const {
 const patient = computed<Patient | null>(() => {
   if (!apiPatient.value) return null;
 
-  const p = apiPatient.value;
+  const p = apiPatient.value as any;
   const info = p.informationIdentite;
   const coord = p.informationCoordonnee;
+  const conjointInfo = p.informationConjoint as
+    | {
+        nomUsage?: string;
+        nomNaissance?: string;
+        prenom?: string;
+        autresPrenoms?: string[] | null;
+        genre?: "MASCULIN" | "FEMININ" | "AUTRE";
+        dateNaissance?: string | Date | null;
+        villeNaissance?: string;
+        departementNaissance?: string;
+        paysNaissance?: string;
+        nationalites?: string[] | null;
+        numeroSecuriteSociale?: string;
+      }
+    | null
+    | undefined;
 
   const dateNaissance =
     info?.dateNaissance instanceof Date
@@ -53,6 +69,38 @@ const patient = computed<Patient | null>(() => {
       : typeof info?.dateNaissance === "string"
         ? new Date(info.dateNaissance).toLocaleDateString("fr-FR")
         : "";
+
+  let conjoint: Patient["conjoint"] = undefined;
+  if (conjointInfo) {
+    const conjointDateNaissance =
+      conjointInfo.dateNaissance instanceof Date
+        ? conjointInfo.dateNaissance.toLocaleDateString("fr-FR")
+        : typeof conjointInfo.dateNaissance === "string"
+          ? new Date(conjointInfo.dateNaissance).toLocaleDateString("fr-FR")
+          : "";
+
+    conjoint = {
+      nom: conjointInfo.nomUsage ?? "",
+      prenom: conjointInfo.prenom ?? "",
+      nomNaissance: conjointInfo.nomNaissance ?? undefined,
+      autresPrenoms: conjointInfo.autresPrenoms?.join(", ") ?? undefined,
+      sexe:
+        conjointInfo.genre === "MASCULIN"
+          ? "Homme"
+          : conjointInfo.genre === "FEMININ"
+            ? "Femme"
+            : conjointInfo.genre
+              ? "Autre"
+              : undefined,
+      dateNaissance: conjointDateNaissance || undefined,
+      lieuNaissance: conjointInfo.villeNaissance ?? undefined,
+      departementNaissance: conjointInfo.departementNaissance ?? undefined,
+      paysNaissance: conjointInfo.paysNaissance ?? undefined,
+      nationalites: conjointInfo.nationalites?.join(", ") ?? undefined,
+      numeroSecuriteSociale:
+        conjointInfo.numeroSecuriteSociale ?? undefined,
+    };
+  }
 
   return {
     id: p.id,
@@ -98,6 +146,7 @@ const patient = computed<Patient | null>(() => {
                   ? "Concubinage"
                   : undefined,
     caisseRetraite: info?.caisseRetraite ?? undefined,
+    conjoint,
     dernieresModifications: "",
   };
 });
@@ -576,6 +625,10 @@ const cancelModifications = () => {
                 :is-editing="isEditingIdentite"
                 :on-save="handleIdentiteChanges"
                 @update:is-editing="isEditingIdentite = $event"
+              />
+              <!-- Section Conjoint -->
+              <OngletInformationConjoint
+                :patient="patient"
               />
               <!-- Section Coordonnées -->
               <OngletInformationCoordonnee

@@ -6,6 +6,7 @@ import {
   db,
   informationIdentite,
   informationCoordonnee,
+  informationConjoint,
   patient,
   professionnel,
   particulier,
@@ -356,10 +357,19 @@ export const appRouter = {
         .from(informationCoordonnee)
         .where(eq(informationCoordonnee.id, p.informationCoordonneeId));
 
+      const [conjoint] =
+        p.informationConjointId != null
+          ? await db
+              .select()
+              .from(informationConjoint)
+              .where(eq(informationConjoint.id, p.informationConjointId))
+          : [undefined];
+
       return {
         ...p,
         informationIdentite: info,
         informationCoordonnee: coordonnee,
+        informationConjoint: conjoint ?? null,
       };
     }),
 
@@ -641,10 +651,16 @@ export const appRouter = {
     const coordonnees = await db.select().from(informationCoordonnee);
     const coordonneeById = new Map(coordonnees.map((c) => [c.id, c]));
 
+    const conjoints = await db.select().from(informationConjoint);
+    const conjointById = new Map(conjoints.map((c) => [c.id, c]));
+
     return patients.map((p) => ({
       ...p,
       informationIdentite: infoById.get(p.informationIdentiteId),
       informationCoordonnee: coordonneeById.get(p.informationCoordonneeId),
+      informationConjoint: p.informationConjointId
+        ? conjointById.get(p.informationConjointId)
+        : null,
     }));
   }),
 
@@ -1006,10 +1022,19 @@ export const appRouter = {
         .from(informationCoordonnee)
         .where(eq(informationCoordonnee.id, p.informationCoordonneeId));
 
+      const [conjoint] =
+        p.informationConjointId != null
+          ? await db
+              .select()
+              .from(informationConjoint)
+              .where(eq(informationConjoint.id, p.informationConjointId))
+          : [undefined];
+
       return {
         ...p,
         informationIdentite: info,
         informationCoordonnee: coordonnee,
+        informationConjoint: conjoint ?? null,
       };
     }
   ),

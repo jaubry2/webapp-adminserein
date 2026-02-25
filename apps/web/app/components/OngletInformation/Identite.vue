@@ -377,9 +377,8 @@ const getCaisseRetraiteLabel = (value: unknown): string => {
     return "Non renseigné";
   }
   return (
-    CAISSE_RETRAITE_OPTIONS[
-      value as keyof typeof CAISSE_RETRAITE_OPTIONS
-    ] ?? "Non renseigné"
+    CAISSE_RETRAITE_OPTIONS[value as keyof typeof CAISSE_RETRAITE_OPTIONS] ??
+    "Non renseigné"
   );
 };
 
