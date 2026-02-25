@@ -1,1 +1,2 @@
 docker network create webapp-adminserein-net
+ansible-playbook -i inventory.ini ./ansible/master.yml
