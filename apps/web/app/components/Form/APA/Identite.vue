@@ -8,47 +8,56 @@
           est_demandeur_femme: 'Madame',
           est_demandeur_homme: 'Monsieur',
         }"
+        :modelValue="getValue(fields, 'demandeur_sexe')"
         @update="modifyValue('demandeur_sexe', $event, fields)"
       />
     </div>
     <FormInput
       placeholder="Nom de naissance"
+      :value="getValue(fields, 'demandeur_nom_naissance')"
       @updateValue="
         (val) => modifyValue('demandeur_nom_naissance', val, fields)
       "
     />
     <FormInput
       placeholder="Nom d'usage (Si différent du nom de naissance)"
+      :value="getValue(fields, 'demandeur_nom_usage')"
       @updateValue="(val) => modifyValue('demandeur_nom_usage', val, fields)"
     />
     <FormInput
       placeholder="Prénom"
+      :value="getValue(fields, 'demandeur_prenom')"
       @updateValue="(val) => modifyValue('demandeur_prenom', val, fields)"
     />
     <FormDate
       placeholder="Date de naissance :"
+      :modelValue="getValue(fields, 'demandeur_date_naissance')"
       @updateValue="modifyValue('demandeur_date_naissance', $event, fields)"
     />
     <FormInput
       placeholder="Lieu de naissance"
+      :value="getValue(fields, 'demandeur_ville_naissance')"
       @updateValue="
         (val) => modifyValue('demandeur_ville_naissance', val, fields)
       "
     />
     <FormInput
       placeholder="Département de naissance"
+      :value="getValue(fields, 'demandeur_departement_naissance')"
       @updateValue="
         (val) => modifyValue('demandeur_departement_naissance', val, fields)
       "
     />
     <FormInput
       placeholder="Pays de naissance"
+      :value="getValue(fields, 'demandeur_pays_naissance')"
       @updateValue="
         (val) => modifyValue('demandeur_pays_naissance', val, fields)
       "
     />
     <FormInput
       placeholder="Numéro de sécurité sociale"
+      :value="getValue(fields, 'demandeur_numero_securite_sociale')"
       @updateValue="
         (val) => modifyValue('demandeur_numero_securite_sociale', val, fields)
       "
@@ -62,6 +71,7 @@
         est_demandeur_retraite_autre: 'Autre',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'demandeur_caisse_retraite')"
       @update="modifyValue('demandeur_caisse_retraite', $event, fields)"
     />
     <FormInput
@@ -70,6 +80,7 @@
         'est_demandeur_retraite_autre'
       "
       placeholder="Précisez la caisse de retraite"
+      :value="getValue(fields, 'demandeur_caisse_retraite_autre')"
       @updateValue="
         (val) => modifyValue('demandeur_caisse_retraite_autre', val, fields)
       "

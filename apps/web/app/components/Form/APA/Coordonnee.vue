@@ -3,12 +3,14 @@
     <h2 class="text-3xl text-center">Coordonnées du demandeur</h2>
     <FormInput
       placeholder="Numéro de téléphone"
+      :value="getValue(fields, 'demandeur_numero_telephone')"
       @updateValue="
         (val) => modifyValue('demandeur_numero_telephone', val, fields)
       "
     />
     <FormInput
       placeholder="Adresse e-mail"
+      :value="getValue(fields, 'demandeur_mail')"
       @updateValue="(val) => modifyValue('demandeur_mail', val, fields)"
     />
     <FormRadioInput
@@ -23,6 +25,7 @@
         est_demandeur_domicile_autre: 'Autre',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'demandeur_lieu_residence')"
       @update="modifyValue('demandeur_lieu_residence', $event, fields)"
     />
     <FormInput
