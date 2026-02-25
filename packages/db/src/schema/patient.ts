@@ -66,6 +66,28 @@ export const informationCoordonnee = pgTable("information_coordonnee", {
   adresseMail: text("adresse_mail").notNull(),
 });
 
+// Informations d'identité du conjoint
+export const informationConjoint = pgTable("information_conjoint", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  nomUsage: text("nom_usage").notNull(),
+  nomNaissance: text("nom_naissance").notNull(),
+  prenom: text("prenom").notNull(),
+
+  autresPrenoms: text("autres_prenoms").array(),
+
+  genre: genreEnum("genre").notNull(),
+
+  dateNaissance: date("date_naissance").notNull(),
+  villeNaissance: text("ville_naissance").notNull(),
+  departementNaissance: text("departement_naissance").notNull(),
+  paysNaissance: text("pays_naissance").notNull(),
+
+  nationalites: text("nationalites").array(),
+
+  numeroSecuriteSociale: text("numero_securite_sociale").notNull(),
+});
+
 // Table Patient avec lien 1–1 vers information_identite et information_coordonnee
 export const patient = pgTable("patient", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -84,6 +106,11 @@ export const patient = pgTable("patient", {
     .notNull()
     .references(() => informationCoordonnee.id, { onDelete: "restrict" })
     .unique(),
+
+  // Lien optionnel vers les informations du conjoint
+  informationConjointId: uuid("information_conjoint_id")
+    .references(() => informationConjoint.id, { onDelete: "set null" })
+    .unique(),
 });
 
 // Relations Drizzle
@@ -95,6 +122,10 @@ export const patientRelations = relations(patient, ({ one }) => ({
   informationCoordonnee: one(informationCoordonnee, {
     fields: [patient.informationCoordonneeId],
     references: [informationCoordonnee.id],
+  }),
+  informationConjoint: one(informationConjoint, {
+    fields: [patient.informationConjointId],
+    references: [informationConjoint.id],
   }),
   // Note: La relation many-to-many avec professionnel est définie dans professionnel.ts
   // pour éviter les dépendances circulaires
@@ -117,6 +148,16 @@ export const informationCoordonneeRelations = relations(
     patient: one(patient, {
       fields: [informationCoordonnee.id],
       references: [patient.informationCoordonneeId],
+    }),
+  })
+);
+
+export const informationConjointRelations = relations(
+  informationConjoint,
+  ({ one }) => ({
+    patient: one(patient, {
+      fields: [informationConjoint.id],
+      references: [patient.informationConjointId],
     }),
   })
 );

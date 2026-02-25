@@ -57,6 +57,13 @@
       "when": 1772031310278,
       "tag": "0007_perpetual_spitfire",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772032484401,
+      "tag": "0008_tense_wallflower",
+      "breakpoints": true
     }
   ]
 }
