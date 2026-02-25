@@ -1,11 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  pgEnum,
-  pgTable,
-  text,
-  uuid,
-  date,
-} from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, text, uuid, date } from "drizzle-orm/pg-core";
 
 // Enums pour les valeurs structurées
 export const genreEnum = pgEnum("genre", [
@@ -21,6 +15,13 @@ export const situationFamilialeEnum = pgEnum("situation_familiale", [
   "VEUF",
   "PACSE",
   "CONCUBINAGE",
+]);
+
+export const caisseRetraiteEnum = pgEnum("caisse_retraite", [
+  "ASSURANCE_RETRAITE",
+  "FONCTION_PUBLIQUE_ETAT",
+  "MSA",
+  "AUTRE",
 ]);
 
 // Informations d'identité du patient
@@ -47,6 +48,8 @@ export const informationIdentite = pgTable("information_identite", {
   numeroSecuriteSociale: text("numero_securite_sociale").notNull(),
 
   situationFamiliale: situationFamilialeEnum("situation_familiale").notNull(),
+
+  caisseRetraite: caisseRetraiteEnum("caisse_retraite"),
 });
 
 // Informations de coordonnées du patient
@@ -84,7 +87,7 @@ export const patient = pgTable("patient", {
 });
 
 // Relations Drizzle
-export const patientRelations = relations(patient, ({ one, many }) => ({
+export const patientRelations = relations(patient, ({ one }) => ({
   informationIdentite: one(informationIdentite, {
     fields: [patient.informationIdentiteId],
     references: [informationIdentite.id],

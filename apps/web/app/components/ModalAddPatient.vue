@@ -503,6 +503,29 @@
                       <option value="CONCUBINAGE">Concubinage</option>
                     </select>
                   </div>
+                  <div>
+                    <label
+                      for="caisse-retraite"
+                      class="mb-2 block text-sm font-medium secondary--text--color"
+                    >
+                      Caisse de retraite
+                    </label>
+                    <select
+                      id="caisse-retraite"
+                      v-model="formData.caisseRetraite"
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 input-focus-primary"
+                    >
+                      <option value="">Sélectionner</option>
+                      <option value="ASSURANCE_RETRAITE">
+                        Assurance retraite
+                      </option>
+                      <option value="FONCTION_PUBLIQUE_ETAT">
+                        Fonction publique d'État
+                      </option>
+                      <option value="MSA">MSA</option>
+                      <option value="AUTRE">Autre</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -706,6 +729,7 @@ const emit = defineEmits<{
       nationalites?: string;
       numeroSecuriteSociale?: string;
       situationFamiliale?: string;
+      caisseRetraite?: string;
       adresse?: string;
       informationComplementaires?: string;
       codePostal?: string;
@@ -739,6 +763,7 @@ const formData = ref({
   nationalites: "",
   numeroSecuriteSociale: "",
   situationFamiliale: "",
+  caisseRetraite: "",
   adresse: "",
   informationComplementaires: "",
   codePostal: "",
@@ -769,6 +794,7 @@ const closeModal = () => {
     nationalites: "",
     numeroSecuriteSociale: "",
     situationFamiliale: "",
+    caisseRetraite: "",
     adresse: "",
     informationComplementaires: "",
     codePostal: "",
@@ -870,6 +896,7 @@ const handleSubmit = () => {
     nationalites: formData.value.nationalites,
     numeroSecuriteSociale: formData.value.numeroSecuriteSociale,
     situationFamiliale: formData.value.situationFamiliale,
+    caisseRetraite: formData.value.caisseRetraite || undefined,
     adresse: formData.value.adresse,
     informationComplementaires: formData.value.informationComplementaires,
     codePostal: formData.value.codePostal,

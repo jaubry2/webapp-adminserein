@@ -5,4 +5,4 @@ export * from "./particulier";
 export * from "./tache";
 export * from "./document";
 export * from "./notification";
-export {};
+export { };

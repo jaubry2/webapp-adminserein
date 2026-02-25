@@ -1,3 +1,5 @@
+import type { CaisseRetraite } from "./caisseRetraite";
+
 export interface Patient {
   id: string;
   dossierNumber: string;
@@ -21,6 +23,7 @@ export interface Patient {
   numeroSecuriteSociale?: string;
   nationalites?: string;
   situationFamiliale?: string;
+  caisseRetraite?: CaisseRetraite | string;
   dernieresModifications: string;
 }
 

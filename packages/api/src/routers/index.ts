@@ -38,6 +38,9 @@ const informationIdentiteInputSchema = z.object({
     "PACSE",
     "CONCUBINAGE",
   ]),
+  caisseRetraite: z
+    .enum(["ASSURANCE_RETRAITE", "FONCTION_PUBLIQUE_ETAT", "MSA", "AUTRE"])
+    .optional(),
 });
 
 const informationCoordonneeInputSchema = z.object({
@@ -121,6 +124,7 @@ export const appRouter = {
           nationalites: info.nationalites,
           numeroSecuriteSociale: info.numeroSecuriteSociale,
           situationFamiliale: info.situationFamiliale,
+          caisseRetraite: info.caisseRetraite ?? null,
         })
         .returning();
 
@@ -212,6 +216,9 @@ export const appRouter = {
             }),
             ...(info.situationFamiliale && {
               situationFamiliale: info.situationFamiliale,
+            }),
+            ...(info.caisseRetraite && {
+              caisseRetraite: info.caisseRetraite,
             }),
           })
           .where(eq(informationIdentite.id, existing.informationIdentiteId));

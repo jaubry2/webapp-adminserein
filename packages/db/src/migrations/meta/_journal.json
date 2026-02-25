@@ -50,6 +50,13 @@
       "when": 1771508747535,
       "tag": "0006_yummy_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772031310278,
+      "tag": "0007_perpetual_spitfire",
+      "breakpoints": true
     }
   ]
 }

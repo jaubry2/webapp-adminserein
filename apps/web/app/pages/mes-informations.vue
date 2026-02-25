@@ -130,6 +130,7 @@ const patient = computed<Patient | null>(() => {
                 : info?.situationFamiliale === "CONCUBINAGE"
                   ? "Concubinage"
                   : undefined,
+    caisseRetraite: info?.caisseRetraite ?? undefined,
     dernieresModifications: "",
   };
 });

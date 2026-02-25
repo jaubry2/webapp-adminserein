@@ -51,12 +51,13 @@ const patients = computed<Patient[]>(() => {
             : info?.genre
               ? "Autre"
               : undefined,
-      // Champs non encore présents en base
+      // Champs supplémentaires non utilisés dans cette liste
       telephone: undefined,
       email: undefined,
       adresse: undefined,
       codePostal: undefined,
       ville: undefined,
+      caisseRetraite: info?.caisseRetraite ?? undefined,
       // TODO: utiliser un champ "updatedAt" en base si besoin
       dernieresModifications: "",
     };
@@ -340,6 +341,7 @@ const handleSubmitPatient = async (data: any) => {
           | "VEUF"
           | "PACSE"
           | "CONCUBINAGE",
+        caisseRetraite: data.caisseRetraite || undefined,
       },
       informationCoordonnee: {
         adresse: data.adresse || "",

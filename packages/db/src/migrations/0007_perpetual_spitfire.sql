@@ -1,0 +1,2 @@
+CREATE TYPE "public"."caisse_retraite" AS ENUM('ASSURANCE_RETRAITE', 'FONCTION_PUBLIQUE_ETAT', 'MSA', 'AUTRE');--> statement-breakpoint
+ALTER TABLE "information_identite" ADD COLUMN "caisse_retraite" "caisse_retraite";

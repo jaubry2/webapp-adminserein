@@ -297,6 +297,27 @@ const prefillFormFromPatient = (patient: any) => {
   if (coord.ville) {
     modifyValue("demandeur_ville", coord.ville as string, fields.value);
   }
+
+  // Caisse de retraite -> champ APA
+  if (info.caisseRetraite) {
+    let caisseValue = "";
+    switch (info.caisseRetraite) {
+      case "ASSURANCE_RETRAITE":
+        caisseValue = "est_demandeur_retraite_assurance_maladie";
+        break;
+      case "FONCTION_PUBLIQUE_ETAT":
+        caisseValue = "est_demandeur_retraite_fonction_publique";
+        break;
+      case "MSA":
+        caisseValue = "est_demandeur_retraite_msa";
+        break;
+      case "AUTRE":
+      default:
+        caisseValue = "est_demandeur_retraite_autre";
+        break;
+    }
+    modifyValue("demandeur_caisse_retraite", caisseValue, fields.value);
+  }
 };
 
 watch(

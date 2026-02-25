@@ -265,6 +265,30 @@
               <option value="CONCUBINAGE">Concubinage</option>
             </select>
           </div>
+          <div>
+            <span class="text-sm quaternary--text--color"
+              >Caisse de retraite :</span
+            >
+            <p
+              v-if="!isEditing"
+              class="mt-1 font-semibold secondary--text--color"
+            >
+              {{ getCaisseRetraiteLabel(patient.caisseRetraite) }}
+            </p>
+            <select
+              v-else
+              v-model="editedData.caisseRetraite"
+              class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm input-focus-primary"
+            >
+              <option value="">Sélectionner</option>
+              <option value="ASSURANCE_RETRAITE">Assurance retraite</option>
+              <option value="FONCTION_PUBLIQUE_ETAT">
+                Fonction publique d'État
+              </option>
+              <option value="MSA">MSA</option>
+              <option value="AUTRE">Autre</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
@@ -273,6 +297,7 @@
 
 <script setup lang="ts">
 import type { Patient } from "~/types/patient";
+import { CAISSE_RETRAITE_OPTIONS } from "~/types/caisseRetraite";
 
 const props = defineProps<{
   patient: Patient;
@@ -308,6 +333,7 @@ const editedData = ref({
     | "VEUF"
     | "PACSE"
     | "CONCUBINAGE",
+  caisseRetraite: "",
 });
 
 // Initialiser les données éditées depuis le patient
@@ -336,7 +362,25 @@ const initializeEditedData = () => {
       | "VEUF"
       | "PACSE"
       | "CONCUBINAGE",
+    caisseRetraite:
+      (props.patient.caisseRetraite as
+        | "ASSURANCE_RETRAITE"
+        | "FONCTION_PUBLIQUE_ETAT"
+        | "MSA"
+        | "AUTRE"
+        | "") || "",
   };
+};
+
+const getCaisseRetraiteLabel = (value: unknown): string => {
+  if (!value || typeof value !== "string") {
+    return "Non renseigné";
+  }
+  return (
+    CAISSE_RETRAITE_OPTIONS[
+      value as keyof typeof CAISSE_RETRAITE_OPTIONS
+    ] ?? "Non renseigné"
+  );
 };
 
 // Convertir la date au format input date (YYYY-MM-DD)
@@ -382,6 +426,13 @@ const hasChanges = computed(() => {
     nationalites: props.patient.nationalites || "",
     numeroSecuriteSociale: props.patient.numeroSecuriteSociale || "",
     situationFamiliale: props.patient.situationFamiliale || "CELIBATAIRE",
+    caisseRetraite:
+      (props.patient.caisseRetraite as
+        | "ASSURANCE_RETRAITE"
+        | "FONCTION_PUBLIQUE_ETAT"
+        | "MSA"
+        | "AUTRE"
+        | "") || "",
   };
 
   return Object.keys(original).some((key) => {
@@ -427,6 +478,13 @@ const handleSave = () => {
       nationalites: props.patient.nationalites || "",
       numeroSecuriteSociale: props.patient.numeroSecuriteSociale || "",
       situationFamiliale: props.patient.situationFamiliale || "CELIBATAIRE",
+      caisseRetraite:
+        (props.patient.caisseRetraite as
+          | "ASSURANCE_RETRAITE"
+          | "FONCTION_PUBLIQUE_ETAT"
+          | "MSA"
+          | "AUTRE"
+          | "") || "",
     };
 
     Object.keys(original).forEach((key) => {
