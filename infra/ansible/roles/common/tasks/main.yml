@@ -1,0 +1,8 @@
+---
+- name: Ensure common packages are installed
+  ansible.builtin.apt:
+    name:
+      - git
+      - docker.io
+      - docker-compose-plugin
+      - curl
