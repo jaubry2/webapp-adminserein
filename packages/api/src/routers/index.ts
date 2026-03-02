@@ -11,6 +11,7 @@ import {
   professionnel,
   particulier,
   patientProfessionnel,
+  demandeAccesPatient,
   tache,
   document,
   notification,
@@ -519,11 +520,33 @@ export const appRouter = {
         throw new Error("Ce patient est déjà dans votre liste");
       }
 
-      // Créer le lien patient-professionnel
-      await db.insert(patientProfessionnel).values({
-        patientId: existingPatient.id,
-        professionnelId: prof.id,
-      });
+      // Vérifier s'il existe déjà une demande d'accès pour ce couple patient/professionnel
+      const [existingDemande] = await db
+        .select()
+        .from(demandeAccesPatient)
+        .where(
+          and(
+            eq(demandeAccesPatient.patientId, existingPatient.id),
+            eq(demandeAccesPatient.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (existingDemande && existingDemande.statut === "EN_ATTENTE") {
+        throw new Error(
+          "Une demande d'accès est déjà en attente pour ce patient."
+        );
+      }
+
+      // Créer une nouvelle demande d'accès en attente
+      const [demande] = await db
+        .insert(demandeAccesPatient)
+        .values({
+          patientId: existingPatient.id,
+          professionnelId: prof.id,
+          statut: "EN_ATTENTE",
+        })
+        .returning();
 
       // Récupérer les informations d'identité pour le retour
       const [info] = await db
@@ -532,9 +555,23 @@ export const appRouter = {
         .where(eq(informationIdentite.id, existingPatient.informationIdentiteId))
         .limit(1);
 
+      // Créer une notification pour le patient
+      await db.insert(notification).values({
+        patientId: existingPatient.id,
+        professionnelId: null,
+        type: "INFO",
+        titre: "Nouvelle demande d'accès à votre dossier",
+        message: `Le professionnel ${prof.prenom} ${prof.nom} (${prof.fonction}) souhaite accéder à votre dossier.`,
+        lien: "/mes-informations", // page où le patient gère ses demandes
+      });
+
       return {
         ...existingPatient,
         informationIdentite: info,
+        demandeAcces: {
+          id: demande.id,
+          statut: demande.statut,
+        },
       };
     }),
 
@@ -774,8 +811,11 @@ export const appRouter = {
         .where(eq(user.id, context.session.user.id))
         .limit(1);
 
+      // Si ce n'est pas un professionnel (par exemple un particulier),
+      // on retourne simplement une liste vide plutôt qu'une erreur,
+      // afin de ne pas bloquer l'accès aux pages côté client.
       if (!userData || userData.type !== "PROFESSIONNEL") {
-        throw new Error("Cet utilisateur n'est pas un professionnel");
+        return [];
       }
 
       // Récupérer le professionnel lié à l'utilisateur
@@ -1134,6 +1174,201 @@ export const appRouter = {
       };
     }
   ),
+
+  // Lister les demandes d'accès au dossier pour le patient connecté (particulier)
+  listDemandesAccesByPatient: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    const [userData] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, context.session.user.id))
+      .limit(1);
+
+    if (!userData || userData.type !== "PARTICULIER") {
+      throw new Error("Cet utilisateur n'est pas un particulier");
+    }
+
+    const [part] = await db
+      .select()
+      .from(particulier)
+      .where(eq(particulier.userId, context.session.user.id))
+      .limit(1);
+
+    if (!part) {
+      throw new Error("Aucun particulier associé à ce compte");
+    }
+
+    const demandes = await db
+      .select()
+      .from(demandeAccesPatient)
+      .where(
+        and(
+          eq(demandeAccesPatient.patientId, part.patientId),
+          eq(demandeAccesPatient.statut, "EN_ATTENTE")
+        )
+      );
+
+    if (demandes.length === 0) {
+      return [];
+    }
+
+    const professionnelIds = Array.from(
+      new Set(demandes.map((d) => d.professionnelId))
+    );
+
+    const pros = await db
+      .select()
+      .from(professionnel)
+      .where(inArray(professionnel.id, professionnelIds));
+
+    const proById = new Map(pros.map((p) => [p.id, p]));
+
+    return demandes.map((d) => ({
+      ...d,
+      professionnel: proById.get(d.professionnelId) ?? null,
+    }));
+  }),
+
+  // Répondre à une demande d'accès (accepter ou refuser) côté patient
+  repondreDemandeAcces: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        decision: z.enum(["ACCEPTER", "REFUSER"]),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      const [demande] = await db
+        .select()
+        .from(demandeAccesPatient)
+        .where(eq(demandeAccesPatient.id, input.demandeId))
+        .limit(1);
+
+      if (!demande) {
+        throw new Error("Demande d'accès non trouvée");
+      }
+
+      if (demande.patientId !== part.patientId) {
+        throw new Error("Demande d'accès non autorisée pour ce patient");
+      }
+
+      if (demande.statut !== "EN_ATTENTE") {
+        throw new Error("Cette demande a déjà été traitée");
+      }
+
+      // Récupérer le patient et le professionnel concernés
+      const [p] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.id, demande.patientId))
+        .limit(1);
+
+      if (!p) {
+        throw new Error("Patient non trouvé");
+      }
+
+      const [infoPatient] = await db
+        .select()
+        .from(informationIdentite)
+        .where(eq(informationIdentite.id, p.informationIdentiteId))
+        .limit(1);
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.id, demande.professionnelId))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Professionnel non trouvé");
+      }
+
+      if (input.decision === "ACCEPTER") {
+        // Marquer la demande comme acceptée
+        await db
+          .update(demandeAccesPatient)
+          .set({ statut: "ACCEPTEE" })
+          .where(eq(demandeAccesPatient.id, demande.id));
+
+        // Créer le lien patient-professionnel s'il n'existe pas déjà
+        const [existingLink] = await db
+          .select()
+          .from(patientProfessionnel)
+          .where(
+            and(
+              eq(patientProfessionnel.patientId, demande.patientId),
+              eq(patientProfessionnel.professionnelId, demande.professionnelId)
+            )
+          )
+          .limit(1);
+
+        if (!existingLink) {
+          await db.insert(patientProfessionnel).values({
+            patientId: demande.patientId,
+            professionnelId: demande.professionnelId,
+          });
+        }
+
+        // Notification pour le professionnel
+        await db.insert(notification).values({
+          professionnelId: prof.id,
+          patientId: null,
+          type: "SUCCESS",
+          titre: "Accès au dossier accordé",
+          message: `Le patient ${
+            infoPatient?.prenom ?? ""
+          } ${infoPatient?.nomUsage ?? ""} a accepté votre demande d'accès.`,
+          lien: `/patient/${p.id}`,
+        });
+      } else {
+        // REFUSER : marquer la demande comme refusée
+        await db
+          .update(demandeAccesPatient)
+          .set({ statut: "REFUSEE" })
+          .where(eq(demandeAccesPatient.id, demande.id));
+
+        // Notification pour le professionnel
+        await db.insert(notification).values({
+          professionnelId: prof.id,
+          patientId: null,
+          type: "WARNING",
+          titre: "Accès au dossier refusé",
+          message: `Le patient ${
+            infoPatient?.prenom ?? ""
+          } ${infoPatient?.nomUsage ?? ""} a refusé votre demande d'accès.`,
+          lien: null,
+        });
+      }
+
+      return { success: true };
+    }),
 
   // --- DOCUMENTS ---
 

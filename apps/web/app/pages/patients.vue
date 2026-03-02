@@ -157,8 +157,9 @@ const addPatientMutation = useMutation({
       queryKey: $orpc.listPatients.queryKey(),
     });
     toast.add({
-      title: "Patient ajouté avec succès",
-      description: "Le patient a été ajouté à votre liste.",
+      title: "Demande d'accès envoyée",
+      description:
+        "Le patient a été prévenu. Il devra accepter votre demande avant que vous puissiez accéder à son dossier.",
     });
     closeModal();
     // Fermer aussi le popup de confirmation si ouvert

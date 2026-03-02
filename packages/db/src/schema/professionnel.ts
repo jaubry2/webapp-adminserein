@@ -1,8 +1,14 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { patient } from "./patient";
+
+export const demandeAccesStatutEnum = pgEnum("demande_acces_statut", [
+  "EN_ATTENTE",
+  "ACCEPTEE",
+  "REFUSEE",
+]);
 
 // Table Professionnel : lie un utilisateur à un profil professionnel
 export const professionnel = pgTable("professionnel", {
@@ -45,6 +51,26 @@ export const patientProfessionnel = pgTable("patient_professionnel", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const demandeAccesPatient = pgTable("demande_acces_patient", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patient.id, { onDelete: "cascade" }),
+
+  professionnelId: uuid("professionnel_id")
+    .notNull()
+    .references(() => professionnel.id, { onDelete: "cascade" }),
+
+  statut: demandeAccesStatutEnum("statut").notNull().default("EN_ATTENTE"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 // Relations Drizzle
 export const professionnelRelations = relations(professionnel, ({ one, many }) => ({
   user: one(user, {
@@ -52,6 +78,7 @@ export const professionnelRelations = relations(professionnel, ({ one, many }) =
     references: [user.id],
   }),
   patients: many(patientProfessionnel),
+  demandesAcces: many(demandeAccesPatient),
   // La relation avec tâche est définie dans tache.ts
 }));
 
@@ -64,6 +91,20 @@ export const patientProfessionnelRelations = relations(
     }),
     professionnel: one(professionnel, {
       fields: [patientProfessionnel.professionnelId],
+      references: [professionnel.id],
+    }),
+  })
+);
+
+export const demandeAccesPatientRelations = relations(
+  demandeAccesPatient,
+  ({ one }) => ({
+    patient: one(patient, {
+      fields: [demandeAccesPatient.patientId],
+      references: [patient.id],
+    }),
+    professionnel: one(professionnel, {
+      fields: [demandeAccesPatient.professionnelId],
       references: [professionnel.id],
     }),
   })

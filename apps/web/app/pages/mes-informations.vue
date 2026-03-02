@@ -2,7 +2,7 @@
 import type { Patient } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useMutation } from "@tanstack/vue-query";
 
 definePageMeta({
   middleware: ["auth"],
@@ -10,6 +10,7 @@ definePageMeta({
 
 const { $authClient, $orpc } = useNuxtApp();
 const session = $authClient.useSession();
+const toast = useToast();
 
 // Récupérer le type d'utilisateur
 const { data: userTypeData } = useQuery({
@@ -40,6 +41,43 @@ const {
       isParticulier.value
     );
   }),
+});
+
+// Demandes d'accès au dossier pour ce patient
+const {
+  data: demandesAcces,
+  isLoading: isLoadingDemandesAcces,
+  isError: isErrorDemandesAcces,
+  refetch: refetchDemandesAcces,
+} = useQuery({
+  ...$orpc.listDemandesAccesByPatient.queryOptions(),
+  enabled: computed(() => {
+    return (
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isParticulier.value
+    );
+  }),
+});
+
+const repondreDemandeAccesMutationOptions =
+  $orpc.repondreDemandeAcces.mutationOptions();
+const repondreDemandeAccesMutation = useMutation({
+  ...repondreDemandeAccesMutationOptions,
+  onSuccess: async () => {
+    await refetchDemandesAcces();
+    toast.add({
+      title: "Réponse enregistrée",
+      description: "Votre choix a bien été pris en compte.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
 });
 
 // Récupération des tâches
@@ -318,6 +356,62 @@ const tabs = [
               "
               :status-label="tache.etat"
             />
+          </div>
+        </div>
+
+        <!-- Section Demandes d'accès -->
+        <div class="space-y-4">
+          <h2 class="text-lg font-semibold secondary--text--color">
+            Demandes d'accès à mon dossier
+          </h2>
+          <div v-if="isLoadingDemandesAcces" class="text-sm quaternary--text--color">
+            Chargement des demandes d'accès...
+          </div>
+          <div v-else-if="isErrorDemandesAcces" class="text-sm text-red-500">
+            Erreur lors du chargement des demandes d'accès.
+          </div>
+          <div
+            v-else-if="!demandesAcces || demandesAcces.length === 0"
+            class="text-sm quaternary--text--color"
+          >
+            Aucune demande d'accès en attente.
+          </div>
+          <div v-else class="space-y-3">
+            <div
+              v-for="demande in demandesAcces"
+              :key="demande.id"
+              class="rounded-lg border border-gray-200 bg-white px-4 py-3 flex flex-col gap-2"
+            >
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium secondary--text--color">
+                    {{ demande.professionnel?.prenom }} {{ demande.professionnel?.nom }}
+                  </p>
+                  <p class="text-xs quaternary--text--color">
+                    {{ demande.professionnel?.fonction || "Professionnel" }}
+                  </p>
+                </div>
+                <span class="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  En attente
+                </span>
+              </div>
+              <div class="flex gap-2 justify-end mt-2">
+                <button
+                  type="button"
+                  class="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  @click="repondreDemandeAccesMutation.mutate({ demandeId: demande.id, decision: 'REFUSER' })"
+                >
+                  Refuser
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] text-xs font-medium text-white hover:opacity-90 transition-colors"
+                  @click="repondreDemandeAccesMutation.mutate({ demandeId: demande.id, decision: 'ACCEPTER' })"
+                >
+                  Accepter
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
