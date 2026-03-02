@@ -168,17 +168,42 @@ const addPatientMutation = useMutation({
     modalError.value = "";
   },
   onError: (error: any) => {
+    const message = error?.message || "";
     // Si le patient n'est pas trouvé, afficher l'erreur dans le modal
-    if (error?.message?.includes("non trouvé")) {
-      modalError.value = "Numéro de dossier incorrect. Ce patient n'existe pas dans le système.";
+    if (message.includes("non trouvé")) {
+      modalError.value =
+        "Numéro de dossier incorrect. Ce patient n'existe pas dans le système.";
       // Ne pas fermer le modal pour permettre à l'utilisateur de corriger
-    } else {
-      toast.add({
-        title: "Erreur lors de l'ajout",
-        description: error?.message || "Une erreur est survenue.",
-        color: "error",
-      });
+      return;
     }
+
+    // Cas où le patient est déjà suivi par ce professionnel
+    if (message.includes("déjà dans votre liste")) {
+      toast.add({
+        title: "Patient déjà suivi",
+        description: "Ce patient est déjà dans votre liste.",
+        color: "warning",
+      });
+      return;
+    }
+
+    // Cas où une demande d'accès est déjà en attente
+    if (message.includes("déjà en attente")) {
+      toast.add({
+        title: "Demande déjà en attente",
+        description:
+          "Une demande d'accès pour ce dossier est déjà en attente. Vous serez notifiée lorsque le patient aura répondu.",
+        color: "warning",
+      });
+      return;
+    }
+
+    // Cas générique
+    toast.add({
+      title: "Erreur lors de l'ajout",
+      description: message || "Une erreur est survenue.",
+      color: "error",
+    });
   },
 });
 

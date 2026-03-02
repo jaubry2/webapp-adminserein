@@ -520,19 +520,22 @@ export const appRouter = {
         throw new Error("Ce patient est déjà dans votre liste");
       }
 
-      // Vérifier s'il existe déjà une demande d'accès pour ce couple patient/professionnel
-      const [existingDemande] = await db
+      // Vérifier s'il existe déjà une demande d'accès EN_ATTENTE
+      // pour ce couple patient/professionnel. On filtre directement
+      // sur le statut pour éviter les doublons de demandes en cours.
+      const [existingDemandeEnAttente] = await db
         .select()
         .from(demandeAccesPatient)
         .where(
           and(
             eq(demandeAccesPatient.patientId, existingPatient.id),
-            eq(demandeAccesPatient.professionnelId, prof.id)
+            eq(demandeAccesPatient.professionnelId, prof.id),
+            eq(demandeAccesPatient.statut, "EN_ATTENTE")
           )
         )
         .limit(1);
 
-      if (existingDemande && existingDemande.statut === "EN_ATTENTE") {
+      if (existingDemandeEnAttente) {
         throw new Error(
           "Une demande d'accès est déjà en attente pour ce patient."
         );
@@ -563,6 +566,19 @@ export const appRouter = {
         titre: "Nouvelle demande d'accès à votre dossier",
         message: `Le professionnel ${prof.prenom} ${prof.nom} (${prof.fonction}) souhaite accéder à votre dossier.`,
         lien: "/mes-informations", // page où le patient gère ses demandes
+      });
+
+      // Créer une tâche de suivi pour le professionnel
+      await db.insert(tache).values({
+        patientId: existingPatient.id,
+        professionnelId: prof.id,
+        typeDemarche: "ADMINISTRATIVE",
+        etat: "A_FAIRE",
+        date: new Date(),
+        details:
+          info
+            ? `Demande d'accès au dossier en attente de réponse du patient ${info.prenom} ${info.nomUsage}.`
+            : "Demande d'accès au dossier en attente de réponse du patient.",
       });
 
       return {
@@ -1347,6 +1363,19 @@ export const appRouter = {
           } ${infoPatient?.nomUsage ?? ""} a accepté votre demande d'accès.`,
           lien: `/patient/${p.id}`,
         });
+
+        // Mettre à jour la tâche associée à cette demande d'accès
+        await db
+          .update(tache)
+          .set({ etat: "TERMINEE" })
+          .where(
+            and(
+              eq(tache.patientId, demande.patientId),
+              eq(tache.professionnelId, demande.professionnelId),
+              eq(tache.typeDemarche, "ADMINISTRATIVE"),
+              or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS"))
+            )
+          );
       } else {
         // REFUSER : marquer la demande comme refusée
         await db
@@ -1365,6 +1394,19 @@ export const appRouter = {
           } ${infoPatient?.nomUsage ?? ""} a refusé votre demande d'accès.`,
           lien: null,
         });
+
+        // Mettre à jour la tâche associée à cette demande d'accès
+        await db
+          .update(tache)
+          .set({ etat: "ANNULEE" })
+          .where(
+            and(
+              eq(tache.patientId, demande.patientId),
+              eq(tache.professionnelId, demande.professionnelId),
+              eq(tache.typeDemarche, "ADMINISTRATIVE"),
+              or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS"))
+            )
+          );
       }
 
       return { success: true };
