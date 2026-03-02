@@ -310,7 +310,7 @@ const emit = defineEmits<{
   changes: [changes: Record<string, any>];
 }>();
 
-const identiteExpanded = ref(true);
+const identiteExpanded = ref(false);
 const isEditing = ref(props.isEditing || false);
 
 // Données éditées

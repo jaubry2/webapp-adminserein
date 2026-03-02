@@ -204,7 +204,7 @@ const emit = defineEmits<{
   changes: [changes: Record<string, any>];
 }>();
 
-const coordonneesExpanded = ref(true);
+const coordonneesExpanded = ref(false);
 const isEditing = ref(props.isEditing || false);
 
 // Données éditées

@@ -58,10 +58,7 @@
       >
         Aucun conjoint renseigné.
       </p>
-      <div
-        v-else
-        class="grid grid-cols-2 gap-4"
-      >
+      <div v-else class="grid grid-cols-2 gap-4">
         <div>
           <span class="text-sm quaternary--text--color">Nom :</span>
           <p
@@ -114,9 +111,7 @@
           />
         </div>
         <div>
-          <span class="text-sm quaternary--text--color"
-            >Autres prénoms :</span
-          >
+          <span class="text-sm quaternary--text--color">Autres prénoms :</span>
           <p
             v-if="!isEditing"
             class="mt-1 font-semibold secondary--text--color"
@@ -191,9 +186,7 @@
             v-if="!isEditing"
             class="mt-1 font-semibold secondary--text--color"
           >
-            {{
-              patient.conjoint?.departementNaissance || "Non renseigné"
-            }}
+            {{ patient.conjoint?.departementNaissance || "Non renseigné" }}
           </p>
           <input
             v-else
@@ -243,9 +236,7 @@
             v-if="!isEditing"
             class="mt-1 font-semibold secondary--text--color"
           >
-            {{
-              patient.conjoint?.numeroSecuriteSociale || "Non renseigné"
-            }}
+            {{ patient.conjoint?.numeroSecuriteSociale || "Non renseigné" }}
           </p>
           <input
             v-else
@@ -267,7 +258,7 @@ const props = defineProps<{
 }>();
 
 const isEditing = ref(false);
-const conjointExpanded = ref(true);
+const conjointExpanded = ref(false);
 
 const editedConjoint = ref({
   nomUsage: "",
@@ -398,4 +389,3 @@ const handleSave = () => {
   isEditing.value = false;
 };
 </script>
-
