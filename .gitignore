@@ -60,3 +60,6 @@ temp
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+# To Do List
+to_do.md
