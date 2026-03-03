@@ -1248,6 +1248,53 @@ export const appRouter = {
     }));
   }),
 
+  // Lister les professionnels ayant accès au dossier du patient connecté (particulier)
+  listProfessionnelsByParticulier: protectedProcedure.handler(
+    async ({ context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      // Récupérer les professionnels liés à ce patient via patientProfessionnel
+      const liens = await db
+        .select({
+          id: professionnel.id,
+          nom: professionnel.nom,
+          prenom: professionnel.prenom,
+          fonction: professionnel.fonction,
+          dateAttribution: patientProfessionnel.dateAttribution,
+        })
+        .from(patientProfessionnel)
+        .innerJoin(
+          professionnel,
+          eq(patientProfessionnel.professionnelId, professionnel.id)
+        )
+        .where(eq(patientProfessionnel.patientId, part.patientId));
+
+      return liens;
+    }
+  ),
+
   // Répondre à une demande d'accès (accepter ou refuser) côté patient
   repondreDemandeAcces: protectedProcedure
     .input(
