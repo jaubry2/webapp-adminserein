@@ -21,10 +21,14 @@
             class="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4"
           >
             <div class="space-y-1">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <p
+                class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+              >
                 {{ typeDemarcheLabel }}
               </p>
-              <h2 class="text-lg font-semibold secondary--text--color font--title">
+              <h2
+                class="text-lg font-semibold secondary--text--color font--title"
+              >
                 Détail de la tâche
               </h2>
               <p class="text-xs quaternary--text--color">
@@ -36,10 +40,31 @@
             </div>
             <div class="flex items-center gap-2">
               <span
-                v-if="etatLabel"
                 class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700"
+                v-if="props.tache?.etat === 'TERMINEE'"
               >
                 <UIcon name="i-lucide-check-circle-2" class="h-3.5 w-3.5" />
+                {{ etatLabel }}
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700"
+                v-if="props.tache?.etat === 'A_FAIRE'"
+              >
+                <UIcon name="i-lucide-pen" class="h-3.5 w-3.5" />
+                {{ etatLabel }}
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700"
+                v-if="props.tache?.etat === 'EN_COURS'"
+              >
+                <UIcon name="i-lucide-hourglass" class="h-3.5 w-3.5" />
+                {{ etatLabel }}
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700"
+                v-if="props.tache?.etat === 'ANNULEE'"
+              >
+                <UIcon name="i-lucide-circle-x" class="h-3.5 w-3.5" />
                 {{ etatLabel }}
               </span>
               <button
@@ -81,17 +106,13 @@
             <!-- Patient / Professionnel selon le type d'utilisateur -->
             <section class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div class="space-y-1">
-                <p class="text-xs quaternary--text--color">
-                  Patient concerné
-                </p>
+                <p class="text-xs quaternary--text--color">Patient concerné</p>
                 <p class="font-medium secondary--text--color">
                   {{ patientName }}
                 </p>
               </div>
               <div class="space-y-1">
-                <p class="text-xs quaternary--text--color">
-                  Professionnel
-                </p>
+                <p class="text-xs quaternary--text--color">Professionnel</p>
                 <p class="font-medium secondary--text--color">
                   {{ professionnelLabel }}
                 </p>
@@ -293,7 +314,9 @@ const handleViewPatient = () => {
 
 .task-detail-modal-enter-active .relative,
 .task-detail-modal-leave-active .relative {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .task-detail-modal-enter-from .relative,
@@ -302,4 +325,3 @@ const handleViewPatient = () => {
   transform: scale(0.97);
 }
 </style>
-

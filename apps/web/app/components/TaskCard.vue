@@ -44,8 +44,30 @@ const handleViewPatient = () => {
     <div v-if="props.statusLabel" class="absolute right-6 top-6">
       <span
         class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700"
+        v-if="props.tache?.etat === 'TERMINEE'"
       >
         <UIcon name="i-lucide-check-circle-2" class="h-3.5 w-3.5" />
+        {{ props.statusLabel }}
+      </span>
+      <span
+        class="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700"
+        v-if="props.statusLabel === 'À faire'"
+      >
+        <UIcon name="i-lucide-pen" class="h-3.5 w-3.5" />
+        {{ props.statusLabel }}
+      </span>
+      <span
+        class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700"
+        v-if="props.tache?.etat === 'EN_COURS'"
+      >
+        <UIcon name="i-lucide-hourglass" class="h-3.5 w-3.5" />
+        {{ props.statusLabel }}
+      </span>
+      <span
+        class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700"
+        v-if="props.tache?.etat === 'ANNULEE'"
+      >
+        <UIcon name="i-lucide-circle-x" class="h-3.5 w-3.5" />
         {{ props.statusLabel }}
       </span>
     </div>
@@ -53,11 +75,7 @@ const handleViewPatient = () => {
     <div class="flex items-center gap-4">
       <div
         class="flex h-12 w-12 items-center justify-center rounded-full"
-        :class="
-          props.accentColor === 'peach'
-            ? 'bg-[#ffe0d1]'
-            : 'bg-[#e1ddff]'
-        "
+        :class="props.accentColor === 'peach' ? 'bg-[#ffe0d1]' : 'bg-[#e1ddff]'"
       >
         <UIcon
           :name="
@@ -76,11 +94,17 @@ const handleViewPatient = () => {
         <p class="text-base font-semibold text-slate-900">
           {{ props.patientName }} – {{ props.date }}
         </p>
-        <div v-if="professionnelName" class="flex items-center gap-2 text-sm text-slate-600">
+        <div
+          v-if="professionnelName"
+          class="flex items-center gap-2 text-sm text-slate-600"
+        >
           <UIcon name="i-lucide-user" class="h-4 w-4" />
           <span>Assistante sociale : {{ professionnelName }}</span>
         </div>
-        <div v-if="props.tache?.details" class="mt-2 text-sm text-slate-600 line-clamp-2">
+        <div
+          v-if="props.tache?.details"
+          class="mt-2 text-sm text-slate-600 line-clamp-2"
+        >
           {{ props.tache.details }}
         </div>
       </div>
@@ -120,4 +144,3 @@ const handleViewPatient = () => {
     />
   </div>
 </template>
-
