@@ -18,7 +18,9 @@ const { data: userTypeData } = useQuery({
   enabled: computed(() => !!session.value?.data && !session.value.isPending),
 });
 
-const isParticulier = computed(() => userTypeData.value?.type === "PARTICULIER");
+const isParticulier = computed(
+  () => userTypeData.value?.type === "PARTICULIER",
+);
 
 // Rediriger si ce n'est pas un particulier
 watchEffect(() => {
@@ -36,9 +38,7 @@ const {
   ...$orpc.getPatientByIdForParticulier.queryOptions(),
   enabled: computed(() => {
     return (
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
 });
@@ -53,9 +53,7 @@ const {
   ...$orpc.listDemandesAccesByPatient.queryOptions(),
   enabled: computed(() => {
     return (
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
 });
@@ -69,9 +67,7 @@ const {
   ...$orpc.listProfessionnelsByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
 });
@@ -101,9 +97,7 @@ const { data: tachesData } = useQuery({
   ...$orpc.listTachesByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
 }) as { data: Ref<Tache[] | undefined> };
@@ -184,8 +178,7 @@ const patient = computed<Patient | null>(() => {
       departementNaissance: conjointInfo.departementNaissance ?? undefined,
       paysNaissance: conjointInfo.paysNaissance ?? undefined,
       nationalites: conjointInfo.nationalites?.join(", ") ?? undefined,
-      numeroSecuriteSociale:
-        conjointInfo.numeroSecuriteSociale ?? undefined,
+      numeroSecuriteSociale: conjointInfo.numeroSecuriteSociale ?? undefined,
     };
   }
 
@@ -266,7 +259,10 @@ const tabs = [
 <template>
   <div class="min-h-svh px-10 py-10 font--text">
     <div v-if="isLoading" class="flex items-center justify-center py-12">
-      <UIcon name="i-lucide-loader-2" class="animate-spin text-4xl text-primary" />
+      <UIcon
+        name="i-lucide-loader-2"
+        class="animate-spin text-4xl text-primary"
+      />
       <span class="ml-4 text-muted">Chargement...</span>
     </div>
 
@@ -297,7 +293,7 @@ const tabs = [
             :class="
               activeTab === tab.id
                 ? 'bg-[#2e3a45] text-[#f5f7fa]'
-                : 'bg-gray-100 primary--text--color hover:bg-gray-200'
+                : 'bg-[#a7c7e7] primary--text--color hover:bg-gray-200'
             "
           >
             <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
@@ -316,9 +312,7 @@ const tabs = [
             @save="() => {}"
             @cancel="() => {}"
           />
-          <OngletInformationConjoint
-            :patient="patient"
-          />
+          <OngletInformationConjoint :patient="patient" />
           <OngletInformationCoordonnee
             :patient="patient"
             :is-editing="false"
@@ -339,7 +333,9 @@ const tabs = [
 
         <!-- Onglet Tâche -->
         <div v-if="activeTab === 'tache'" class="space-y-4">
-          <h2 class="text-lg font-semibold secondary--text--color">Mes tâches</h2>
+          <h2 class="text-lg font-semibold secondary--text--color">
+            Mes tâches
+          </h2>
           <div
             v-if="!tachesData || tachesData.length === 0"
             class="text-center py-8"
@@ -442,10 +438,7 @@ const tabs = [
             >
               Chargement des demandes d'accès...
             </div>
-            <div
-              v-else-if="isErrorDemandesAcces"
-              class="text-sm text-red-500"
-            >
+            <div v-else-if="isErrorDemandesAcces" class="text-sm text-red-500">
               Erreur lors du chargement des demandes d'accès.
             </div>
             <div

@@ -35,7 +35,9 @@ const {
     },
   }),
   enabled: computed(() => {
-    return !!session.value?.data && !session.value.isPending && !!patientId.value;
+    return (
+      !!session.value?.data && !session.value.isPending && !!patientId.value
+    );
   }),
 });
 
@@ -97,8 +99,7 @@ const patient = computed<Patient | null>(() => {
       departementNaissance: conjointInfo.departementNaissance ?? undefined,
       paysNaissance: conjointInfo.paysNaissance ?? undefined,
       nationalites: conjointInfo.nationalites?.join(", ") ?? undefined,
-      numeroSecuriteSociale:
-        conjointInfo.numeroSecuriteSociale ?? undefined,
+      numeroSecuriteSociale: conjointInfo.numeroSecuriteSociale ?? undefined,
     };
   }
 
@@ -180,7 +181,9 @@ const {
     },
   }),
   enabled: computed(() => {
-    return !!session.value?.data && !session.value.isPending && !!patientId.value;
+    return (
+      !!session.value?.data && !session.value.isPending && !!patientId.value
+    );
   }),
 });
 
@@ -197,7 +200,9 @@ const {
     },
   }),
   enabled: computed(() => {
-    return !!session.value?.data && !session.value.isPending && !!patientId.value;
+    return (
+      !!session.value?.data && !session.value.isPending && !!patientId.value
+    );
   }),
 });
 
@@ -206,11 +211,12 @@ const formattedPatientTaches = computed(() => {
   if (!patientTaches.value) return [];
 
   return patientTaches.value.map((tache: Tache) => {
-    const date = tache.date instanceof Date
-      ? tache.date.toLocaleDateString("fr-FR")
-      : typeof tache.date === "string"
-        ? new Date(tache.date).toLocaleDateString("fr-FR")
-        : "";
+    const date =
+      tache.date instanceof Date
+        ? tache.date.toLocaleDateString("fr-FR")
+        : typeof tache.date === "string"
+          ? new Date(tache.date).toLocaleDateString("fr-FR")
+          : "";
 
     const accentColor =
       tache.typeDemarche === "ADMINISTRATIVE" ||
@@ -241,9 +247,7 @@ const formattedPatientTaches = computed(() => {
 });
 
 // Fonction pour obtenir le label du type de démarche
-const getTypeDemarcheLabel = (
-  type: Tache["typeDemarche"]
-): string => {
+const getTypeDemarcheLabel = (type: Tache["typeDemarche"]): string => {
   const labels: Record<Tache["typeDemarche"], string> = {
     ADMINISTRATIVE: "Administrative",
     MEDICALE: "Médicale",
@@ -309,7 +313,7 @@ const updatePatientMutation = useMutation({
 // Fonction pour générer le résumé des modifications
 const generateSummary = (
   identiteChanges?: Record<string, any>,
-  coordonneeChanges?: Record<string, any>
+  coordonneeChanges?: Record<string, any>,
 ): Change[] => {
   const changes: Change[] = [];
   const fieldLabels: Record<string, string> = {
@@ -449,7 +453,7 @@ const handleIdentiteChanges = (changes: Record<string, any>) => {
   // Générer le résumé avec tous les changements (identité + coordonnées si présents)
   summaryChanges.value = generateSummary(
     pendingChanges.value.identite,
-    pendingChanges.value.coordonnee
+    pendingChanges.value.coordonnee,
   );
   // Afficher le modal seulement s'il y a des changements
   if (summaryChanges.value.length > 0) {
@@ -463,7 +467,7 @@ const handleCoordonneeChanges = (changes: Record<string, any>) => {
   // Générer le résumé avec tous les changements (identité + coordonnées si présents)
   summaryChanges.value = generateSummary(
     pendingChanges.value.identite,
-    pendingChanges.value.coordonnee
+    pendingChanges.value.coordonnee,
   );
   // Afficher le modal seulement s'il y a des changements
   if (summaryChanges.value.length > 0) {
@@ -514,15 +518,21 @@ const confirmModifications = async () => {
   // Préparer les données d'identité
   if (pendingChanges.value.identite) {
     const identiteData: any = { ...pendingChanges.value.identite };
-    
+
     // Convertir autresPrenoms et nationalites en tableaux si nécessaire
-    if (identiteData.autresPrenoms && typeof identiteData.autresPrenoms === "string") {
+    if (
+      identiteData.autresPrenoms &&
+      typeof identiteData.autresPrenoms === "string"
+    ) {
       identiteData.autresPrenoms = identiteData.autresPrenoms
         .split(",")
         .map((p: string) => p.trim())
         .filter((p: string) => p.length > 0);
     }
-    if (identiteData.nationalites && typeof identiteData.nationalites === "string") {
+    if (
+      identiteData.nationalites &&
+      typeof identiteData.nationalites === "string"
+    ) {
       identiteData.nationalites = identiteData.nationalites
         .split(",")
         .map((n: string) => n.trim())
@@ -552,194 +562,207 @@ const cancelModifications = () => {
 </script>
 
 <template>
-  <div
-    v-if="isLoading"
-    class="h-screen bg-white font--text flex items-center justify-center"
-  >
-    <p class="text-sm quaternary--text--color">Chargement du patient...</p>
-  </div>
-  <div
-    v-else-if="isError || !patient"
-    class="h-screen bg-white font--text flex items-center justify-center"
-  >
-    <p class="text-sm text-red-500">
-      Patient non trouvé ou erreur de chargement.
-    </p>
-  </div>
-  <div v-else class="h-screen bg-white font--text">
-    <div class="flex h-full">
-      <!-- Contenu principal -->
-      <div class="flex-1 flex flex-col max-h-full">
-        <!-- En-tête du patient -->
-        <header class="shrink-0 border-b border-gray-200 bg-white px-8 py-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h1 class="text-3xl font-bold secondary--text--color font--title">
-                {{ patient.nom.toUpperCase() }} {{ patient.prenom }}
-                <span v-if="age" class="text-xl font-normal font--title">
-                  ({{ age }} ans)
-                </span>
-              </h1>
-            </div>
-            <div>
-              <div class="mt-2 flex items-center gap-6">
-                <span class="text-sm quaternary--text--color">
-                  Dossier n°{{ patient.dossierNumber }}
-                </span>
+  <div class="bg-[#f5f7fa]">
+    <div
+      v-if="isLoading"
+      class="h-screen font--text flex items-center justify-center"
+    >
+      <p class="text-sm quaternary--text--color">Chargement du patient...</p>
+    </div>
+    <div
+      v-else-if="isError || !patient"
+      class="h-screen bg-white font--text flex items-center justify-center"
+    >
+      <p class="text-sm text-red-500">
+        Patient non trouvé ou erreur de chargement.
+      </p>
+    </div>
+    <div v-else class="h-screen font--text">
+      <div class="flex h-full">
+        <!-- Contenu principal -->
+        <div class="flex-1 flex flex-col max-h-full">
+          <!-- En-tête du patient -->
+          <header class="shrink-0 border-b border-gray-200 px-8 py-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h1
+                  class="text-3xl font-bold secondary--text--color font--title"
+                >
+                  {{ patient.nom.toUpperCase() }} {{ patient.prenom }}
+                  <span v-if="age" class="text-xl font-normal font--title">
+                    ({{ age }} ans)
+                  </span>
+                </h1>
+              </div>
+              <div>
+                <div class="mt-2 flex items-center gap-6">
+                  <span class="text-sm quaternary--text--color">
+                    Dossier n°{{ patient.dossierNumber }}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Boutons Créer -->
-          <div class="mt-6 flex items-center gap-4">
-            <span class="text-sm font-medium secondary--text--color"
-              >Créer :</span
-            >
-            <ButtonSecondary
-              icon="i-lucide-plus"
-              label="Nouvelle demande"
-              bg_color="corail-soft-color"
-              text_color="tertiary-color"
-            />
-            <ButtonSecondary
-              icon="i-lucide-plus"
-              label="Nouvel évènement"
-              bg_color="sage-color"
-              text_color="tertiary-color"
-            />
-            <ButtonSecondary
-              icon="i-lucide-plus"
-              label="Nouvel évènement"
-              bg_color="mauve-brume-color"
-              text_color="tertiary-color"
-            />
-          </div>
-        </header>
-
-        <!-- Contenu principal -->
-        <main class="flex-1 flex flex-col px-8 py-6 overflow-hidden">
-          <!-- Onglets -->
-          <div class="mb-6 flex items-center justify-between shrink-0">
-            <div class="flex gap-2">
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                @click="activeTab = tab.id"
-                class="cursor-pointer inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                :class="
-                  activeTab === tab.id
-                    ? 'bg-[#2e3a45] text-[#f5f7fa]'
-                    : 'bg-gray-100 primary--text--color hover:bg-gray-200'
-                "
+            <!-- Boutons Créer -->
+            <div class="mt-6 flex items-center gap-4">
+              <span class="text-sm font-medium secondary--text--color"
+                >Créer :</span
               >
-                <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
-                {{ tab.label }}
+              <ButtonSecondary
+                icon="i-lucide-plus"
+                label="Nouvelle demande"
+                bg_color="corail-soft-color"
+                text_color="tertiary-color"
+              />
+              <ButtonSecondary
+                icon="i-lucide-plus"
+                label="Nouvel évènement"
+                bg_color="sage-color"
+                text_color="tertiary-color"
+              />
+              <ButtonSecondary
+                icon="i-lucide-plus"
+                label="Nouvel évènement"
+                bg_color="mauve-brume-color"
+                text_color="tertiary-color"
+              />
+            </div>
+          </header>
+
+          <!-- Contenu principal -->
+          <main class="flex-1 flex flex-col px-8 py-6 overflow-hidden">
+            <!-- Onglets -->
+            <div class="mb-6 flex items-center justify-between shrink-0">
+              <div class="flex gap-2">
+                <button
+                  v-for="tab in tabs"
+                  :key="tab.id"
+                  @click="activeTab = tab.id"
+                  class="cursor-pointer inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                  :class="
+                    activeTab === tab.id
+                      ? 'bg-[#2e3a45] text-[#f5f7fa]'
+                      : 'bg-[#a7c7e7] primary--text--color hover:bg-gray-200'
+                  "
+                >
+                  <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
+                  {{ tab.label }}
+                </button>
+              </div>
+            </div>
+            <!-- Boutons Actions -->
+            <div class="mb-4 flex gap-2 justify-end shrink-0">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium secondary--text--color transition-colors hover:bg-gray-50"
+              >
+                <UIcon name="i-lucide-printer" class="h-4 w-4" />
+                Imprimer
               </button>
             </div>
-          </div>
-          <!-- Boutons Actions -->
-          <div class="mb-4 flex gap-2 justify-end shrink-0">
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium secondary--text--color transition-colors hover:bg-gray-50"
-            >
-              <UIcon name="i-lucide-printer" class="h-4 w-4" />
-              Imprimer
-            </button>
-          </div>
 
-          <!-- Contenu de l'onglet -->
-          <div class="flex-1 overflow-y-auto scrollbar-hide">
-            <!-- Contenu de l'onglet Information -->
-            <div v-if="activeTab === 'information'" class="space-y-4 pb-6">
-              <!-- Section Identité -->
-              <OngletInformationIdentite
-                :patient="patient"
-                :is-editing="isEditingIdentite"
-                :on-save="handleIdentiteChanges"
-                @update:is-editing="isEditingIdentite = $event"
-              />
-              <!-- Section Conjoint -->
-              <OngletInformationConjoint
-                :patient="patient"
-                @save="handleConjointChanges"
-              />
-              <!-- Section Coordonnées -->
-              <OngletInformationCoordonnee
-                :patient="patient"
-                :is-editing="isEditingCoordonnee"
-                :on-save="handleCoordonneeChanges"
-                @update:is-editing="isEditingCoordonnee = $event"
-              />
-            </div>
-
-            <!-- Contenu de l'onglet Historique -->
-            <div v-else-if="activeTab === 'historique'" class="pb-6">
-              <OngletHistoriqueTimeline :evenements="historique" />
-            </div>
-
-            <!-- Contenu de l'onglet Document -->
-            <div v-else-if="activeTab === 'document'" class="pb-6">
-              <OngletInformationDocument
-                :patient-id="patientId"
-                :documents="patientDocuments"
-                :is-loading="isLoadingDocuments"
-                :is-error="isErrorDocuments"
-              />
-            </div>
-
-            <!-- Contenu de l'onglet Tâche -->
-            <div v-else-if="activeTab === 'tache'" class="pb-6 space-y-4">
-              <div v-if="isLoadingTaches" class="rounded-lg border border-gray-200 bg-white p-8 text-center">
-                <p class="text-sm quaternary--text--color">
-                  Chargement des tâches...
-                </p>
-              </div>
-
-              <div v-else-if="isErrorTaches" class="rounded-lg border border-gray-200 bg-white p-8 text-center">
-                <p class="text-sm text-red-500">
-                  Erreur lors du chargement des tâches.
-                </p>
-              </div>
-
-              <div v-else-if="formattedPatientTaches.length === 0" class="rounded-lg border border-gray-200 bg-white p-8 text-center">
-                <p class="text-sm quaternary--text--color">
-                  Aucune tâche pour ce patient.
-                </p>
-              </div>
-
-              <div v-else class="space-y-4">
-                <TaskCard
-                  v-for="task in formattedPatientTaches"
-                  :key="task.id"
-                  v-bind="task"
+            <!-- Contenu de l'onglet -->
+            <div class="flex-1 overflow-y-auto scrollbar-hide">
+              <!-- Contenu de l'onglet Information -->
+              <div v-if="activeTab === 'information'" class="space-y-4 pb-6">
+                <!-- Section Identité -->
+                <OngletInformationIdentite
+                  :patient="patient"
+                  :is-editing="isEditingIdentite"
+                  :on-save="handleIdentiteChanges"
+                  @update:is-editing="isEditingIdentite = $event"
+                />
+                <!-- Section Conjoint -->
+                <OngletInformationConjoint
+                  :patient="patient"
+                  @save="handleConjointChanges"
+                />
+                <!-- Section Coordonnées -->
+                <OngletInformationCoordonnee
+                  :patient="patient"
+                  :is-editing="isEditingCoordonnee"
+                  :on-save="handleCoordonneeChanges"
+                  @update:is-editing="isEditingCoordonnee = $event"
                 />
               </div>
-            </div>
 
-            <!-- Contenu des autres onglets -->
-            <div
-              v-else
-              class="rounded-lg border border-gray-200 bg-white p-8 text-center"
-            >
-              <p class="text-sm quaternary--text--color">
-                Contenu de l'onglet "{{
-                  tabs.find((t) => t.id === activeTab)?.label
-                }}" à venir
-              </p>
+              <!-- Contenu de l'onglet Historique -->
+              <div v-else-if="activeTab === 'historique'" class="pb-6">
+                <OngletHistoriqueTimeline :evenements="historique" />
+              </div>
+
+              <!-- Contenu de l'onglet Document -->
+              <div v-else-if="activeTab === 'document'" class="pb-6">
+                <OngletInformationDocument
+                  :patient-id="patientId"
+                  :documents="patientDocuments"
+                  :is-loading="isLoadingDocuments"
+                  :is-error="isErrorDocuments"
+                />
+              </div>
+
+              <!-- Contenu de l'onglet Tâche -->
+              <div v-else-if="activeTab === 'tache'" class="pb-6 space-y-4">
+                <div
+                  v-if="isLoadingTaches"
+                  class="rounded-lg border border-gray-200 bg-white p-8 text-center"
+                >
+                  <p class="text-sm quaternary--text--color">
+                    Chargement des tâches...
+                  </p>
+                </div>
+
+                <div
+                  v-else-if="isErrorTaches"
+                  class="rounded-lg border border-gray-200 bg-white p-8 text-center"
+                >
+                  <p class="text-sm text-red-500">
+                    Erreur lors du chargement des tâches.
+                  </p>
+                </div>
+
+                <div
+                  v-else-if="formattedPatientTaches.length === 0"
+                  class="rounded-lg border border-gray-200 bg-white p-8 text-center"
+                >
+                  <p class="text-sm quaternary--text--color">
+                    Aucune tâche pour ce patient.
+                  </p>
+                </div>
+
+                <div v-else class="space-y-4">
+                  <TaskCard
+                    v-for="task in formattedPatientTaches"
+                    :key="task.id"
+                    v-bind="task"
+                  />
+                </div>
+              </div>
+
+              <!-- Contenu des autres onglets -->
+              <div
+                v-else
+                class="rounded-lg border border-gray-200 bg-white p-8 text-center"
+              >
+                <p class="text-sm quaternary--text--color">
+                  Contenu de l'onglet "{{
+                    tabs.find((t) => t.id === activeTab)?.label
+                  }}" à venir
+                </p>
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
 
-    <!-- Modal de résumé des modifications -->
-    <OngletInformationModificationSummary
-      :is-open="showSummaryModal"
-      :changes="summaryChanges"
-      :is-loading="updatePatientMutation.isPending.value"
-      @confirm="confirmModifications"
-      @cancel="cancelModifications"
-    />
+      <!-- Modal de résumé des modifications -->
+      <OngletInformationModificationSummary
+        :is-open="showSummaryModal"
+        :changes="summaryChanges"
+        :is-loading="updatePatientMutation.isPending.value"
+        @confirm="confirmModifications"
+        @cancel="cancelModifications"
+      />
+    </div>
   </div>
 </template>
