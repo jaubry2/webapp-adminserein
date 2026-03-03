@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref } from "vue";
 import type { Tache } from "~/types/tache";
 
 const props = withDefaults(
@@ -14,6 +15,8 @@ const props = withDefaults(
     accentColor: "peach",
   },
 );
+
+const showDetail = ref(false);
 
 const professionnelName = computed(() => {
   if (props.tache?.professionnel) {
@@ -85,11 +88,13 @@ const handleViewPatient = () => {
 
     <div class="flex flex-wrap items-center justify-end gap-3">
       <UButton
+        v-if="props.tache"
         variant="outline"
         color="gray"
         size="sm"
         trailing-icon="i-lucide-arrow-right"
         class="rounded-full bg-white/70 border-slate-300 hover:bg-white"
+        @click="showDetail = true"
       >
         Afficher détails tâche
       </UButton>
@@ -106,5 +111,13 @@ const handleViewPatient = () => {
         Afficher profil patient
       </UButton>
     </div>
+
+    <TaskDetailModal
+      v-if="props.tache"
+      :is-open="showDetail"
+      :tache="props.tache"
+      @close="showDetail = false"
+    />
   </div>
 </template>
+

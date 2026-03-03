@@ -108,9 +108,7 @@ const { data: documentsData } = useQuery({
   ...$orpc.listDocumentsByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
 }) as { data: Ref<Document[] | undefined> };
@@ -125,9 +123,7 @@ const {
   ...$orpc.listPersonnesProchesByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
 });
@@ -143,7 +139,7 @@ const personnesProches = computed<PersonneProche[]>(() => {
     prenom: p.prenom,
     autresPrenoms: Array.isArray(p.autresPrenoms)
       ? p.autresPrenoms.join(", ")
-      : p.autresPrenoms ?? "",
+      : (p.autresPrenoms ?? ""),
     adresse: p.adresse,
     codePostal: p.codePostal,
     ville: p.ville,
@@ -278,18 +274,9 @@ const handleReorderPersonneProcheParticulier = async (payload: {
   if (index === -1) return;
 
   if (payload.direction === "up" && index > 0) {
-    [current[index - 1], current[index]] = [
-      current[index],
-      current[index - 1],
-    ];
-  } else if (
-    payload.direction === "down" &&
-    index < current.length - 1
-  ) {
-    [current[index], current[index + 1]] = [
-      current[index + 1],
-      current[index],
-    ];
+    [current[index - 1], current[index]] = [current[index], current[index - 1]];
+  } else if (payload.direction === "down" && index < current.length - 1) {
+    [current[index], current[index + 1]] = [current[index + 1], current[index]];
   } else {
     return;
   }
