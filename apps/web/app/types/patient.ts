@@ -14,6 +14,22 @@ export interface Conjoint {
   numeroSecuriteSociale?: string;
 }
 
+export interface PersonneProche {
+  id: string;
+  genre: "MASCULIN" | "FEMININ" | "AUTRE";
+  nomUsage: string;
+  nomNaissance: string;
+  prenom: string;
+  autresPrenoms?: string;
+  adresse: string;
+  codePostal: string;
+  ville: string;
+  telephone: string;
+  mail: string;
+  lien: string;
+  ordre: number;
+}
+
 export interface Patient {
   id: string;
   dossierNumber: string;
@@ -39,6 +55,7 @@ export interface Patient {
   situationFamiliale?: string;
   caisseRetraite?: CaisseRetraite | string;
   conjoint?: Conjoint;
+  personnesProches?: PersonneProche[];
   dernieresModifications: string;
 }
 

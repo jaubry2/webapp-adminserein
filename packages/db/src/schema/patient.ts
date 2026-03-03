@@ -1,5 +1,13 @@
 import { relations } from "drizzle-orm";
-import { pgEnum, pgTable, text, uuid, date } from "drizzle-orm/pg-core";
+import {
+  pgEnum,
+  pgTable,
+  text,
+  uuid,
+  date,
+  integer,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 // Enums pour les valeurs structurées
 export const genreEnum = pgEnum("genre", [
@@ -88,6 +96,38 @@ export const informationConjoint = pgTable("information_conjoint", {
   numeroSecuriteSociale: text("numero_securite_sociale").notNull(),
 });
 
+// Personnes proches du patient
+export const personneProche = pgTable("personne_proche", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patient.id, { onDelete: "cascade" }),
+
+  genre: genreEnum("genre").notNull(),
+
+  nomUsage: text("nom_usage").notNull(),
+  nomNaissance: text("nom_naissance").notNull(),
+  prenom: text("prenom").notNull(),
+
+  autresPrenoms: text("autres_prenoms").array(),
+
+  adresse: text("adresse").notNull(),
+  codePostal: text("code_postal").notNull(),
+  ville: text("ville").notNull(),
+  telephone: text("telephone").notNull(),
+  mail: text("mail").notNull(),
+  lien: text("lien").notNull(),
+
+  ordre: integer("ordre").notNull().default(0),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 // Table Patient avec lien 1–1 vers information_identite et information_coordonnee
 export const patient = pgTable("patient", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -114,7 +154,7 @@ export const patient = pgTable("patient", {
 });
 
 // Relations Drizzle
-export const patientRelations = relations(patient, ({ one }) => ({
+export const patientRelations = relations(patient, ({ one, many }) => ({
   informationIdentite: one(informationIdentite, {
     fields: [patient.informationIdentiteId],
     references: [informationIdentite.id],
@@ -127,6 +167,7 @@ export const patientRelations = relations(patient, ({ one }) => ({
     fields: [patient.informationConjointId],
     references: [informationConjoint.id],
   }),
+  personnesProches: many(personneProche),
   // Note: La relation many-to-many avec professionnel est définie dans professionnel.ts
   // pour éviter les dépendances circulaires
   // La relation avec tâche est définie dans tache.ts pour éviter les dépendances circulaires
@@ -158,6 +199,16 @@ export const informationConjointRelations = relations(
     patient: one(patient, {
       fields: [informationConjoint.id],
       references: [patient.informationConjointId],
+    }),
+  })
+);
+
+export const personneProcheRelations = relations(
+  personneProche,
+  ({ one }) => ({
+    patient: one(patient, {
+      fields: [personneProche.patientId],
+      references: [patient.id],
     }),
   })
 );

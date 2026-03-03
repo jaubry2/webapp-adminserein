@@ -8,6 +8,7 @@ import {
   informationCoordonnee,
   informationConjoint,
   patient,
+  personneProche,
   professionnel,
   particulier,
   patientProfessionnel,
@@ -74,6 +75,24 @@ const informationConjointInputSchema = z.object({
   paysNaissance: z.string(),
   nationalites: z.array(z.string()).optional().default([]),
   numeroSecuriteSociale: z.string(),
+});
+
+const personneProcheInputSchema = z.object({
+  genre: z.enum(["MASCULIN", "FEMININ", "AUTRE"]),
+  nomUsage: z.string(),
+  nomNaissance: z.string(),
+  prenom: z.string(),
+  autresPrenoms: z.array(z.string()).optional().default([]),
+  adresse: z.string(),
+  codePostal: z.string(),
+  ville: z.string(),
+  telephone: z.string(),
+  mail: z.string(),
+  lien: z.string(),
+});
+
+const personneProcheUpdateSchema = personneProcheInputSchema.partial().extend({
+  id: z.string().uuid(),
 });
 
 const patientUpdateInputSchema = z.object({
@@ -1247,6 +1266,285 @@ export const appRouter = {
       professionnel: proById.get(d.professionnelId) ?? null,
     }));
   }),
+
+  // --- PERSONNES PROCHES ---
+
+  // Lister les personnes proches pour un patient (côté professionnel)
+  listPersonnesProchesByPatient: protectedProcedure
+    .input(z.object({ patientId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Vérifier que l'utilisateur est un professionnel et qu'il suit ce patient
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      const [link] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!link) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      const personnes = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.patientId, input.patientId))
+        .orderBy(personneProche.ordre, personneProche.createdAt);
+
+      return personnes;
+    }),
+
+  // Créer une personne proche pour un patient (côté professionnel)
+  createPersonneProche: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string().uuid(),
+        personne: personneProcheInputSchema,
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      const [link] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!link) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      // Calculer le prochain ordre
+      const existants = await db
+        .select({ ordre: personneProche.ordre })
+        .from(personneProche)
+        .where(eq(personneProche.patientId, input.patientId));
+
+      const nextOrdre =
+        existants.length > 0
+          ? Math.max(...existants.map((p) => p.ordre ?? 0)) + 1
+          : 0;
+
+      const p = input.personne;
+
+      const [created] = await db
+        .insert(personneProche)
+        .values({
+          patientId: input.patientId,
+          genre: p.genre,
+          nomUsage: p.nomUsage,
+          nomNaissance: p.nomNaissance,
+          prenom: p.prenom,
+          autresPrenoms: p.autresPrenoms,
+          adresse: p.adresse,
+          codePostal: p.codePostal,
+          ville: p.ville,
+          telephone: p.telephone,
+          mail: p.mail,
+          lien: p.lien,
+          ordre: nextOrdre,
+        })
+        .returning();
+
+      return created;
+    }),
+
+  // Mettre à jour une personne proche (côté professionnel)
+  updatePersonneProche: protectedProcedure
+    .input(personneProcheUpdateSchema)
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      const [existing] = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.id, input.id))
+        .limit(1);
+
+      if (!existing) {
+        throw new Error("Personne proche non trouvée");
+      }
+
+      const [link] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, existing.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!link) {
+        throw new Error("Patient non autorisé pour cette personne proche");
+      }
+
+      await db
+        .update(personneProche)
+        .set({
+          ...(input.genre && { genre: input.genre }),
+          ...(input.nomUsage && { nomUsage: input.nomUsage }),
+          ...(input.nomNaissance && { nomNaissance: input.nomNaissance }),
+          ...(input.prenom && { prenom: input.prenom }),
+          ...(input.autresPrenoms && { autresPrenoms: input.autresPrenoms }),
+          ...(input.adresse && { adresse: input.adresse }),
+          ...(input.codePostal && { codePostal: input.codePostal }),
+          ...(input.ville && { ville: input.ville }),
+          ...(input.telephone && { telephone: input.telephone }),
+          ...(input.mail && { mail: input.mail }),
+          ...(input.lien && { lien: input.lien }),
+        })
+        .where(eq(personneProche.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.id, input.id))
+        .limit(1);
+
+      return updated;
+    }),
+
+  // Réordonner les personnes proches pour un patient (côté professionnel)
+  reorderPersonnesProches: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string().uuid(),
+        ordre: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              ordre: z.number(),
+            })
+          )
+          .nonempty(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      const [link] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!link) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      for (const item of input.ordre) {
+        await db
+          .update(personneProche)
+          .set({ ordre: item.ordre })
+          .where(eq(personneProche.id, item.id));
+      }
+
+      return { success: true };
+    }),
+
+  // Lister les personnes proches pour le patient connecté (côté particulier)
+  listPersonnesProchesByParticulier: protectedProcedure.handler(
+    async ({ context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      const personnes = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.patientId, part.patientId))
+        .orderBy(personneProche.ordre, personneProche.createdAt);
+
+      return personnes;
+    }
+  ),
 
   // Lister les professionnels ayant accès au dossier du patient connecté (particulier)
   listProfessionnelsByParticulier: protectedProcedure.handler(
