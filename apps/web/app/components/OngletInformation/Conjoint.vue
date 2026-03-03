@@ -17,8 +17,11 @@
           type="button"
           class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium secondary--text--color transition-colors hover:bg-gray-50"
         >
-          <UIcon name="i-lucide-pencil" class="h-4 w-4" />
-          Modifier
+          <UIcon
+            :name="patient.conjoint ? 'i-lucide-pencil' : 'i-lucide-plus'"
+            class="h-4 w-4"
+          />
+          {{ patient.conjoint ? "Modifier" : "Ajouter" }}
         </button>
         <button
           v-else-if="hasChanges"
