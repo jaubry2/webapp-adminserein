@@ -25,6 +25,17 @@ const {
 });
 
 // Formater les tâches pour le composant TaskCard
+type TaskAccentColor =
+  | "peach"
+  | "lavender"
+  | "emerald"
+  | "sky"
+  | "amber"
+  | "violet"
+  | "teal"
+  | "indigo"
+  | "slate";
+
 const formattedTasks = computed(() => {
   if (!taches.value) return [];
 
@@ -39,14 +50,8 @@ const formattedTasks = computed(() => {
         : typeof tache.date === "string"
           ? new Date(tache.date).toLocaleDateString("fr-FR")
           : "";
-
     // Déterminer la couleur selon le type de démarche
-    const accentColor =
-      tache.typeDemarche === "ADMINISTRATIVE" ||
-      tache.typeDemarche === "SOCIALE" ||
-      tache.typeDemarche === "LOGEMENT"
-        ? "peach"
-        : "lavender";
+    const accentColor = getAccentColorByType(tache.typeDemarche);
 
     // Déterminer le label selon l'état
     const statusLabel =
@@ -56,7 +61,9 @@ const formattedTasks = computed(() => {
           ? "En cours"
           : tache.etat === "ANNULEE"
             ? "Annulée"
-            : undefined;
+            : tache.etat === "A_FAIRE"
+              ? "À faire"
+              : undefined;
 
     return {
       id: tache.id,
@@ -69,6 +76,29 @@ const formattedTasks = computed(() => {
     };
   });
 });
+
+// Fonction pour obtenir la couleur d'accent selon le type de démarche
+const getAccentColorByType = (
+  type: Tache["typeDemarche"],
+): TaskAccentColor => {
+  switch (type) {
+    case "ADMINISTRATIVE":
+      return "amber";
+    case "MEDICALE":
+      return "emerald";
+    case "SOCIALE":
+      return "sky";
+    case "JURIDIQUE":
+      return "violet";
+    case "LOGEMENT":
+      return "teal";
+    case "EMPLOI":
+      return "indigo";
+    case "AUTRE":
+    default:
+      return "slate";
+  }
+};
 
 // Fonction pour obtenir le label du type de démarche
 const getTypeDemarcheLabel = (type: Tache["typeDemarche"]): string => {

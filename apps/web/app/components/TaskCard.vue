@@ -2,12 +2,23 @@
 import { computed, ref } from "vue";
 import type { Tache } from "~/types/tache";
 
+type TaskAccentColor =
+  | "peach"
+  | "lavender"
+  | "emerald"
+  | "sky"
+  | "amber"
+  | "violet"
+  | "teal"
+  | "indigo"
+  | "slate";
+
 const props = withDefaults(
   defineProps<{
     label: string;
     patientName: string;
     date: string;
-    accentColor?: "peach" | "lavender";
+    accentColor?: TaskAccentColor;
     statusLabel?: string;
     tache?: Tache;
   }>(),
@@ -17,6 +28,56 @@ const props = withDefaults(
 );
 
 const showDetail = ref(false);
+
+const cardColorClasses = computed(() => {
+  switch (props.accentColor) {
+    case "peach":
+      return "border-[#f4b7a0]/70 bg-[#fff7f3]";
+    case "lavender":
+      return "border-[#c7c6ff]/70 bg-[#f7f6ff]";
+    case "emerald":
+      return "border-emerald-200 bg-emerald-50";
+    case "sky":
+      return "border-sky-200 bg-sky-50";
+    case "amber":
+      return "border-amber-200 bg-amber-50";
+    case "violet":
+      return "border-violet-200 bg-violet-50";
+    case "teal":
+      return "border-teal-200 bg-teal-50";
+    case "indigo":
+      return "border-indigo-200 bg-indigo-50";
+    case "slate":
+      return "border-slate-200 bg-slate-50";
+    default:
+      return "border-slate-200 bg-slate-50";
+  }
+});
+
+const iconBgClasses = computed(() => {
+  switch (props.accentColor) {
+    case "peach":
+      return "bg-[#ffe0d1]";
+    case "lavender":
+      return "bg-[#e1ddff]";
+    case "emerald":
+      return "bg-emerald-100";
+    case "sky":
+      return "bg-sky-100";
+    case "amber":
+      return "bg-amber-100";
+    case "violet":
+      return "bg-violet-100";
+    case "teal":
+      return "bg-teal-100";
+    case "indigo":
+      return "bg-indigo-100";
+    case "slate":
+      return "bg-slate-100";
+    default:
+      return "bg-slate-100";
+  }
+});
 
 const professionnelName = computed(() => {
   if (props.tache?.professionnel) {
@@ -35,11 +96,7 @@ const handleViewPatient = () => {
 <template>
   <div
     class="relative flex flex-col gap-4 rounded-3xl border px-6 py-5 shadow-sm"
-    :class="
-      props.accentColor === 'peach'
-        ? 'border-[#f4b7a0]/70 bg-[#fff7f3]'
-        : 'border-[#c7c6ff]/70 bg-[#f7f6ff]'
-    "
+    :class="cardColorClasses"
   >
     <div v-if="props.statusLabel" class="absolute right-6 top-6">
       <span
@@ -75,7 +132,7 @@ const handleViewPatient = () => {
     <div class="flex items-center gap-4">
       <div
         class="flex h-12 w-12 items-center justify-center rounded-full"
-        :class="props.accentColor === 'peach' ? 'bg-[#ffe0d1]' : 'bg-[#e1ddff]'"
+        :class="iconBgClasses"
       >
         <UIcon
           :name="

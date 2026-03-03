@@ -94,6 +94,17 @@ const repondreDemandeAccesMutation = useMutation({
 });
 
 // Récupération des tâches
+type TaskAccentColor =
+  | "peach"
+  | "lavender"
+  | "emerald"
+  | "sky"
+  | "amber"
+  | "violet"
+  | "teal"
+  | "indigo"
+  | "slate";
+
 const { data: tachesData } = useQuery({
   ...$orpc.listTachesByParticulier.queryOptions(),
   enabled: computed(() => {
@@ -460,6 +471,29 @@ const tabs = [
   { id: "tache", label: "Tâche", icon: "i-lucide-check-square" },
   { id: "acces", label: "Accès", icon: "i-lucide-shield-check" },
 ];
+
+// Fonction pour obtenir la couleur d'accent selon le type de démarche
+const getAccentColorByType = (
+  type: Tache["typeDemarche"],
+): TaskAccentColor => {
+  switch (type) {
+    case "ADMINISTRATIVE":
+      return "amber";
+    case "MEDICALE":
+      return "emerald";
+    case "SOCIALE":
+      return "sky";
+    case "JURIDIQUE":
+      return "violet";
+    case "LOGEMENT":
+      return "teal";
+    case "EMPLOI":
+      return "indigo";
+    case "AUTRE":
+    default:
+      return "slate";
+  }
+};
 </script>
 
 <template>
@@ -574,16 +608,19 @@ const tabs = [
                   ? tache.date.toLocaleDateString('fr-FR')
                   : new Date(tache.date).toLocaleDateString('fr-FR')
               "
-              :accent-color="
+              :accent-color="getAccentColorByType(tache.typeDemarche)"
+              :status-label="
                 tache.etat === 'TERMINEE'
-                  ? 'green'
+                  ? 'Terminée'
                   : tache.etat === 'EN_COURS'
-                    ? 'blue'
+                    ? 'En cours'
                     : tache.etat === 'ANNULEE'
-                      ? 'red'
-                      : 'peach'
+                      ? 'Annulée'
+                      : tache.etat === 'A_FAIRE'
+                        ? 'À faire'
+                        : undefined
               "
-              :status-label="tache.etat"
+              :tache="tache"
             />
           </div>
         </div>
