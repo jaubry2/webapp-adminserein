@@ -63,6 +63,7 @@ const {
   data: professionnelsAcces,
   isLoading: isLoadingProfessionnelsAcces,
   isError: isErrorProfessionnelsAcces,
+  refetch: refetchProfessionnelsAcces,
 } = useQuery({
   ...$orpc.listProfessionnelsByParticulier.queryOptions(),
   enabled: computed(() => {
@@ -300,6 +301,41 @@ const handleReorderPersonneProcheParticulier = async (payload: {
 
   await reorderPersonnesProchesParticulierMutation.mutateAsync({
     ordre: ordrePayload,
+  });
+};
+
+const removeProfessionnelMutationOptions =
+  $orpc.removeProfessionnelByParticulier.mutationOptions();
+const removeProfessionnelMutation = useMutation({
+  ...removeProfessionnelMutationOptions,
+  onSuccess: async () => {
+    await refetchProfessionnelsAcces();
+    toast.add({
+      title: "Suivi interrompu",
+      description:
+        "Le professionnel sélectionné n'a plus accès à votre dossier.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la suppression",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const handleRemoveProfessionnel = (professionnelId: string) => {
+  if (
+    !confirm(
+      "Êtes-vous sûr de vouloir retirer ce professionnel de votre dossier ?",
+    )
+  ) {
+    return;
+  }
+
+  removeProfessionnelMutation.mutate({
+    professionnelId,
   });
 };
 
@@ -596,9 +632,9 @@ const tabs = [
               <div
                 v-for="pro in professionnelsAcces"
                 :key="pro.id"
-                class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
+                class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 gap-3"
               >
-                <div>
+                <div class="flex-1">
                   <p class="text-sm font-medium secondary--text--color">
                     {{ pro.prenom }} {{ pro.nom }}
                   </p>
@@ -606,13 +642,24 @@ const tabs = [
                     {{ pro.fonction || "Professionnel" }}
                   </p>
                 </div>
-                <div class="text-xs quaternary--text--color text-right">
-                  <p v-if="pro.dateAttribution">
-                    Depuis
-                    {{
-                      new Date(pro.dateAttribution).toLocaleDateString("fr-FR")
-                    }}
-                  </p>
+                <div class="flex items-center gap-4">
+                  <div class="text-xs quaternary--text--color text-right">
+                    <p v-if="pro.dateAttribution">
+                      Depuis
+                      {{
+                        new Date(pro.dateAttribution).toLocaleDateString(
+                          "fr-FR",
+                        )
+                      }}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    @click="handleRemoveProfessionnel(pro.id)"
+                  >
+                    Retirer l'accès
+                  </button>
                 </div>
               </div>
             </div>

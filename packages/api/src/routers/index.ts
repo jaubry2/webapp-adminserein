@@ -1824,6 +1824,136 @@ export const appRouter = {
     }
   ),
 
+  // Retirer un professionnel (assistante sociale) du dossier du particulier connecté
+  removeProfessionnelByParticulier: protectedProcedure
+    .input(
+      z.object({
+        professionnelId: z.string().uuid(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      // Vérifier que le lien existe bien entre ce patient et ce professionnel
+      const [existingLink] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, part.patientId),
+            eq(patientProfessionnel.professionnelId, input.professionnelId)
+          )
+        )
+        .limit(1);
+
+      if (!existingLink) {
+        throw new Error("Ce professionnel n'est pas lié à votre dossier");
+      }
+
+      // Récupérer les infos du professionnel
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.id, input.professionnelId))
+        .limit(1);
+
+      // Récupérer les infos du patient pour le message
+      const [patientData] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.id, part.patientId))
+        .limit(1);
+
+      let patientNom = "ce patient";
+      if (patientData) {
+        const [info] = await db
+          .select()
+          .from(informationIdentite)
+          .where(eq(informationIdentite.id, patientData.informationIdentiteId))
+          .limit(1);
+        if (info) {
+          patientNom = `${info.prenom} ${info.nomUsage}`;
+        }
+      }
+
+      // Supprimer toutes les tâches liées à ce couple patient / professionnel
+      const tachesNonTerminees = await db
+        .select()
+        .from(tache)
+        .where(
+          and(
+            eq(tache.patientId, part.patientId),
+            eq(tache.professionnelId, input.professionnelId),
+            or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS"))
+          )
+        );
+
+      const nombreTachesNonTerminees = tachesNonTerminees.length;
+
+      await db
+        .delete(tache)
+        .where(
+          and(
+            eq(tache.patientId, part.patientId),
+            eq(tache.professionnelId, input.professionnelId)
+          )
+        );
+
+      // Supprimer le lien patient-professionnel
+      await db
+        .delete(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, part.patientId),
+            eq(patientProfessionnel.professionnelId, input.professionnelId)
+          )
+        );
+
+      // Créer une notification pour le professionnel si trouvé
+      if (prof) {
+        const messageNotification =
+          nombreTachesNonTerminees > 0
+            ? `Le patient ${patientNom} a mis fin à votre suivi. ${nombreTachesNonTerminees} tâche(s) non terminée(s) ${nombreTachesNonTerminees > 1 ? "ont été" : "a été"} supprimée(s).`
+            : `Le patient ${patientNom} a mis fin à votre suivi.`;
+
+        await db.insert(notification).values({
+          professionnelId: prof.id,
+          patientId: null,
+          type: nombreTachesNonTerminees > 0 ? "WARNING" : "INFO",
+          titre: "Suivi interrompu par le patient",
+          message: messageNotification,
+          lien: null,
+        });
+      }
+
+      return {
+        success: true,
+        nombreTachesSupprimees: nombreTachesNonTerminees,
+      };
+    }),
+
   // Répondre à une demande d'accès (accepter ou refuser) côté patient
   repondreDemandeAcces: protectedProcedure
     .input(
