@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Patient } from "~/types/patient";
+import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
@@ -206,6 +206,47 @@ const {
   }),
 });
 
+// Récupération des personnes proches du patient
+// Ne faire la requête que si la session est chargée et valide
+const {
+  data: personnesProchesData,
+  isLoading: isLoadingPersonnesProches,
+  isError: isErrorPersonnesProches,
+} = useQuery({
+  ...$orpc.listPersonnesProchesByPatient.queryOptions({
+    input: {
+      patientId: patientId.value,
+    },
+  }),
+  enabled: computed(() => {
+    return (
+      !!session.value?.data && !session.value.isPending && !!patientId.value
+    );
+  }),
+});
+
+const personnesProches = computed<PersonneProche[]>(() => {
+  if (!personnesProchesData.value) return [];
+
+  return (personnesProchesData.value as any[]).map((p) => ({
+    id: p.id,
+    genre: p.genre,
+    nomUsage: p.nomUsage,
+    nomNaissance: p.nomNaissance,
+    prenom: p.prenom,
+    autresPrenoms: Array.isArray(p.autresPrenoms)
+      ? p.autresPrenoms.join(", ")
+      : p.autresPrenoms ?? "",
+    adresse: p.adresse,
+    codePostal: p.codePostal,
+    ville: p.ville,
+    telephone: p.telephone,
+    mail: p.mail,
+    lien: p.lien,
+    ordre: typeof p.ordre === "number" ? p.ordre : 0,
+  }));
+});
+
 // Formater les tâches pour l'affichage
 const formattedPatientTaches = computed(() => {
   if (!patientTaches.value) return [];
@@ -304,6 +345,68 @@ const updatePatientMutation = useMutation({
   onError: (error: any) => {
     toast.add({
       title: "Erreur lors de la mise à jour",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const createPersonneProcheMutation = useMutation({
+  ...$orpc.createPersonneProche.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listPersonnesProchesByPatient.queryKey({
+        input: { patientId: patientId.value },
+      }),
+    });
+    toast.add({
+      title: "Personne proche ajoutée",
+      description: "La personne proche a été ajoutée avec succès.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de l'ajout",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const updatePersonneProcheMutation = useMutation({
+  ...$orpc.updatePersonneProche.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listPersonnesProchesByPatient.queryKey({
+        input: { patientId: patientId.value },
+      }),
+    });
+    toast.add({
+      title: "Personne proche mise à jour",
+      description: "Les informations ont été mises à jour.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la mise à jour",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const reorderPersonnesProchesMutation = useMutation({
+  ...$orpc.reorderPersonnesProches.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listPersonnesProchesByPatient.queryKey({
+        input: { patientId: patientId.value },
+      }),
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors du réordonnancement",
       description: error?.message || "Une erreur est survenue.",
       color: "error",
     });
@@ -447,6 +550,21 @@ const generateSummary = (
   return changes;
 };
 
+const normalizeAutresPrenoms = (
+  value?: string[] | string,
+): string[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+  }
+  return [];
+};
+
 // Gérer les changements d'identité
 const handleIdentiteChanges = (changes: Record<string, any>) => {
   pendingChanges.value.identite = changes;
@@ -504,6 +622,93 @@ const handleConjointChanges = async (changes: Record<string, any>) => {
   await updatePatientMutation.mutateAsync({
     patientId: patient.value.id,
     informationConjoint: conjointData,
+  });
+};
+
+const handleCreatePersonneProche = async (payload: {
+  genre: PersonneProche["genre"];
+  nomUsage: string;
+  nomNaissance: string;
+  prenom: string;
+  autresPrenoms?: string[] | string;
+  adresse: string;
+  codePostal: string;
+  ville: string;
+  telephone: string;
+  mail: string;
+  lien: string;
+}) => {
+  if (!patient.value) return;
+
+  await createPersonneProcheMutation.mutateAsync({
+    patientId: patient.value.id,
+    personne: {
+      ...payload,
+      autresPrenoms: normalizeAutresPrenoms(payload.autresPrenoms),
+    },
+  });
+};
+
+const handleUpdatePersonneProche = async (payload: {
+  id: string;
+  genre?: PersonneProche["genre"];
+  nomUsage?: string;
+  nomNaissance?: string;
+  prenom?: string;
+  autresPrenoms?: string[] | string;
+  adresse?: string;
+  codePostal?: string;
+  ville?: string;
+  telephone?: string;
+  mail?: string;
+  lien?: string;
+}) => {
+  const { id, ...rest } = payload;
+
+  await updatePersonneProcheMutation.mutateAsync({
+    id,
+    ...rest,
+    ...(rest.autresPrenoms !== undefined && {
+      autresPrenoms: normalizeAutresPrenoms(rest.autresPrenoms),
+    }),
+  });
+};
+
+const handleReorderPersonneProche = async (payload: {
+  id: string;
+  direction: "up" | "down";
+}) => {
+  if (!patient.value) return;
+
+  const current = [...personnesProches.value];
+  const index = current.findIndex((p) => p.id === payload.id);
+  if (index === -1) return;
+
+  if (payload.direction === "up" && index > 0) {
+    [current[index - 1], current[index]] = [
+      current[index],
+      current[index - 1],
+    ];
+  } else if (
+    payload.direction === "down" &&
+    index < current.length - 1
+  ) {
+    [current[index], current[index + 1]] = [
+      current[index + 1],
+      current[index],
+    ];
+  } else {
+    return;
+  }
+
+  const ordrePayload = current.map((p, idx) => ({
+    id: p.id,
+    ordre: idx,
+  }));
+
+  await reorderPersonnesProchesMutation.mutateAsync({
+    patientId: patient.value.id,
+    ordre: ordrePayload,
   });
 };
 
@@ -683,6 +888,15 @@ const cancelModifications = () => {
                   :is-editing="isEditingCoordonnee"
                   :on-save="handleCoordonneeChanges"
                   @update:is-editing="isEditingCoordonnee = $event"
+                />
+                <!-- Section Personnes proches -->
+                <OngletInformationPersonnesProches
+                  :personnes-proches="personnesProches"
+                  :is-loading="isLoadingPersonnesProches"
+                  :is-error="isErrorPersonnesProches"
+                  @create="handleCreatePersonneProche"
+                  @update="handleUpdatePersonneProche"
+                  @reorder="handleReorderPersonneProche"
                 />
               </div>
 
