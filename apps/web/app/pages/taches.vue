@@ -12,7 +12,9 @@ definePageMeta({
 const session = $authClient.useSession();
 
 // Filtres
-const filterEtat = ref<"TOUS" | "A_FAIRE" | "EN_COURS" | "TERMINEE" | "ANNULEE">("TOUS");
+const filterEtat = ref<
+  "TOUS" | "A_FAIRE" | "EN_COURS" | "TERMINEE" | "ANNULEE"
+>("TOUS");
 const filterType = ref<"TOUS" | Tache["typeDemarche"]>("TOUS");
 
 // Récupération des tâches du professionnel connecté
@@ -60,7 +62,9 @@ const formattedTasks = computed(() => {
             ? "En cours"
             : tache.etat === "ANNULEE"
               ? "Annulée"
-              : undefined;
+              : tache.etat === "A_FAIRE"
+                ? "À faire"
+                : undefined;
 
       return {
         id: tache.id,
@@ -80,7 +84,10 @@ const formattedTasks = computed(() => {
         return false;
       }
       // Filtrer par type
-      if (filterType.value !== "TOUS" && task.typeDemarche !== filterType.value) {
+      if (
+        filterType.value !== "TOUS" &&
+        task.typeDemarche !== filterType.value
+      ) {
         return false;
       }
       return true;
@@ -141,41 +148,31 @@ const stats = computed(() => {
         v-if="!isLoading && !isError && taches"
         class="grid grid-cols-2 md:grid-cols-5 gap-4"
       >
-        <div
-          class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-        >
+        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p class="text-xs quaternary--text--color mb-1">Total</p>
           <p class="text-2xl font-bold secondary--text--color">
             {{ stats.total }}
           </p>
         </div>
-        <div
-          class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-        >
+        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p class="text-xs quaternary--text--color mb-1">À faire</p>
           <p class="text-2xl font-bold text-orange-600">
             {{ stats.aFaire }}
           </p>
         </div>
-        <div
-          class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-        >
+        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p class="text-xs quaternary--text--color mb-1">En cours</p>
           <p class="text-2xl font-bold text-blue-600">
             {{ stats.enCours }}
           </p>
         </div>
-        <div
-          class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-        >
+        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p class="text-xs quaternary--text--color mb-1">Terminées</p>
           <p class="text-2xl font-bold text-green-600">
             {{ stats.terminee }}
           </p>
         </div>
-        <div
-          class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-        >
+        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p class="text-xs quaternary--text--color mb-1">Annulées</p>
           <p class="text-2xl font-bold text-gray-600">
             {{ stats.annulee }}
@@ -244,7 +241,10 @@ const stats = computed(() => {
       <!-- Erreur -->
       <section v-else-if="isError" class="space-y-4">
         <div class="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <UIcon name="i-lucide-alert-circle" class="h-8 w-8 mx-auto mb-4 text-red-500" />
+          <UIcon
+            name="i-lucide-alert-circle"
+            class="h-8 w-8 mx-auto mb-4 text-red-500"
+          />
           <p class="text-sm text-red-600 font-medium mb-2">
             Erreur lors du chargement des tâches
           </p>
@@ -277,11 +277,7 @@ const stats = computed(() => {
 
       <!-- Liste des tâches -->
       <section v-else class="space-y-4">
-        <TaskCard
-          v-for="task in formattedTasks"
-          :key="task.id"
-          v-bind="task"
-        />
+        <TaskCard v-for="task in formattedTasks" :key="task.id" v-bind="task" />
       </section>
     </div>
   </div>
