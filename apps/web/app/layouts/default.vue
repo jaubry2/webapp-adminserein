@@ -47,21 +47,21 @@ const { data: currentParticulier } = useQuery({
   ),
 }) as { data: Ref<Particulier | undefined> };
 
-// Récupérer le nombre de notifications non lues avec polling (toutes les 5 secondes) - seulement pour professionnels
+// Récupérer le nombre de notifications non lues avec polling (toutes les 5 secondes)
 const { data: unreadCountData } = useQuery({
   ...$orpc.getUnreadNotificationsCount.queryOptions(),
   enabled: computed(
     () =>
       !!session.value?.data &&
       !session.value.isPending &&
-      isProfessionnel.value,
+      (isProfessionnel.value || isParticulier.value),
   ),
   refetchInterval: 5000, // Polling toutes les 5 secondes
 });
 
 const unreadCount = computed(() => unreadCountData.value?.count || 0);
 
-// Récupérer la liste des notifications avec polling (toutes les 10 secondes) - seulement pour professionnels
+// Récupérer la liste des notifications avec polling (toutes les 10 secondes)
 const {
   data: notifications,
   isLoading: isLoadingNotifications,
@@ -72,7 +72,7 @@ const {
     () =>
       !!session.value?.data &&
       !session.value.isPending &&
-      isProfessionnel.value &&
+      (isProfessionnel.value || isParticulier.value) &&
       isNotificationDropdownOpen.value,
   ),
   refetchInterval: 10000, // Polling toutes les 10 secondes
@@ -196,9 +196,9 @@ const handleSignOut = async () => {
           </div>
 
           <div class="flex flex-col items-center gap-3">
-            <!-- Notifications seulement pour professionnels -->
+            <!-- Notifications pour professionnels et particuliers -->
             <NotificationBell
-              v-if="isProfessionnel"
+              v-if="isProfessionnel || isParticulier"
               :unread-count="unreadCount"
               :is-open="isNotificationDropdownOpen"
               @toggle="toggleNotificationDropdown"
@@ -227,9 +227,9 @@ const handleSignOut = async () => {
       <slot />
     </UMain>
 
-    <!-- Dropdown de notifications (seulement pour professionnels) -->
+    <!-- Dropdown de notifications -->
     <NotificationDropdown
-      v-if="isProfessionnel"
+      v-if="isProfessionnel || isParticulier"
       :is-open="isNotificationDropdownOpen"
       :notifications="notifications"
       :is-loading="isLoadingNotifications"
