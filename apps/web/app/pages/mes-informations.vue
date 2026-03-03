@@ -287,21 +287,23 @@ const tabs = [
       </header>
 
       <!-- Onglets -->
-      <div class="flex gap-2 border-b border-gray-200">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="activeTab = tab.id"
-          class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
-          :class="
-            activeTab === tab.id
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-gray-500 hover:text-gray-700'
-          "
-        >
-          <UIcon :name="tab.icon" class="h-4 w-4" />
-          {{ tab.label }}
-        </button>
+      <div class="mb-6 flex items-center justify-between shrink-0">
+        <div class="flex gap-2">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            @click="activeTab = tab.id"
+            class="cursor-pointer inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+            :class="
+              activeTab === tab.id
+                ? 'bg-[#2e3a45] text-[#f5f7fa]'
+                : 'bg-gray-100 primary--text--color hover:bg-gray-200'
+            "
+          >
+            <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
+            {{ tab.label }}
+          </button>
+        </div>
       </div>
 
       <!-- Contenu des onglets -->
