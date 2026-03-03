@@ -1143,6 +1143,41 @@ export const appRouter = {
     }));
   }),
 
+  // Récupérer les documents du particulier connecté
+  listDocumentsByParticulier: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    const [userData] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, context.session.user.id))
+      .limit(1);
+
+    if (!userData || userData.type !== "PARTICULIER") {
+      throw new Error("Cet utilisateur n'est pas un particulier");
+    }
+
+    const [part] = await db
+      .select()
+      .from(particulier)
+      .where(eq(particulier.userId, context.session.user.id))
+      .limit(1);
+
+    if (!part) {
+      throw new Error("Aucun particulier associé à ce compte");
+    }
+
+    const documents = await db
+      .select()
+      .from(document)
+      .where(eq(document.patientId, part.patientId))
+      .orderBy(desc(document.createdAt));
+
+    return documents;
+  }),
+
   // Récupérer les informations du patient pour le particulier connecté
   getPatientByIdForParticulier: protectedProcedure.handler(
     async ({ context }) => {
