@@ -103,19 +103,13 @@ const { data: tachesData } = useQuery({
 }) as { data: Ref<Tache[] | undefined> };
 
 // Récupération des documents
-const patientIdForDocs = computed(() => apiPatient.value?.id || "");
 const { data: documentsData } = useQuery({
-  ...$orpc.listDocumentsByPatient.queryOptions({
-    input: {
-      patientId: patientIdForDocs.value,
-    },
-  }),
+  ...$orpc.listDocumentsByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
       !!session.value?.data &&
       !session.value.isPending &&
-      isParticulier.value &&
-      !!patientIdForDocs.value
+      isParticulier.value
     );
   }),
 }) as { data: Ref<Document[] | undefined> };
