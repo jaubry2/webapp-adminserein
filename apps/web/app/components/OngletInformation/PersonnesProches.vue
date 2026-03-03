@@ -3,20 +3,38 @@
     <div
       class="flex w-full items-center justify-between border-b border-gray-200 px-6 py-4"
     >
-      <h2 class="text-lg font-semibold secondary--text--color">
-        Personnes proches à contacter
-      </h2>
       <button
         type="button"
-        class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium secondary--text--color transition-colors hover:bg-gray-50"
-        @click="startAdd"
+        @click="isExpanded = !isExpanded"
+        class="flex-1 text-left cursor-pointer"
       >
-        <UIcon name="i-lucide-plus" class="h-4 w-4" />
-        Ajouter une personne
+        <h2 class="text-lg font-semibold secondary--text--color">
+          Personnes proches
+        </h2>
       </button>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium secondary--text--color transition-colors hover:bg-gray-50"
+          @click="startAdd"
+        >
+          <UIcon name="i-lucide-plus" class="h-4 w-4" />
+          Ajouter une personne
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer ml-2"
+          @click="isExpanded = !isExpanded"
+        >
+          <UIcon
+            :name="isExpanded ? 'i-lucide-minus' : 'i-lucide-plus'"
+            class="h-5 w-5 quaternary--text--color"
+          />
+        </button>
+      </div>
     </div>
 
-    <div class="p-6 space-y-4">
+    <div v-if="isExpanded" class="p-6 space-y-4">
       <div v-if="isLoading" class="text-sm quaternary--text--color">
         Chargement des personnes proches...
       </div>
@@ -40,7 +58,9 @@
               <span class="font-medium secondary--text--color">
                 {{ p.prenom }} {{ p.nomUsage }}
               </span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 quaternary--text--color">
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-gray-100 quaternary--text--color"
+              >
                 {{ p.lien }}
               </span>
             </div>
@@ -83,13 +103,22 @@
       </div>
 
       <!-- Formulaire ajout / édition -->
-      <div v-if="isEditing" class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+      <div
+        v-if="isEditing"
+        class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3"
+      >
         <h3 class="text-sm font-semibold secondary--text--color">
-          {{ editingId ? "Modifier une personne proche" : "Ajouter une personne proche" }}
+          {{
+            editingId
+              ? "Modifier une personne proche"
+              : "Ajouter une personne proche"
+          }}
         </h3>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Nom d'usage</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Nom d'usage</label
+            >
             <input
               v-model="form.nomUsage"
               type="text"
@@ -97,7 +126,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Nom de naissance</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Nom de naissance</label
+            >
             <input
               v-model="form.nomNaissance"
               type="text"
@@ -105,7 +136,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Prénom</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Prénom</label
+            >
             <input
               v-model="form.prenom"
               type="text"
@@ -113,7 +146,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Autres prénoms</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Autres prénoms</label
+            >
             <input
               v-model="form.autresPrenoms"
               type="text"
@@ -122,7 +157,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Genre</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Genre</label
+            >
             <select
               v-model="form.genre"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm input-focus-primary"
@@ -133,7 +170,9 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Lien</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Lien</label
+            >
             <input
               v-model="form.lien"
               type="text"
@@ -142,7 +181,9 @@
             />
           </div>
           <div class="col-span-2">
-            <label class="block text-xs quaternary--text--color mb-1">Adresse</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Adresse</label
+            >
             <input
               v-model="form.adresse"
               type="text"
@@ -150,7 +191,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Code postal</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Code postal</label
+            >
             <input
               v-model="form.codePostal"
               type="text"
@@ -158,7 +201,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Ville</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Ville</label
+            >
             <input
               v-model="form.ville"
               type="text"
@@ -166,7 +211,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Téléphone</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Téléphone</label
+            >
             <input
               v-model="form.telephone"
               type="text"
@@ -174,7 +221,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs quaternary--text--color mb-1">Mail</label>
+            <label class="block text-xs quaternary--text--color mb-1"
+              >Mail</label
+            >
             <input
               v-model="form.mail"
               type="email"
@@ -215,9 +264,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   create: [payload: Omit<PersonneProche, "id" | "ordre">];
-  update: [payload: { id: string } & Partial<Omit<PersonneProche, "id" | "ordre">>];
+  update: [
+    payload: { id: string } & Partial<Omit<PersonneProche, "id" | "ordre">>,
+  ];
   reorder: [payload: { id: string; direction: "up" | "down" }];
 }>();
+const isExpanded = ref(true);
 
 const isEditing = ref(false);
 const editingId = ref<string | null>(null);
@@ -288,7 +340,10 @@ const submitForm = () => {
     nomNaissance: form.value.nomNaissance,
     prenom: form.value.prenom,
     autresPrenoms: form.value.autresPrenoms
-      ? form.value.autresPrenoms.split(",").map((p) => p.trim()).filter((p) => p.length > 0)
+      ? form.value.autresPrenoms
+          .split(",")
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
       : [],
     adresse: form.value.adresse,
     codePostal: form.value.codePostal,
@@ -311,4 +366,3 @@ const submitForm = () => {
   editingId.value = null;
 };
 </script>
-
