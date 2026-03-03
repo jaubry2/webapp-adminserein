@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Patient } from "~/types/patient";
+import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
 import { useQuery, useMutation } from "@tanstack/vue-query";
@@ -119,6 +119,195 @@ const { data: documentsData } = useQuery({
     );
   }),
 }) as { data: Ref<Document[] | undefined> };
+
+// Personnes proches pour le patient connecté
+const {
+  data: personnesProchesData,
+  isLoading: isLoadingPersonnesProches,
+  isError: isErrorPersonnesProches,
+  refetch: refetchPersonnesProches,
+} = useQuery({
+  ...$orpc.listPersonnesProchesByParticulier.queryOptions(),
+  enabled: computed(() => {
+    return (
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isParticulier.value
+    );
+  }),
+});
+
+const personnesProches = computed<PersonneProche[]>(() => {
+  if (!personnesProchesData.value) return [];
+
+  return (personnesProchesData.value as any[]).map((p) => ({
+    id: p.id,
+    genre: p.genre,
+    nomUsage: p.nomUsage,
+    nomNaissance: p.nomNaissance,
+    prenom: p.prenom,
+    autresPrenoms: Array.isArray(p.autresPrenoms)
+      ? p.autresPrenoms.join(", ")
+      : p.autresPrenoms ?? "",
+    adresse: p.adresse,
+    codePostal: p.codePostal,
+    ville: p.ville,
+    telephone: p.telephone,
+    mail: p.mail,
+    lien: p.lien,
+    ordre: typeof p.ordre === "number" ? p.ordre : 0,
+  }));
+});
+
+const createPersonneProcheParticulierMutationOptions =
+  $orpc.createPersonneProcheByParticulier.mutationOptions();
+const createPersonneProcheParticulierMutation = useMutation({
+  ...createPersonneProcheParticulierMutationOptions,
+  onSuccess: async () => {
+    await refetchPersonnesProches();
+    toast.add({
+      title: "Personne proche ajoutée",
+      description: "La personne proche a été ajoutée avec succès.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de l'ajout",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const updatePersonneProcheParticulierMutationOptions =
+  $orpc.updatePersonneProcheByParticulier.mutationOptions();
+const updatePersonneProcheParticulierMutation = useMutation({
+  ...updatePersonneProcheParticulierMutationOptions,
+  onSuccess: async () => {
+    await refetchPersonnesProches();
+    toast.add({
+      title: "Personne proche mise à jour",
+      description: "Les informations ont été mises à jour.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la mise à jour",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const reorderPersonnesProchesParticulierMutationOptions =
+  $orpc.reorderPersonnesProchesByParticulier.mutationOptions();
+const reorderPersonnesProchesParticulierMutation = useMutation({
+  ...reorderPersonnesProchesParticulierMutationOptions,
+  onSuccess: async () => {
+    await refetchPersonnesProches();
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors du réordonnancement",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const normalizeAutresPrenoms = (value?: string[] | string): string[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+  }
+  return [];
+};
+
+const handleCreatePersonneProcheParticulier = async (payload: {
+  genre: PersonneProche["genre"];
+  nomUsage: string;
+  nomNaissance: string;
+  prenom: string;
+  autresPrenoms?: string[] | string;
+  adresse: string;
+  codePostal: string;
+  ville: string;
+  telephone: string;
+  mail: string;
+  lien: string;
+}) => {
+  await createPersonneProcheParticulierMutation.mutateAsync({
+    personne: {
+      ...payload,
+      autresPrenoms: normalizeAutresPrenoms(payload.autresPrenoms),
+    },
+  });
+};
+
+const handleUpdatePersonneProcheParticulier = async (payload: {
+  id: string;
+  genre?: PersonneProche["genre"];
+  nomUsage?: string;
+  nomNaissance?: string;
+  prenom?: string;
+  autresPrenoms?: string[] | string;
+  adresse?: string;
+  codePostal?: string;
+  ville?: string;
+  telephone?: string;
+  mail?: string;
+  lien?: string;
+}) => {
+  const { id, ...rest } = payload;
+
+  await updatePersonneProcheParticulierMutation.mutateAsync({
+    id,
+    ...rest,
+    ...(rest.autresPrenoms !== undefined && {
+      autresPrenoms: normalizeAutresPrenoms(rest.autresPrenoms),
+    }),
+  });
+};
+
+const handleReorderPersonneProcheParticulier = async (payload: {
+  id: string;
+  direction: "up" | "down";
+}) => {
+  const current = [...personnesProches.value];
+  const index = current.findIndex((p) => p.id === payload.id);
+  if (index === -1) return;
+
+  if (payload.direction === "up" && index > 0) {
+    [current[index - 1], current[index]] = [
+      current[index],
+      current[index - 1],
+    ];
+  } else if (
+    payload.direction === "down" &&
+    index < current.length - 1
+  ) {
+    [current[index], current[index + 1]] = [
+      current[index + 1],
+      current[index],
+    ];
+  } else {
+    return;
+  }
+
+  const ordrePayload = current.map((p, idx) => ({
+    id: p.id,
+    ordre: idx,
+  }));
+
+  await reorderPersonnesProchesParticulierMutation.mutateAsync({
+    ordre: ordrePayload,
+  });
+};
 
 // Mapping API -> type Patient utilisé par l'UI
 const patient = computed<Patient | null>(() => {
@@ -318,6 +507,14 @@ const tabs = [
             :is-editing="false"
             @save="() => {}"
             @cancel="() => {}"
+          />
+          <OngletInformationPersonnesProches
+            :personnes-proches="personnesProches"
+            :is-loading="isLoadingPersonnesProches"
+            :is-error="isErrorPersonnesProches"
+            @create="handleCreatePersonneProcheParticulier"
+            @update="handleUpdatePersonneProcheParticulier"
+            @reorder="handleReorderPersonneProcheParticulier"
           />
         </div>
 

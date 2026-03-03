@@ -1546,6 +1546,202 @@ export const appRouter = {
     }
   ),
 
+  // Créer une personne proche (côté particulier)
+  createPersonneProcheByParticulier: protectedProcedure
+    .input(
+      z.object({
+        personne: personneProcheInputSchema,
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      const existants = await db
+        .select({ ordre: personneProche.ordre })
+        .from(personneProche)
+        .where(eq(personneProche.patientId, part.patientId));
+
+      const nextOrdre =
+        existants.length > 0
+          ? Math.max(...existants.map((p) => p.ordre ?? 0)) + 1
+          : 0;
+
+      const p = input.personne;
+
+      const [created] = await db
+        .insert(personneProche)
+        .values({
+          patientId: part.patientId,
+          genre: p.genre,
+          nomUsage: p.nomUsage,
+          nomNaissance: p.nomNaissance,
+          prenom: p.prenom,
+          autresPrenoms: p.autresPrenoms,
+          adresse: p.adresse,
+          codePostal: p.codePostal,
+          ville: p.ville,
+          telephone: p.telephone,
+          mail: p.mail,
+          lien: p.lien,
+          ordre: nextOrdre,
+        })
+        .returning();
+
+      return created;
+    }),
+
+  // Mettre à jour une personne proche (côté particulier)
+  updatePersonneProcheByParticulier: protectedProcedure
+    .input(personneProcheUpdateSchema)
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      const [existing] = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.id, input.id))
+        .limit(1);
+
+      if (!existing) {
+        throw new Error("Personne proche non trouvée");
+      }
+
+      if (existing.patientId !== part.patientId) {
+        throw new Error("Personne proche non autorisée pour ce patient");
+      }
+
+      await db
+        .update(personneProche)
+        .set({
+          ...(input.genre && { genre: input.genre }),
+          ...(input.nomUsage && { nomUsage: input.nomUsage }),
+          ...(input.nomNaissance && { nomNaissance: input.nomNaissance }),
+          ...(input.prenom && { prenom: input.prenom }),
+          ...(input.autresPrenoms && { autresPrenoms: input.autresPrenoms }),
+          ...(input.adresse && { adresse: input.adresse }),
+          ...(input.codePostal && { codePostal: input.codePostal }),
+          ...(input.ville && { ville: input.ville }),
+          ...(input.telephone && { telephone: input.telephone }),
+          ...(input.mail && { mail: input.mail }),
+          ...(input.lien && { lien: input.lien }),
+        })
+        .where(eq(personneProche.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.id, input.id))
+        .limit(1);
+
+      return updated;
+    }),
+
+  // Réordonner les personnes proches (côté particulier)
+  reorderPersonnesProchesByParticulier: protectedProcedure
+    .input(
+      z.object({
+        ordre: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              ordre: z.number(),
+            })
+          )
+          .nonempty(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PARTICULIER") {
+        throw new Error("Cet utilisateur n'est pas un particulier");
+      }
+
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      const personnes = await db
+        .select()
+        .from(personneProche)
+        .where(eq(personneProche.patientId, part.patientId));
+
+      const idsAutorises = new Set(personnes.map((p) => p.id));
+
+      for (const item of input.ordre) {
+        if (!idsAutorises.has(item.id)) {
+          throw new Error("Personne proche non autorisée pour ce patient");
+        }
+      }
+
+      for (const item of input.ordre) {
+        await db
+          .update(personneProche)
+          .set({ ordre: item.ordre })
+          .where(eq(personneProche.id, item.id));
+      }
+
+      return { success: true };
+    }),
+
   // Lister les professionnels ayant accès au dossier du patient connecté (particulier)
   listProfessionnelsByParticulier: protectedProcedure.handler(
     async ({ context }) => {
