@@ -269,7 +269,7 @@ const emit = defineEmits<{
   ];
   reorder: [payload: { id: string; direction: "up" | "down" }];
 }>();
-const isExpanded = ref(true);
+const isExpanded = ref(false);
 
 const isEditing = ref(false);
 const editingId = ref<string | null>(null);
