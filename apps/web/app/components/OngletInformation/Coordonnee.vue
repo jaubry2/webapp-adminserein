@@ -14,6 +14,15 @@
       </button>
       <div class="flex items-center gap-2">
         <button
+          v-if="props.canRequestFill"
+          type="button"
+          class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+          @click="$emit('request-fill')"
+        >
+          <UIcon name="i-lucide-mail-plus" class="h-4 w-4" />
+          Demander au patient
+        </button>
+        <button
           v-if="!isEditing"
           @click="startEditing"
           type="button"
@@ -197,11 +206,13 @@ const props = defineProps<{
   patient: Patient;
   isEditing?: boolean;
   onSave?: (changes: Record<string, any>) => void;
+  canRequestFill?: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:isEditing": [value: boolean];
   changes: [changes: Record<string, any>];
+  "request-fill": [];
 }>();
 
 const coordonneesExpanded = ref(false);

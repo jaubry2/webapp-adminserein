@@ -32,9 +32,7 @@ const { data: currentParticulier } = useQuery({
   ...$orpc.getCurrentParticulier.queryOptions(),
   enabled: computed(
     () =>
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value,
   ),
 }) as { data: Ref<Particulier | undefined> };
 
@@ -42,9 +40,7 @@ const { data: tachesData, isLoading: isLoadingTaches } = useQuery({
   ...$orpc.listTachesByParticulier.queryOptions(),
   enabled: computed(
     () =>
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value,
   ),
 }) as { data: Ref<Tache[] | undefined>; isLoading: Ref<boolean> };
 
@@ -69,7 +65,9 @@ const displayName = computed(() => {
           <span class="font-medium text-slate-700">{{ displayName }}</span>
         </p>
         <div v-if="patientInfo" class="mt-2 text-xs text-slate-400">
-          <p>Numéro de dossier : {{ currentParticulier?.patient?.numeroDossier }}</p>
+          <p>
+            Numéro de dossier : {{ currentParticulier?.patient?.numeroDossier }}
+          </p>
         </div>
       </header>
 

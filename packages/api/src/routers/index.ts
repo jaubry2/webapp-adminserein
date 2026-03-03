@@ -1824,6 +1824,117 @@ export const appRouter = {
     }
   ),
 
+  // Demander au patient de remplir une section d'informations
+  demanderRemplissageInformation: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string().uuid(),
+        section: z.enum([
+          "IDENTITE",
+          "COORDONNEES",
+          "CONJOINT",
+          "PERSONNES_PROCHES",
+        ]),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Vérifier que l'utilisateur est un professionnel
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PROFESSIONNEL") {
+        throw new Error("Cet utilisateur n'est pas un professionnel");
+      }
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le professionnel suit bien ce patient
+      const [link] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!link) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      const [p] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.id, input.patientId))
+        .limit(1);
+
+      if (!p) {
+        throw new Error("Patient non trouvé");
+      }
+
+      const [infoPatient] = await db
+        .select()
+        .from(informationIdentite)
+        .where(eq(informationIdentite.id, p.informationIdentiteId))
+        .limit(1);
+
+      const sectionLabels: Record<
+        "IDENTITE" | "COORDONNEES" | "CONJOINT" | "PERSONNES_PROCHES",
+        string
+      > = {
+        IDENTITE: "vos informations d'identité",
+        COORDONNEES: "vos coordonnées",
+        CONJOINT: "les informations concernant votre conjoint",
+        PERSONNES_PROCHES: "la section \"Personnes proches\"",
+      };
+
+      const titre = "Mise à jour de vos informations";
+      const message = `Le professionnel ${
+        prof.prenom
+      } ${prof.nom} vous demande de compléter ou mettre à jour ${sectionLabels[input.section]} dans votre espace personnel.`;
+
+      // Créer une notification pour le patient
+      await db.insert(notification).values({
+        patientId: input.patientId,
+        professionnelId: null,
+        type: "INFO",
+        titre,
+        message,
+        lien: "/mes-informations",
+      });
+
+      // Créer une tâche liée à cette demande
+      await db.insert(tache).values({
+        patientId: input.patientId,
+        professionnelId: prof.id,
+        typeDemarche: "ADMINISTRATIVE",
+        etat: "A_FAIRE",
+        date: new Date(),
+        details: `Demande faite au patient ${
+          infoPatient?.prenom ?? ""
+        } ${infoPatient?.nomUsage ?? ""} pour compléter ${sectionLabels[input.section]}.`,
+      });
+
+      return { success: true };
+    }),
+
   // Retirer un professionnel (assistante sociale) du dossier du particulier connecté
   removeProfessionnelByParticulier: protectedProcedure
     .input(

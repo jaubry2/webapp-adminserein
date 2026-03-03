@@ -712,6 +712,37 @@ const handleReorderPersonneProche = async (payload: {
   });
 };
 
+const demanderRemplissageMutationOptions =
+  $orpc.demanderRemplissageInformation.mutationOptions();
+const demanderRemplissageMutation = useMutation({
+  ...demanderRemplissageMutationOptions,
+  onSuccess: () => {
+    toast.add({
+      title: "Demande envoyée au patient",
+      description:
+        "Une notification et une tâche ont été créées pour le patient.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de l'envoi de la demande",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const handleDemanderRemplissage = async (
+  section: "IDENTITE" | "COORDONNEES" | "CONJOINT" | "PERSONNES_PROCHES",
+) => {
+  if (!patient.value) return;
+
+  await demanderRemplissageMutation.mutateAsync({
+    patientId: patient.value.id,
+    section,
+  });
+};
+
 // Confirmer les modifications
 const confirmModifications = async () => {
   if (!patient.value) return;
@@ -875,19 +906,25 @@ const cancelModifications = () => {
                   :patient="patient"
                   :is-editing="isEditingIdentite"
                   :on-save="handleIdentiteChanges"
+                  :can-request-fill="true"
                   @update:is-editing="isEditingIdentite = $event"
+                  @request-fill="handleDemanderRemplissage('IDENTITE')"
                 />
                 <!-- Section Conjoint -->
                 <OngletInformationConjoint
                   :patient="patient"
+                  :can-request-fill="true"
                   @save="handleConjointChanges"
+                  @request-fill="handleDemanderRemplissage('CONJOINT')"
                 />
                 <!-- Section Coordonnées -->
                 <OngletInformationCoordonnee
                   :patient="patient"
                   :is-editing="isEditingCoordonnee"
                   :on-save="handleCoordonneeChanges"
+                  :can-request-fill="true"
                   @update:is-editing="isEditingCoordonnee = $event"
+                  @request-fill="handleDemanderRemplissage('COORDONNEES')"
                 />
                 <!-- Section Personnes proches -->
                 <OngletInformationPersonnesProches

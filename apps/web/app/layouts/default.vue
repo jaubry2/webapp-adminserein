@@ -34,7 +34,7 @@ const { data: currentProfessionnel } = useQuery({
     () =>
       !!session.value?.data &&
       !session.value.isPending &&
-      isProfessionnel.value
+      isProfessionnel.value,
   ),
 });
 
@@ -43,9 +43,7 @@ const { data: currentParticulier } = useQuery({
   ...$orpc.getCurrentParticulier.queryOptions(),
   enabled: computed(
     () =>
-      !!session.value?.data &&
-      !session.value.isPending &&
-      isParticulier.value
+      !!session.value?.data && !session.value.isPending && isParticulier.value,
   ),
 }) as { data: Ref<Particulier | undefined> };
 
@@ -56,7 +54,7 @@ const { data: unreadCountData } = useQuery({
     () =>
       !!session.value?.data &&
       !session.value.isPending &&
-      isProfessionnel.value
+      isProfessionnel.value,
   ),
   refetchInterval: 5000, // Polling toutes les 5 secondes
 });
@@ -75,7 +73,7 @@ const {
       !!session.value?.data &&
       !session.value.isPending &&
       isProfessionnel.value &&
-      isNotificationDropdownOpen.value
+      isNotificationDropdownOpen.value,
   ),
   refetchInterval: 10000, // Polling toutes les 10 secondes
 });
@@ -84,7 +82,10 @@ const displayName = computed(() => {
   if (isProfessionnel.value && currentProfessionnel.value) {
     return `${currentProfessionnel.value.prenom} ${currentProfessionnel.value.nom}`;
   }
-  if (isParticulier.value && currentParticulier.value?.patient?.informationIdentite) {
+  if (
+    isParticulier.value &&
+    currentParticulier.value?.patient?.informationIdentite
+  ) {
     const info = currentParticulier.value.patient.informationIdentite;
     return `${info.prenom} ${info.nomUsage}`;
   }
@@ -131,11 +132,14 @@ const handleSignOut = async () => {
     <aside
       class="w-64 primary--background--color flex flex-col justify-between py-8 px-6 shadow-[4px_0_12px_rgba(15,23,42,0.06)]"
     >
-      <div class="h-[15%] text-2xl font-semibold leading-tight tracking-tight">
+      <NuxtLink
+        to="/dashboard"
+        class="h-[15%] text-2xl font-semibold leading-tight tracking-tight"
+      >
         Admin
         <br />
         Serein
-      </div>
+      </NuxtLink>
 
       <div
         class="w-full flex h-[70%] flex-col justify-around text-sm font-medium"
