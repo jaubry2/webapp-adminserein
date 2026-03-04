@@ -61,13 +61,13 @@ const { data: unreadCountData } = useQuery({
 
 const unreadCount = computed(() => unreadCountData.value?.count || 0);
 
-// Récupérer la liste des notifications avec polling (toutes les 10 secondes)
+// Récupérer la liste des notifications non lues avec polling (toutes les 10 secondes)
 const {
   data: notifications,
   isLoading: isLoadingNotifications,
   isError: isErrorNotifications,
 } = useQuery({
-  ...$orpc.listNotificationsByProfessionnel.queryOptions(),
+  ...$orpc.listUnreadNotifications.queryOptions(),
   enabled: computed(
     () =>
       !!session.value?.data &&

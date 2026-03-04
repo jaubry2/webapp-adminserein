@@ -18,6 +18,13 @@
           <h3 class="text-lg font-semibold secondary--text--color">Notifications</h3>
           <div class="flex items-center gap-2">
             <button
+              type="button"
+              class="text-xs font-medium quaternary--text--color hover:text-blue-600 transition-colors"
+              @click="handleViewAll"
+            >
+              Voir toutes
+            </button>
+            <button
               v-if="notifications && notifications.length > 0 && unreadCount > 0"
               @click="markAllAsRead"
               type="button"
@@ -180,6 +187,11 @@ const handleNotificationClick = async (notif: Notification) => {
 
 const markAllAsRead = async () => {
   await markAllAsReadMutation.mutateAsync();
+};
+
+const handleViewAll = async () => {
+  await navigateTo("/notifications");
+  close();
 };
 
 const getTypeColor = (type: Notification["type"]): string => {
