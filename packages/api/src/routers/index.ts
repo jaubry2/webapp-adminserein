@@ -2597,6 +2597,71 @@ export const appRouter = {
     }
   ),
 
+  // Récupérer uniquement les notifications non lues du professionnel OU du particulier connecté
+  listUnreadNotifications: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    const [userData] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, context.session.user.id))
+      .limit(1);
+
+    if (!userData) {
+      throw new Error("Utilisateur non trouvé");
+    }
+
+    if (userData.type === "PROFESSIONNEL") {
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      return await db
+        .select()
+        .from(notification)
+        .where(
+          and(
+            eq(notification.professionnelId, prof.id),
+            eq(notification.lue, false),
+          ),
+        )
+        .orderBy(desc(notification.createdAt));
+    }
+
+    if (userData.type === "PARTICULIER") {
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      return await db
+        .select()
+        .from(notification)
+        .where(
+          and(
+            eq(notification.patientId, part.patientId),
+            eq(notification.lue, false),
+          ),
+        )
+        .orderBy(desc(notification.createdAt));
+    }
+
+    throw new Error("Type d'utilisateur non supporté pour les notifications");
+  }),
+
   // Récupérer le nombre de notifications non lues pour le professionnel OU le particulier connecté
   getUnreadNotificationsCount: protectedProcedure.handler(
     async ({ context }) => {
