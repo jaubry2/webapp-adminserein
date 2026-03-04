@@ -34,6 +34,7 @@ const {
   data: apiPatient,
   isLoading,
   isError,
+  refetch: refetchPatient,
 } = useQuery({
   ...$orpc.getPatientByIdForParticulier.queryOptions(),
   enabled: computed(() => {
@@ -217,6 +218,26 @@ const reorderPersonnesProchesParticulierMutation = useMutation({
   },
 });
 
+// Mutation pour mettre à jour les informations du patient (par ex. conjoint)
+const updatePatientMutationOptions = $orpc.updatePatient.mutationOptions();
+const updatePatientMutation = useMutation({
+  ...updatePatientMutationOptions,
+  onSuccess: async () => {
+    await refetchPatient();
+    toast.add({
+      title: "Informations mises à jour",
+      description: "Vos informations ont été mises à jour.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de la mise à jour",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
 const normalizeAutresPrenoms = (value?: string[] | string): string[] => {
   if (Array.isArray(value)) {
     return value;
@@ -299,6 +320,38 @@ const handleReorderPersonneProcheParticulier = async (payload: {
 
   await reorderPersonnesProchesParticulierMutation.mutateAsync({
     ordre: ordrePayload,
+  });
+};
+
+// Gestion des changements de conjoint pour le particulier
+const handleConjointChanges = async (changes: Record<string, any>) => {
+  if (!patient.value) return;
+
+  const conjointData: any = { ...changes };
+
+  // Normaliser les champs liste
+  if (
+    conjointData.autresPrenoms &&
+    typeof conjointData.autresPrenoms === "string"
+  ) {
+    conjointData.autresPrenoms = conjointData.autresPrenoms
+      .split(",")
+      .map((p: string) => p.trim())
+      .filter((p: string) => p.length > 0);
+  }
+  if (
+    conjointData.nationalites &&
+    typeof conjointData.nationalites === "string"
+  ) {
+    conjointData.nationalites = conjointData.nationalites
+      .split(",")
+      .map((n: string) => n.trim())
+      .filter((n: string) => n.length > 0);
+  }
+
+  await updatePatientMutation.mutateAsync({
+    patientId: patient.value.id,
+    informationConjoint: conjointData,
   });
 };
 
@@ -552,7 +605,10 @@ const getAccentColorByType = (
             @save="() => {}"
             @cancel="() => {}"
           />
-          <OngletInformationConjoint :patient="patient" />
+          <OngletInformationConjoint
+            :patient="patient"
+            @save="handleConjointChanges"
+          />
           <OngletInformationCoordonnee
             :patient="patient"
             :is-editing="false"
