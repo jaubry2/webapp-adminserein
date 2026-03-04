@@ -9,36 +9,65 @@
           Patient concerné par la demande
         </h1>
 
-        <p class="text-xs quaternary--text--color">
+        <p class="text-xs quaternary--text--color" v-if="isProfessionnel">
           Sélectionnez le patient pour lequel vous remplissez cette demande
           d’APA.
         </p>
+        <p class="text-xs quaternary--text--color" v-else-if="isParticulier">
+          Cette demande sera remplie pour vous-même. Vos informations seront
+          utilisées pour pré-remplir le formulaire.
+        </p>
 
-        <div v-if="isLoadingPatients" class="text-xs quaternary--text--color">
-          Chargement de vos patients...
-        </div>
-        <div v-else-if="isErrorPatients" class="text-xs text-red-500">
-          Impossible de charger la liste des patients.
-        </div>
-        <div v-else class="flex flex-col gap-2">
-          <select
-            v-model="selectedPatientId"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
-          >
-            <option :value="null">Sélectionner un patient</option>
-            <option
-              v-for="patient in patientOptions"
-              :key="patient.id"
-              :value="patient.id"
+        <!-- Sélection de patient pour les professionnels -->
+        <template v-if="isProfessionnel">
+          <div v-if="isLoadingPatients" class="text-xs quaternary--text--color">
+            Chargement de vos patients...
+          </div>
+          <div v-else-if="isErrorPatients" class="text-xs text-red-500">
+            Impossible de charger la liste des patients.
+          </div>
+          <div v-else class="flex flex-col gap-2">
+            <select
+              v-model="selectedPatientId"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
             >
-              {{ patient.label }}
-            </option>
-          </select>
+              <option :value="null">Sélectionner un patient</option>
+              <option
+                v-for="patient in patientOptions"
+                :key="patient.id"
+                :value="patient.id"
+              >
+                {{ patient.label }}
+              </option>
+            </select>
 
-          <p v-if="!selectedPatientId" class="text-xs text-amber-600">
-            Aucun patient sélectionné pour le moment.
-          </p>
-        </div>
+            <p v-if="!selectedPatientId" class="text-xs text-amber-600">
+              Aucun patient sélectionné pour le moment.
+            </p>
+          </div>
+        </template>
+
+        <!-- Affichage du patient pour les particuliers -->
+        <template v-else-if="isParticulier">
+          <div v-if="isLoadingParticulierPatient" class="text-xs quaternary--text--color">
+            Chargement de vos informations patient...
+          </div>
+          <div v-else-if="isErrorParticulierPatient" class="text-xs text-red-500">
+            Impossible de charger vos informations patient.
+          </div>
+          <div v-else-if="selectedPatient" class="text-sm secondary--text--color">
+            <p class="font-medium">
+              {{
+                selectedPatient.informationIdentite
+                  ? `${selectedPatient.informationIdentite.prenom} ${selectedPatient.informationIdentite.nomUsage || selectedPatient.informationIdentite.nomNaissance}`
+                  : "Patient inconnu"
+              }}
+            </p>
+            <p class="text-xs quaternary--text--color">
+              Vos informations personnelles seront utilisées pour pré-remplir le formulaire.
+            </p>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -46,7 +75,7 @@
       class="w-[50%]"
       :apa_fields="fields"
       @updateApaFields="updateFields($event, 'coordonnee')"
-      v-show="currentStep === 'identite' && selectedPatientId !== null"
+      v-show="currentStep === 'identite' && !!selectedPatient"
     />
     <FormAPACoordonnee
       class="w-[50%]"
@@ -162,6 +191,15 @@ const { $orpc } = useNuxtApp();
 
 const fields = ref<infoFormulaire>(apa_fields);
 
+// Type d'utilisateur
+const { data: userTypeData } = useQuery({
+  ...$orpc.getUserType.queryOptions(),
+});
+
+const userType = computed(() => userTypeData.value?.type || null);
+const isProfessionnel = computed(() => userType.value === "PROFESSIONNEL");
+const isParticulier = computed(() => userType.value === "PARTICULIER");
+
 // Patient sélectionné pour la demande
 type PatientOption = {
   id: string;
@@ -174,15 +212,28 @@ const selectedPatientId = ref<string | null>(
     : null,
 );
 
-// Récupération des patients suivis par le professionnel
+// Récupération des patients suivis par le professionnel (uniquement si pro)
 const {
   data: apiPatients,
   isLoading: isLoadingPatients,
   isError: isErrorPatients,
-} = useQuery($orpc.listPatients.queryOptions());
+} = useQuery({
+  ...$orpc.listPatients.queryOptions(),
+  enabled: computed(() => isProfessionnel.value),
+});
+
+// Récupération du patient du particulier connecté (uniquement si particulier)
+const {
+  data: particulierPatient,
+  isLoading: isLoadingParticulierPatient,
+  isError: isErrorParticulierPatient,
+} = useQuery({
+  ...$orpc.getPatientByIdForParticulier.queryOptions(),
+  enabled: computed(() => isParticulier.value),
+});
 
 const patientOptions = computed<PatientOption[]>(() => {
-  if (!apiPatients.value) return [];
+  if (!isProfessionnel.value || !apiPatients.value) return [];
 
   return apiPatients.value.map((p: any) => {
     const info = p.informationIdentite;
@@ -198,6 +249,10 @@ const patientOptions = computed<PatientOption[]>(() => {
 });
 
 const selectedPatient = computed<any | null>(() => {
+  if (isParticulier.value) {
+    return particulierPatient.value ?? null;
+  }
+
   if (!apiPatients.value || !selectedPatientId.value) return null;
   return (
     apiPatients.value.find((p: any) => p.id === selectedPatientId.value) ?? null
@@ -472,8 +527,8 @@ const updateFields = (_apa_fields: infoFormulaire, _nextPage: string) => {
   router.push({
     query: {
       step: _nextPage,
-      // conserver le patient sélectionné dans l'URL si présent
-      ...(selectedPatientId.value
+      // conserver le patient sélectionné dans l'URL si présent (pro uniquement)
+      ...(isProfessionnel.value && selectedPatientId.value
         ? { patientId: selectedPatientId.value }
         : {}),
     },
