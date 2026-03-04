@@ -774,6 +774,48 @@ const handleDemanderRemplissage = async (
   });
 };
 
+const demanderDocumentMutationOptions =
+  $orpc.demanderDocumentPatient.mutationOptions();
+const demanderDocumentMutation = useMutation({
+  ...demanderDocumentMutationOptions,
+  onSuccess: () => {
+    toast.add({
+      title: "Demande de document envoyée",
+      description:
+        "Une notification et une tâche ont été créées pour le patient.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur lors de l'envoi de la demande",
+      description: error?.message || "Une erreur est survenue.",
+      color: "error",
+    });
+  },
+});
+
+const showDemandeDocumentModal = ref(false);
+
+const handleDemanderDocument = () => {
+  if (!patient.value) return;
+  showDemandeDocumentModal.value = true;
+};
+
+const handleConfirmDemandeDocument = async (nature: string) => {
+  if (!patient.value) return;
+
+  await demanderDocumentMutation.mutateAsync({
+    patientId: patient.value.id,
+    nature,
+  });
+
+  showDemandeDocumentModal.value = false;
+};
+
+const handleCancelDemandeDocument = () => {
+  showDemandeDocumentModal.value = false;
+};
+
 // Confirmer les modifications
 const confirmModifications = async () => {
   if (!patient.value) return;
@@ -980,6 +1022,14 @@ const cancelModifications = () => {
                   :documents="patientDocuments"
                   :is-loading="isLoadingDocuments"
                   :is-error="isErrorDocuments"
+                  :can-request-document="true"
+                  @request-document="handleDemanderDocument"
+                />
+
+                <ModalDemandeDocument
+                  :is-open="showDemandeDocumentModal"
+                  @confirm="handleConfirmDemandeDocument"
+                  @cancel="handleCancelDemandeDocument"
                 />
               </div>
 

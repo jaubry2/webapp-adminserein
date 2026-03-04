@@ -1935,6 +1935,106 @@ export const appRouter = {
       return { success: true };
     }),
 
+  // Demander au patient de fournir un document
+  demanderDocumentPatient: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string().uuid(),
+        nature: z.string().min(1).max(200),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      // Vérifier que l'utilisateur est un professionnel
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PROFESSIONNEL") {
+        throw new Error("Cet utilisateur n'est pas un professionnel");
+      }
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      // Vérifier que le professionnel suit bien ce patient
+      const [link] = await db
+        .select()
+        .from(patientProfessionnel)
+        .where(
+          and(
+            eq(patientProfessionnel.patientId, input.patientId),
+            eq(patientProfessionnel.professionnelId, prof.id)
+          )
+        )
+        .limit(1);
+
+      if (!link) {
+        throw new Error("Patient non trouvé ou non autorisé");
+      }
+
+      const [p] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.id, input.patientId))
+        .limit(1);
+
+      if (!p) {
+        throw new Error("Patient non trouvé");
+      }
+
+      const [infoPatient] = await db
+        .select()
+        .from(informationIdentite)
+        .where(eq(informationIdentite.id, p.informationIdentiteId))
+        .limit(1);
+
+      const titre = "Demande de document";
+      const message = `Le professionnel ${
+        prof.prenom
+      } ${prof.nom} vous demande de déposer un document (${input.nature}) dans la section "Documents" de votre espace personnel pour votre dossier${
+        infoPatient
+          ? ` (${infoPatient.nomUsage} ${infoPatient.prenom})`
+          : ""
+      }.`;
+
+      // Créer une notification pour le patient
+      await db.insert(notification).values({
+        patientId: input.patientId,
+        professionnelId: null,
+        type: "INFO",
+        titre,
+        message,
+        lien: "/mes-informations?tab=document",
+      });
+
+      // Créer une tâche liée à cette demande
+      await db.insert(tache).values({
+        patientId: input.patientId,
+        professionnelId: prof.id,
+        typeDemarche: "ADMINISTRATIVE",
+        etat: "A_FAIRE",
+        date: new Date(),
+        details: `Demande de document (${input.nature}) pour le dossier du patient ${
+          infoPatient?.nomUsage ?? ""
+        } ${infoPatient?.prenom ?? ""}`.trim(),
+      });
+
+      return { success: true };
+    }),
+
   // Retirer un professionnel (assistante sociale) du dossier du particulier connecté
   removeProfessionnelByParticulier: protectedProcedure
     .input(

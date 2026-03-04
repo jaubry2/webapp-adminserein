@@ -4,16 +4,29 @@
       class="flex w-full items-center justify-between border-b border-gray-200 px-6 py-4"
     >
       <h2 class="text-lg font-semibold secondary--text--color">Documents</h2>
-      <button
-        type="button"
-        @click="documentsExpanded = !documentsExpanded"
-        class="cursor-pointer"
-      >
-        <UIcon
-          :name="documentsExpanded ? 'i-lucide-minus' : 'i-lucide-plus'"
-          class="h-5 w-5 quaternary--text--color"
-        />
-      </button>
+      <div class="flex items-center gap-3">
+        <UButton
+          v-if="canRequestDocument"
+          size="xs"
+          color="gray"
+          variant="outline"
+          icon="i-lucide-file-plus"
+          class="rounded-full text-xs"
+          @click="$emit('request-document')"
+        >
+          Demander un document
+        </UButton>
+        <button
+          type="button"
+          @click="documentsExpanded = !documentsExpanded"
+          class="cursor-pointer"
+        >
+          <UIcon
+            :name="documentsExpanded ? 'i-lucide-minus' : 'i-lucide-plus'"
+            class="h-5 w-5 quaternary--text--color"
+          />
+        </button>
+      </div>
     </div>
 
     <div v-if="documentsExpanded" class="p-6">
@@ -191,6 +204,11 @@ const props = defineProps<{
   documents?: Document[];
   isLoading?: boolean;
   isError?: boolean;
+  canRequestDocument?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "request-document"): void;
 }>();
 
 const documentsExpanded = ref(true);
