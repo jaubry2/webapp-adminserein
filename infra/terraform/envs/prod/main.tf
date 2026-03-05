@@ -50,3 +50,13 @@ module "cloud_run" {
   image                     = var.server_image
 }
 
+module "cloud_run_web" {
+  source = "../../modules/cloud-run-web"
+
+  project_id   = var.project_id
+  region       = var.region
+  service_name = "adminserein-web"
+  server_url   = module.cloud_run.service_url
+  image       = var.web_image
+}
+

@@ -13,7 +13,12 @@ output "cloud_run_url" {
   value       = module.cloud_run.service_url
 }
 
+output "cloud_run_web_url" {
+  description = "URL du frontend sur Cloud Run"
+  value       = module.cloud_run_web.service_url
+}
+
 output "cloud_run_build_command" {
-  description = "Commande pour builder et pusher l'image"
+  description = "Commande pour builder et pusher l'image serveur"
   value       = module.cloud_run.build_command
 }

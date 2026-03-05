@@ -63,3 +63,8 @@ variable "server_image" {
   type        = string
 }
 
+variable "web_image" {
+  description = "Image Docker complète pour le frontend (europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/web:latest)"
+  type        = string
+}
+
