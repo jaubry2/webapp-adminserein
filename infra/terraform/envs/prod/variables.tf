@@ -38,5 +38,28 @@ variable "subnet_ip_cidr_range" {
 variable "cloud_sql_database_password" {
   description = "Mot de passe de la base Cloud SQL PostgreSQL"
   type        = string
+  sensitive   = true
+}
+
+# Cloud Run
+variable "better_auth_secret" {
+  description = "Secret pour Better Auth (min 32 caractères)"
+  type        = string
+  sensitive   = true
+}
+
+variable "better_auth_url" {
+  description = "URL publique du serveur API (ex: https://adminserein-server-xxx.run.app)"
+  type        = string
+}
+
+variable "cors_origin" {
+  description = "Origine CORS (URL du frontend)"
+  type        = string
+}
+
+variable "server_image" {
+  description = "Image Docker complète pour le serveur (europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/server:latest)"
+  type        = string
 }
 
