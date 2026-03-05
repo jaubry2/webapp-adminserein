@@ -34,3 +34,9 @@ variable "subnet_ip_cidr_range" {
   default     = "10.0.0.0/24"
 }
 
+# Cloud SQL
+variable "cloud_sql_database_password" {
+  description = "Mot de passe de la base Cloud SQL PostgreSQL"
+  type        = string
+}
+

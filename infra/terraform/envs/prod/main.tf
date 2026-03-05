@@ -21,11 +21,18 @@ module "network" {
   subnet_ip_cidr_range = var.subnet_ip_cidr_range
 }
 
-module "compute" {
-  source          = "../../modules/compute"
-  project_id      = var.project_id
-  zone            = var.zone
-  machine_type    = var.machine_type
-  subnet_self_link = module.network.subnet_self_link
+
+module "cloud_sql" {
+  source = "../../modules/cloud-sql"
+
+  project_id          = var.project_id
+  region              = var.region
+  instance_name       = "bdd-adminserein"
+  database_name      = "webapp-adminserein"
+  database_user      = "postgres"
+  database_password   = var.cloud_sql_database_password
+  network_id         = module.network.network_self_link
+  enable_private_ip  = true
+  enable_public_ip   = true  # Accès public (0.0.0.0/0 par défaut)
 }
 
