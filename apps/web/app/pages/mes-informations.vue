@@ -2,7 +2,7 @@
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
-import { useQuery, useMutation, skipToken } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient, skipToken } from "@tanstack/vue-query";
 
 definePageMeta({
   middleware: ["auth"],
@@ -11,6 +11,7 @@ definePageMeta({
 const { $authClient, $orpc } = useNuxtApp();
 const session = $authClient.useSession();
 const toast = useToast();
+const queryClient = useQueryClient();
 
 // Récupérer le type d'utilisateur
 const { data: userTypeData } = useQuery({
@@ -194,6 +195,7 @@ const typeDemandeLabels: Record<string, string> = {
 const statutDemandeLabels: Record<string, string> = {
   BROUILLON: "Brouillon",
   EN_COURS: "En cours",
+  EN_ATTENTE_COMPLEMENT: "En attente de complément",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
 };
@@ -201,6 +203,7 @@ const statutDemandeLabels: Record<string, string> = {
 const statutDemandeColors: Record<string, string> = {
   BROUILLON: "bg-gray-100 text-gray-700",
   EN_COURS: "bg-blue-100 text-blue-700",
+  EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
   TERMINEE: "bg-green-100 text-green-700",
   ANNULEE: "bg-red-100 text-red-700",
 };
@@ -218,6 +221,56 @@ const formatDemandeDate = (dateStr: string | Date): string => {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+  });
+};
+
+const showCompleterModal = ref(false);
+const completerDemandeId = ref<string | null>(null);
+const completerNomBeneficiaire = ref("");
+const completerPrenomBeneficiaire = ref("");
+const completerDetails = ref("");
+const completerReponse = ref("");
+const completerCommentairePro = ref("");
+
+const openCompleterModal = (d: any) => {
+  completerDemandeId.value = d.id;
+  completerNomBeneficiaire.value = d.nomBeneficiaire || "";
+  completerPrenomBeneficiaire.value = d.prenomBeneficiaire || "";
+  completerDetails.value = d.details || "";
+  completerReponse.value = "";
+  completerCommentairePro.value = d.commentaireComplement || "";
+  showCompleterModal.value = true;
+};
+
+const completerDemandeMutation = useMutation({
+  ...$orpc.completerDemande.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Informations envoyées",
+      description: "Le professionnel a été notifié de votre complément.",
+    });
+    showCompleterModal.value = false;
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible d'envoyer le complément.",
+      color: "error",
+    });
+  },
+});
+
+const submitComplement = async () => {
+  if (!completerDemandeId.value) return;
+  await completerDemandeMutation.mutateAsync({
+    demandeId: completerDemandeId.value,
+    nomBeneficiaire: completerNomBeneficiaire.value || undefined,
+    prenomBeneficiaire: completerPrenomBeneficiaire.value || undefined,
+    details: completerDetails.value || undefined,
+    reponseComplement: completerReponse.value || undefined,
   });
 };
 
@@ -780,6 +833,7 @@ const getAccentColorByType = (
                   <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Créée par</th>
                   <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Statut</th>
                   <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Date</th>
+                  <th class="px-6 py-3 text-right text-xs font-semibold secondary--text--color">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
@@ -801,9 +855,35 @@ const getAccentColorByType = (
                     >
                       {{ statutDemandeLabels[d.statut] || d.statut }}
                     </span>
+                    <p
+                      v-if="d.statut === 'EN_ATTENTE_COMPLEMENT' && d.commentaireComplement"
+                      class="mt-1 text-xs text-orange-600 italic"
+                    >
+                      {{ d.commentaireComplement }}
+                    </p>
                   </td>
                   <td class="px-6 py-3 text-sm quaternary--text--color">
                     {{ formatDemandeDate(d.createdAt) }}
+                  </td>
+                  <td class="px-6 py-3 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                    <NuxtLink
+                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
+                      :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
+                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+                    >
+                      <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
+                      Modifier
+                    </NuxtLink>
+                    <button
+                      v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
+                      @click="openCompleterModal(d)"
+                      class="inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-600 transition-colors hover:bg-orange-50"
+                    >
+                      <UIcon name="i-lucide-edit" class="h-3.5 w-3.5" />
+                      Compléter
+                    </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -946,6 +1026,95 @@ const getAccentColorByType = (
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal compléter une demande -->
+    <div
+      v-if="showCompleterModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      @click.self="showCompleterModal = false"
+    >
+      <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-lg font-semibold secondary--text--color mb-2">
+          Compléter la demande
+        </h2>
+
+        <div
+          v-if="completerCommentairePro"
+          class="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-3"
+        >
+          <p class="text-xs font-medium text-orange-700 mb-1">
+            Message du professionnel :
+          </p>
+          <p class="text-sm text-orange-800">
+            {{ completerCommentairePro }}
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Nom du bénéficiaire
+            </label>
+            <input
+              v-model="completerNomBeneficiaire"
+              type="text"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
+              placeholder="Nom"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Prénom du bénéficiaire
+            </label>
+            <input
+              v-model="completerPrenomBeneficiaire"
+              type="text"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
+              placeholder="Prénom"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Détails
+            </label>
+            <textarea
+              v-model="completerDetails"
+              rows="3"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary resize-none"
+              placeholder="Informations complémentaires"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Votre réponse au professionnel
+            </label>
+            <textarea
+              v-model="completerReponse"
+              rows="3"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary resize-none"
+              placeholder="Ex : Voici les informations demandées..."
+            />
+          </div>
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-3">
+          <button
+            @click="showCompleterModal = false"
+            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium quaternary--text--color transition-colors hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            @click="submitComplement"
+            :disabled="completerDemandeMutation.isPending.value"
+            class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="completerDemandeMutation.isPending.value">Envoi...</span>
+            <span v-else>Envoyer le complément</span>
+          </button>
         </div>
       </div>
     </div>

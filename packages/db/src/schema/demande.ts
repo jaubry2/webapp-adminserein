@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -21,6 +22,7 @@ export const typeDemandeEnum = pgEnum("type_demande", [
 export const statutDemandeEnum = pgEnum("statut_demande", [
   "BROUILLON",
   "EN_COURS",
+  "EN_ATTENTE_COMPLEMENT",
   "TERMINEE",
   "ANNULEE",
 ]);
@@ -49,6 +51,11 @@ export const demande = pgTable("demande", {
   prenomBeneficiaire: text("prenom_beneficiaire"),
 
   details: text("details"),
+
+  commentaireComplement: text("commentaire_complement"),
+  reponseComplement: text("reponse_complement"),
+
+  donneesFormulaire: jsonb("donnees_formulaire"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")

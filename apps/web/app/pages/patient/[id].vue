@@ -276,6 +276,7 @@ const typeDemandeLabels: Record<string, string> = {
 const statutDemandeLabels: Record<string, string> = {
   BROUILLON: "Brouillon",
   EN_COURS: "En cours",
+  EN_ATTENTE_COMPLEMENT: "En attente de complément",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
 };
@@ -283,6 +284,7 @@ const statutDemandeLabels: Record<string, string> = {
 const statutDemandeColors: Record<string, string> = {
   BROUILLON: "bg-gray-100 text-gray-700",
   EN_COURS: "bg-blue-100 text-blue-700",
+  EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
   TERMINEE: "bg-green-100 text-green-700",
   ANNULEE: "bg-red-100 text-red-700",
 };

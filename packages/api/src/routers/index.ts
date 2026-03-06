@@ -2982,6 +2982,7 @@ export const appRouter = {
         nomBeneficiaire: z.string().optional(),
         prenomBeneficiaire: z.string().optional(),
         details: z.string().optional(),
+        donneesFormulaire: z.record(z.string(), z.record(z.string(), z.array(z.string()))).optional(),
       })
     )
     .handler(async ({ input, context }) => {
@@ -3057,6 +3058,7 @@ export const appRouter = {
           nomBeneficiaire: input.nomBeneficiaire ?? null,
           prenomBeneficiaire: input.prenomBeneficiaire ?? null,
           details: input.details ?? null,
+          donneesFormulaire: input.donneesFormulaire ?? null,
         })
         .returning();
 
@@ -3202,7 +3204,12 @@ export const appRouter = {
           .where(eq(particulier.userId, context.session.user.id))
           .limit(1);
 
-        if (!part || d.particulierId !== part.id) {
+        const hasAccess =
+          part &&
+          (d.particulierId === part.id ||
+            (d.patientId != null && d.patientId === part.patientId));
+
+        if (!hasAccess) {
           throw new Error("Demande non autorisée");
         }
       } else {
@@ -3216,7 +3223,7 @@ export const appRouter = {
     .input(
       z.object({
         demandeId: z.string().uuid(),
-        statut: z.enum(["BROUILLON", "EN_COURS", "TERMINEE", "ANNULEE"]),
+        statut: z.enum(["BROUILLON", "EN_COURS", "EN_ATTENTE_COMPLEMENT", "TERMINEE", "ANNULEE"]),
       })
     )
     .handler(async ({ input, context }) => {
@@ -3375,6 +3382,344 @@ export const appRouter = {
         ...d,
         professionnelInfo: d.professionnelId ? profsMap.get(d.professionnelId) ?? null : null,
       }));
+    }),
+
+  demanderComplementDemande: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        commentaire: z.string().min(1),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData || userData.type !== "PROFESSIONNEL") {
+        throw new Error("Seul un professionnel peut demander un complément");
+      }
+
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      if (d.professionnelId !== prof.id) {
+        throw new Error("Demande non autorisée");
+      }
+
+      if (!d.patientId) {
+        throw new Error("Impossible de demander un complément sans patient lié à la demande");
+      }
+
+      await db
+        .update(demande)
+        .set({
+          statut: "EN_ATTENTE_COMPLEMENT",
+          commentaireComplement: input.commentaire,
+          reponseComplement: null,
+        })
+        .where(eq(demande.id, input.demandeId));
+
+      let patientNom = "le patient";
+      const [patientData] = await db
+        .select()
+        .from(patient)
+        .where(eq(patient.id, d.patientId))
+        .limit(1);
+
+      if (patientData?.informationIdentiteId) {
+        const [info] = await db
+          .select()
+          .from(informationIdentite)
+          .where(eq(informationIdentite.id, patientData.informationIdentiteId))
+          .limit(1);
+        if (info) {
+          patientNom = `${info.prenom} ${info.nomUsage}`;
+        }
+      }
+
+      await db.insert(notification).values({
+        patientId: d.patientId,
+        professionnelId: null,
+        type: "INFO",
+        titre: "Complément d'informations requis",
+        message: `Le professionnel ${prof.prenom} ${prof.nom} demande un complément d'informations pour une demande ${d.typeDemande}. Message : "${input.commentaire}"`,
+        lien: "/mes-informations",
+      });
+
+      await db.insert(tache).values({
+        patientId: d.patientId,
+        professionnelId: prof.id,
+        typeDemarche: "ADMINISTRATIVE",
+        etat: "A_FAIRE",
+        date: new Date(),
+        details: `Complément d'informations demandé pour la demande ${d.typeDemande} du patient ${patientNom}. En attente de réponse.`,
+      });
+
+      const [updated] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      return updated;
+    }),
+
+  completerDemande: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        nomBeneficiaire: z.string().optional(),
+        prenomBeneficiaire: z.string().optional(),
+        details: z.string().optional(),
+        reponseComplement: z.string().optional(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (input.nomBeneficiaire !== undefined) updateData.nomBeneficiaire = input.nomBeneficiaire;
+      if (input.prenomBeneficiaire !== undefined) updateData.prenomBeneficiaire = input.prenomBeneficiaire;
+      if (input.details !== undefined) updateData.details = input.details;
+
+      if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part) {
+          throw new Error("Aucun particulier associé à ce compte");
+        }
+
+        if (d.patientId !== part.patientId) {
+          throw new Error("Demande non autorisée");
+        }
+
+        if (d.statut !== "EN_ATTENTE_COMPLEMENT") {
+          throw new Error("Cette demande n'est pas en attente de complément");
+        }
+
+        updateData.statut = "EN_COURS";
+        if (input.reponseComplement !== undefined) {
+          updateData.reponseComplement = input.reponseComplement;
+        }
+
+        await db
+          .update(demande)
+          .set(updateData)
+          .where(eq(demande.id, input.demandeId));
+
+        if (d.professionnelId) {
+          let patientNom = "le patient";
+          if (d.patientId) {
+            const [patientData] = await db
+              .select()
+              .from(patient)
+              .where(eq(patient.id, d.patientId))
+              .limit(1);
+
+            if (patientData?.informationIdentiteId) {
+              const [info] = await db
+                .select()
+                .from(informationIdentite)
+                .where(eq(informationIdentite.id, patientData.informationIdentiteId))
+                .limit(1);
+              if (info) {
+                patientNom = `${info.prenom} ${info.nomUsage}`;
+              }
+            }
+          }
+
+          await db.insert(notification).values({
+            professionnelId: d.professionnelId,
+            patientId: null,
+            type: "INFO",
+            titre: "Complément d'informations reçu",
+            message: `Le patient ${patientNom} a complété les informations demandées pour la demande ${d.typeDemande}.`,
+            lien: "/mes-demandes",
+          });
+
+          if (d.patientId) {
+            const matchingTaches = await db
+              .select()
+              .from(tache)
+              .where(
+                and(
+                  eq(tache.patientId, d.patientId),
+                  eq(tache.professionnelId, d.professionnelId),
+                  eq(tache.etat, "A_FAIRE")
+                )
+              );
+
+            for (const t of matchingTaches) {
+              if (t.details?.includes("Complément d'informations demandé")) {
+                await db
+                  .update(tache)
+                  .set({ etat: "TERMINEE" })
+                  .where(eq(tache.id, t.id));
+                break;
+              }
+            }
+          }
+        }
+      } else if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+
+        await db
+          .update(demande)
+          .set(updateData)
+          .where(eq(demande.id, input.demandeId));
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      const [updated] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      return updated;
+    }),
+
+  updateDemande: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        nomBeneficiaire: z.string().optional(),
+        prenomBeneficiaire: z.string().optional(),
+        details: z.string().optional(),
+        donneesFormulaire: z.record(z.string(), z.record(z.string(), z.array(z.string()))).optional(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        const hasAccess =
+          part &&
+          (d.particulierId === part.id ||
+            (d.patientId != null && d.patientId === part.patientId));
+
+        if (!hasAccess) {
+          throw new Error("Demande non autorisée");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (input.nomBeneficiaire !== undefined) updateData.nomBeneficiaire = input.nomBeneficiaire;
+      if (input.prenomBeneficiaire !== undefined) updateData.prenomBeneficiaire = input.prenomBeneficiaire;
+      if (input.details !== undefined) updateData.details = input.details;
+      if (input.donneesFormulaire !== undefined) updateData.donneesFormulaire = input.donneesFormulaire;
+
+      await db
+        .update(demande)
+        .set(updateData)
+        .where(eq(demande.id, input.demandeId));
+
+      const [updated] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      return updated;
     }),
 };
 

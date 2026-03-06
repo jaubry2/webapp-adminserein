@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 
-const { $orpc } = useNuxtApp();
+const { $authClient, $orpc } = useNuxtApp();
 const queryClient = useQueryClient();
 const toast = useToast();
+const session = $authClient.useSession();
 
 definePageMeta({
   middleware: ["auth"],
@@ -11,6 +12,7 @@ definePageMeta({
 
 const { data: userTypeData } = useQuery({
   ...$orpc.getUserType.queryOptions(),
+  enabled: computed(() => !!session.value?.data && !session.value.isPending),
 });
 const userType = computed(() => userTypeData.value?.type || null);
 
@@ -20,9 +22,10 @@ const {
   isError,
 } = useQuery({
   ...$orpc.listDemandes.queryOptions(),
+  enabled: computed(() => !!session.value?.data && !session.value.isPending),
 });
 
-const filterStatut = ref<"TOUS" | "BROUILLON" | "EN_COURS" | "TERMINEE" | "ANNULEE">("TOUS");
+const filterStatut = ref<"TOUS" | "BROUILLON" | "EN_COURS" | "EN_ATTENTE_COMPLEMENT" | "TERMINEE" | "ANNULEE">("TOUS");
 
 const filteredDemandes = computed(() => {
   if (!demandes.value) return [];
@@ -40,6 +43,7 @@ const typeDemandeLabels: Record<string, string> = {
 const statutLabels: Record<string, string> = {
   BROUILLON: "Brouillon",
   EN_COURS: "En cours",
+  EN_ATTENTE_COMPLEMENT: "En attente de complément",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
 };
@@ -47,6 +51,7 @@ const statutLabels: Record<string, string> = {
 const statutColors: Record<string, string> = {
   BROUILLON: "bg-gray-100 text-gray-700",
   EN_COURS: "bg-blue-100 text-blue-700",
+  EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
   TERMINEE: "bg-green-100 text-green-700",
   ANNULEE: "bg-red-100 text-red-700",
 };
@@ -93,7 +98,46 @@ const updateStatutMutation = useMutation({
 const changeStatut = async (demandeId: string, statut: string) => {
   await updateStatutMutation.mutateAsync({
     demandeId,
-    statut: statut as "BROUILLON" | "EN_COURS" | "TERMINEE" | "ANNULEE",
+    statut: statut as "BROUILLON" | "EN_COURS" | "EN_ATTENTE_COMPLEMENT" | "TERMINEE" | "ANNULEE",
+  });
+};
+
+const showComplementModal = ref(false);
+const complementDemandeId = ref<string | null>(null);
+const complementMessage = ref("");
+
+const openComplementModal = (demandeId: string) => {
+  complementDemandeId.value = demandeId;
+  complementMessage.value = "";
+  showComplementModal.value = true;
+};
+
+const demanderComplementMutation = useMutation({
+  ...$orpc.demanderComplementDemande.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listDemandes.queryKey(),
+    });
+    toast.add({
+      title: "Complément demandé",
+      description: "Le particulier a été notifié de votre demande de complément.",
+    });
+    showComplementModal.value = false;
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de demander un complément.",
+      color: "error",
+    });
+  },
+});
+
+const submitComplementRequest = async () => {
+  if (!complementDemandeId.value || !complementMessage.value.trim()) return;
+  await demanderComplementMutation.mutateAsync({
+    demandeId: complementDemandeId.value,
+    commentaire: complementMessage.value.trim(),
   });
 };
 </script>
@@ -115,6 +159,7 @@ const changeStatut = async (demandeId: string, statut: string) => {
             <option value="TOUS">Tous</option>
             <option value="BROUILLON">Brouillon</option>
             <option value="EN_COURS">En cours</option>
+            <option value="EN_ATTENTE_COMPLEMENT">En attente de complément</option>
             <option value="TERMINEE">Terminée</option>
             <option value="ANNULEE">Annulée</option>
           </select>
@@ -184,6 +229,22 @@ const changeStatut = async (demandeId: string, statut: string) => {
                 </td>
                 <td class="px-6 py-4 text-right">
                   <div class="flex items-center justify-end gap-2">
+                    <NuxtLink
+                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
+                      :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
+                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+                    >
+                      <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
+                      Modifier
+                    </NuxtLink>
+                    <button
+                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE' && d.statut !== 'EN_ATTENTE_COMPLEMENT' && d.patientId && userType === 'PROFESSIONNEL'"
+                      @click="openComplementModal(d.id)"
+                      class="inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-600 transition-colors hover:bg-orange-50"
+                    >
+                      <UIcon name="i-lucide-message-circle" class="h-3.5 w-3.5" />
+                      Demander un complément
+                    </button>
                     <button
                       v-if="d.statut !== 'TERMINEE'"
                       @click="changeStatut(d.id, 'TERMINEE')"
@@ -224,6 +285,44 @@ const changeStatut = async (demandeId: string, statut: string) => {
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal demande de complément -->
+    <div
+      v-if="showComplementModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      @click.self="showComplementModal = false"
+    >
+      <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+        <h2 class="text-lg font-semibold secondary--text--color mb-4">
+          Demander un complément d'informations
+        </h2>
+        <p class="text-sm quaternary--text--color mb-4">
+          Décrivez les informations manquantes que le particulier doit fournir.
+        </p>
+        <textarea
+          v-model="complementMessage"
+          rows="4"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary resize-none"
+          placeholder="Ex : Merci de fournir votre numéro de sécurité sociale et une copie de votre pièce d'identité."
+        />
+        <div class="mt-4 flex items-center justify-end gap-3">
+          <button
+            @click="showComplementModal = false"
+            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium quaternary--text--color transition-colors hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            @click="submitComplementRequest"
+            :disabled="!complementMessage.trim() || demanderComplementMutation.isPending.value"
+            class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="demanderComplementMutation.isPending.value">Envoi...</span>
+            <span v-else>Envoyer la demande</span>
+          </button>
         </div>
       </div>
     </div>

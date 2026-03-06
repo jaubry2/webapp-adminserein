@@ -161,17 +161,14 @@
       </button>
 
       <button
-        v-if="!demandeSaved"
         class="rounded-full border border-gray-300 bg-[#a7c7e7] px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:opacity-90 disabled:opacity-50"
         :disabled="isSavingDemande"
         @click="saveDemande()"
       >
         <span v-if="isSavingDemande">Enregistrement...</span>
+        <span v-else-if="editDemandeId">Mettre à jour la demande</span>
         <span v-else>Enregistrer la demande</span>
       </button>
-      <p v-else class="text-sm text-green-600 font-medium">
-        Demande enregistrée avec succès.
-      </p>
     </div>
   </div>
 </template>
@@ -186,7 +183,7 @@ import {
 } from "~/composables/useInfoFormulaire";
 import type { infoFormulaire } from "~/types";
 import type { Patient } from "~/types/patient";
-import { useQuery, useMutation } from "@tanstack/vue-query";
+import { useQuery, useMutation, skipToken } from "@tanstack/vue-query";
 
 definePageMeta({
   middleware: ["auth"],
@@ -203,6 +200,10 @@ const { $orpc } = useNuxtApp();
 const toast = useToast();
 
 /* VARIABLES REACTIVES */
+
+const editDemandeId = ref<string | null>(
+  typeof route.query.demandeId === "string" ? route.query.demandeId : null,
+);
 
 const fields = ref<infoFormulaire>(apa_fields);
 
@@ -388,11 +389,40 @@ const prefillFormFromPatient = (patient: any) => {
 watch(
   () => selectedPatient.value,
   (p) => {
-    if (p) {
+    if (p && !editDemandeId.value) {
       prefillFormFromPatient(p);
     }
   },
   { immediate: true },
+);
+
+/* CHARGEMENT D'UNE DEMANDE EXISTANTE (MODE EDITION) */
+
+const demandeSaved = ref(false);
+
+const { data: existingDemande } = useQuery(
+  computed(() => ({
+    ...$orpc.getDemandeById.queryOptions({
+      input: editDemandeId.value
+        ? { demandeId: editDemandeId.value }
+        : skipToken,
+    }),
+    enabled: !!editDemandeId.value,
+  }))
+);
+
+watch(
+  () => existingDemande.value,
+  (d) => {
+    if (!d) return;
+    if (d.donneesFormulaire) {
+      fields.value = d.donneesFormulaire as infoFormulaire;
+    }
+    if (d.patientId) {
+      selectedPatientId.value = d.patientId;
+    }
+    demandeSaved.value = true;
+  },
 );
 
 /* VARIABLES CALCULEES */
@@ -433,13 +463,15 @@ const isAPADemande = computed(() => {
 
 /* SAUVEGARDE DE LA DEMANDE */
 
-const demandeSaved = ref(false);
 const isSavingDemande = ref(false);
 
 const createDemandeMutation = useMutation({
   ...$orpc.createDemande.mutationOptions(),
-  onSuccess: () => {
+  onSuccess: (data: any) => {
     demandeSaved.value = true;
+    if (data?.id) {
+      editDemandeId.value = data.id;
+    }
     toast.add({
       title: "Demande enregistrée",
       description: "La demande a été sauvegardée avec succès.",
@@ -449,6 +481,26 @@ const createDemandeMutation = useMutation({
     toast.add({
       title: "Erreur",
       description: error?.message || "Impossible d'enregistrer la demande.",
+      color: "error",
+    });
+  },
+  onSettled: () => {
+    isSavingDemande.value = false;
+  },
+});
+
+const updateDemandeMutation = useMutation({
+  ...$orpc.updateDemande.mutationOptions(),
+  onSuccess: () => {
+    toast.add({
+      title: "Demande mise à jour",
+      description: "Les modifications ont été sauvegardées.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de mettre à jour la demande.",
       color: "error",
     });
   },
@@ -467,12 +519,24 @@ const saveDemande = async () => {
   const prenomBeneficiaire =
     getValue(fields.value, "demandeur_prenom") || undefined;
 
-  await createDemandeMutation.mutateAsync({
-    typeDemande: "APA",
-    patientId: selectedPatientId.value ?? undefined,
-    nomBeneficiaire: nomBeneficiaire || undefined,
-    prenomBeneficiaire: prenomBeneficiaire || undefined,
-  });
+  const donneesFormulaire = JSON.parse(JSON.stringify(fields.value));
+
+  if (editDemandeId.value) {
+    await updateDemandeMutation.mutateAsync({
+      demandeId: editDemandeId.value,
+      nomBeneficiaire: nomBeneficiaire || undefined,
+      prenomBeneficiaire: prenomBeneficiaire || undefined,
+      donneesFormulaire,
+    });
+  } else {
+    await createDemandeMutation.mutateAsync({
+      typeDemande: "APA",
+      patientId: selectedPatientId.value ?? undefined,
+      nomBeneficiaire: nomBeneficiaire || undefined,
+      prenomBeneficiaire: prenomBeneficiaire || undefined,
+      donneesFormulaire,
+    });
+  }
 };
 
 /* PDF */
@@ -561,6 +625,9 @@ const updateFields = (_apa_fields: infoFormulaire, _nextPage: string) => {
       step: _nextPage,
       ...(isProfessionnel.value && selectedPatientId.value
         ? { patientId: selectedPatientId.value }
+        : {}),
+      ...(editDemandeId.value
+        ? { demandeId: editDemandeId.value }
         : {}),
     },
   });
