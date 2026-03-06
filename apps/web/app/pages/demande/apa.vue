@@ -1,7 +1,7 @@
 <template>
   <div class="p-8 flex flex-col items-center gap-8">
-    <!-- Sélection du patient suivi -->
-    <section class="w-full max-w-3xl mb-4">
+    <!-- Sélection du patient suivi (masqué en mode édition) -->
+    <section v-if="!editDemandeId" class="w-full max-w-3xl mb-4">
       <div
         class="rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm flex flex-col gap-3"
       >
