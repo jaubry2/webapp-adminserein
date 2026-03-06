@@ -3,6 +3,8 @@ import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
 import { useQuery, useMutation, useQueryClient, skipToken } from "@tanstack/vue-query";
+import { PDFDocument } from "pdf-lib";
+import { getListFieldForm, getValue } from "~/composables/useInfoFormulaire";
 
 definePageMeta({
   middleware: ["auth"],
@@ -272,6 +274,96 @@ const submitComplement = async () => {
     details: completerDetails.value || undefined,
     reponseComplement: completerReponse.value || undefined,
   });
+};
+
+const APA_OFFICIAL_PDF_PATH = "/pdf/apa_remplissable.pdf";
+
+const generateApaPdfFromDemande = async (
+  donneesFormulaire: any,
+  options: { download: boolean },
+) => {
+  if (!process.client) return;
+
+  const existingPdfBytes = await fetch(APA_OFFICIAL_PDF_PATH).then((res) =>
+    res.arrayBuffer(),
+  );
+  const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  const form = pdfDoc.getForm();
+  const field_names = form.getFields().map((field: any) => field.getName());
+
+  Object.keys(donneesFormulaire ?? {}).forEach((key) => {
+    const value = getValue(donneesFormulaire, key);
+    const fields_list = getListFieldForm(donneesFormulaire, key);
+    if (!value) {
+      return;
+    } else if (fields_list.length === 1) {
+      if (field_names.includes(fields_list[0])) {
+        form.getTextField(fields_list[0]).setText(value);
+      }
+    } else if (fields_list[0].startsWith("est")) {
+      if (field_names.includes(value)) {
+        form.getCheckBox(value).check();
+      }
+    } else {
+      let charList = value.split("");
+      if (charList.includes("-")) {
+        const wait = [
+          charList[8],
+          charList[9],
+          charList[5],
+          charList[6],
+          charList[0],
+          charList[1],
+          charList[2],
+          charList[3],
+        ];
+        charList = wait;
+      }
+      for (let i = 0; i < fields_list.length; i++) {
+        if (field_names.includes(fields_list[i])) {
+          form.getTextField(fields_list[i]).setText(charList[i] || "");
+        }
+      }
+    }
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
+  if (options.download) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "demande_APA_remplie.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  } else {
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    // libérer l'URL plus tard
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+};
+
+const handleViewDemandeDocument = (d: any) => {
+  if (d.typeDemande === "APA" && d.donneesFormulaire) {
+    generateApaPdfFromDemande(d.donneesFormulaire, { download: false });
+    return;
+  }
+
+  navigateTo(`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`);
+};
+
+const handleDownloadDemandeDocument = (d: any) => {
+  if (d.typeDemande === "APA" && d.donneesFormulaire) {
+    generateApaPdfFromDemande(d.donneesFormulaire, { download: true });
+    return;
+  }
+
+  navigateTo(
+    `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
+  );
 };
 
 const createPersonneProcheParticulierMutationOptions =
@@ -811,6 +903,20 @@ const getAccentColorByType = (
           >
             <template #actions="{ demande: d }">
               <div class="flex items-center justify-end gap-2">
+                <button
+                  class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+                  @click="handleViewDemandeDocument(d)"
+                >
+                  <UIcon name="i-lucide-file-text" class="h-3.5 w-3.5" />
+                  Voir
+                </button>
+                <button
+                  class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+                  @click="handleDownloadDemandeDocument(d)"
+                >
+                  <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
+                  Télécharger
+                </button>
                 <NuxtLink
                   v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
                   :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
