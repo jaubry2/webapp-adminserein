@@ -184,11 +184,6 @@ const handleSignOut = async () => {
             label="Faire une demande"
             to="/demandes"
           />
-          <ButtonLayout
-            icon="i-lucide-folder-open"
-            label="Mes demandes"
-            to="/mes-demandes"
-          />
         </template>
       </div>
 
