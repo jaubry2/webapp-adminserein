@@ -192,25 +192,12 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
-/**************************************************************************************************************/
-/* SYNCHRONISATION AVEC LE PARENT */
-/**************************************************************************************************************/
-watch(
-  () => props.apa_fields,
-  (newVal) => {
-    fields.value = JSON.parse(JSON.stringify(newVal));
-  },
-  { deep: true },
-);
+const fields = props.apa_fields;
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

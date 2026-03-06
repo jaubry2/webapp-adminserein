@@ -429,8 +429,6 @@ watch(
     if (!d) return;
     if (d.donneesFormulaire) {
       fields.value = d.donneesFormulaire as infoFormulaire;
-      console.log("APA", fields.value);
-      console.log("APA", d.donneesFormulaire);
     }
     if (d.patientId) {
       selectedPatientId.value = d.patientId;
@@ -534,6 +532,7 @@ const saveDemande = async () => {
     getValue(fields.value, "demandeur_prenom") || undefined;
 
   const donneesFormulaire = JSON.parse(JSON.stringify(fields.value));
+  console.log("DONNEES AVANT UPDATE", donneesFormulaire);
 
   if (editDemandeId.value) {
     await updateDemandeMutation.mutateAsync({
@@ -633,7 +632,9 @@ async function modifyDocument() {
 }
 
 const updateFields = (_apa_fields: infoFormulaire, _nextPage: string) => {
-  fields.value = _apa_fields;
+  // On n'a plus besoin de remonter les champs depuis les enfants :
+  // ils modifient directement `fields` passé par ref. Ici on gère
+  // uniquement la navigation entre les étapes.
   router.push({
     query: {
       step: _nextPage,

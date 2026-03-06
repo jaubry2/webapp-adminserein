@@ -2,19 +2,31 @@ import type { infoFormulaire } from "~/types";
 
 
 export function getValue(infoForm: infoFormulaire, key: string): string {
-  const primary_value = infoForm[key];
-  const secondary_key = Object.keys(primary_value)[0];
-  return secondary_key;
+  const primary_value = infoForm?.[key];
+  if (!primary_value) {
+    return "";
+  }
+  const secondary_keys = Object.keys(primary_value);
+  if (secondary_keys.length === 0) {
+    return "";
+  }
+  return secondary_keys[0];
 }
 
 export function getListFieldForm(
   infoForm: infoFormulaire,
   key: string
 ): string[] {
-  const primary_value = infoForm[key];
-  const secondary_key = Object.keys(primary_value)[0];
-  const secondary_value = primary_value[secondary_key];
-  return secondary_value;
+  const primary_value = infoForm?.[key];
+  if (!primary_value) {
+    return [];
+  }
+  const secondary_keys = Object.keys(primary_value);
+  if (secondary_keys.length === 0) {
+    return [];
+  }
+  const secondary_value = primary_value[secondary_keys[0]];
+  return secondary_value ?? [];
 }
 
 export function modifyValue(_key: string, _newValue: string, fields: infoFormulaire) {

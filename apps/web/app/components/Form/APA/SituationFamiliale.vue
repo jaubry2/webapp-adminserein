@@ -13,9 +13,20 @@
         est_demandeur_veuf: 'Veuf / Veuve',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'demandeur_situation_familiale')"
       @update="modifyValue('demandeur_situation_familiale', $event, fields)"
     />
-    <div v-show="isOpen" class="flex flex-col gap-2">
+    <div
+      v-show="
+        getValue(fields, 'demandeur_situation_familiale') ==
+          'est_demandeur_marie' ||
+        getValue(fields, 'demandeur_situation_familiale') ==
+          'est_demandeur_pacse' ||
+        getValue(fields, 'demandeur_situation_familiale') ==
+          'est_demandeur_concubinage'
+      "
+      class="flex flex-col gap-2"
+    >
       <h2 class="text-3xl text-center">Information du conjoint</h2>
       <div class="flex justify-center">
         <FormRadioInput
@@ -131,15 +142,12 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 /* VARIABLES CALCULEES */
 const isOpen = computed(() => {
   switch (getValue(fields.value, "demandeur_situation_familiale")) {
@@ -153,16 +161,6 @@ const isOpen = computed(() => {
       return false;
   }
 });
-/**************************************************************************************************************/
-/* SYNCHRONISATION AVEC LE PARENT */
-/**************************************************************************************************************/
-watch(
-  () => props.apa_fields,
-  (newVal) => {
-    fields.value = JSON.parse(JSON.stringify(newVal));
-  },
-  { deep: true },
-);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/
