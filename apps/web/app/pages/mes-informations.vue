@@ -796,99 +796,40 @@ const getAccentColorByType = (
 
         <!-- Onglet Demande -->
         <div v-if="activeTab === 'demande'" class="space-y-4">
-          <h2 class="text-lg font-semibold secondary--text--color">
-            Mes demandes
-          </h2>
-
-          <div
-            v-if="isLoadingDemandes"
-            class="text-center py-8"
+          <OngletInformationDemande
+            title="Mes demandes"
+            :demandes="patientDemandes"
+            :is-loading="isLoadingDemandes"
+            :is-error="isErrorDemandes"
+            empty-text="Aucune demande pour le moment."
+            :type-labels="typeDemandeLabels"
+            :statut-labels="statutDemandeLabels"
+            :statut-colors="statutDemandeColors"
+            :get-creator-name="getDemandeCreateur"
+            :format-date="formatDemandeDate"
+            :show-actions="true"
           >
-            <p class="text-sm quaternary--text--color">
-              Chargement des demandes...
-            </p>
-          </div>
-          <div
-            v-else-if="isErrorDemandes"
-            class="text-center py-8"
-          >
-            <p class="text-sm text-red-500">
-              Erreur lors du chargement des demandes.
-            </p>
-          </div>
-          <div
-            v-else-if="!patientDemandes || patientDemandes.length === 0"
-            class="text-center py-8"
-          >
-            <p class="text-sm quaternary--text--color">
-              Aucune demande pour le moment.
-            </p>
-          </div>
-
-          <div v-else class="rounded-lg border border-gray-200 bg-white shadow-sm overflow-x-auto">
-            <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Type</th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Créée par</th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Statut</th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Date</th>
-                  <th class="px-6 py-3 text-right text-xs font-semibold secondary--text--color">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200">
-                <tr
-                  v-for="d in patientDemandes"
-                  :key="d.id"
-                  class="hover:bg-gray-50 transition-colors"
+            <template #actions="{ demande: d }">
+              <div class="flex items-center justify-end gap-2">
+                <NuxtLink
+                  v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
+                  :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
+                  class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
                 >
-                  <td class="px-6 py-3 text-sm font-medium secondary--text--color">
-                    {{ typeDemandeLabels[d.typeDemande] || d.typeDemande }}
-                  </td>
-                  <td class="px-6 py-3 text-sm quaternary--text--color">
-                    {{ getDemandeCreateur(d) }}
-                  </td>
-                  <td class="px-6 py-3">
-                    <span
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                      :class="statutDemandeColors[d.statut] || 'bg-gray-100 text-gray-700'"
-                    >
-                      {{ statutDemandeLabels[d.statut] || d.statut }}
-                    </span>
-                    <p
-                      v-if="d.statut === 'EN_ATTENTE_COMPLEMENT' && d.commentaireComplement"
-                      class="mt-1 text-xs text-orange-600 italic"
-                    >
-                      {{ d.commentaireComplement }}
-                    </p>
-                  </td>
-                  <td class="px-6 py-3 text-sm quaternary--text--color">
-                    {{ formatDemandeDate(d.createdAt) }}
-                  </td>
-                  <td class="px-6 py-3 text-right">
-                    <div class="flex items-center justify-end gap-2">
-                    <NuxtLink
-                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
-                      :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
-                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                    >
-                      <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
-                      Modifier
-                    </NuxtLink>
-                    <button
-                      v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
-                      @click="openCompleterModal(d)"
-                      class="inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-600 transition-colors hover:bg-orange-50"
-                    >
-                      <UIcon name="i-lucide-edit" class="h-3.5 w-3.5" />
-                      Compléter
-                    </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
+                  Modifier
+                </NuxtLink>
+                <button
+                  v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
+                  @click="openCompleterModal(d)"
+                  class="inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-600 transition-colors hover:bg-orange-50"
+                >
+                  <UIcon name="i-lucide-edit" class="h-3.5 w-3.5" />
+                  Compléter
+                </button>
+              </div>
+            </template>
+          </OngletInformationDemande>
         </div>
 
         <!-- Onglet Accès -->
