@@ -117,8 +117,8 @@ const fields = ref(props.apa_fields);
 watch(
   () => props.apa_fields,
   (newVal) => {
-    fields.value = newVal as infoFormulaire;
-    console.log("FormIdentite", fields.value);
+    // On clone pour éviter de muter un objet potentiellement readonly
+    fields.value = JSON.parse(JSON.stringify(newVal)) as infoFormulaire;
   },
   { deep: true },
 );

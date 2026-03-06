@@ -159,8 +159,7 @@ const isOpen = computed(() => {
 watch(
   () => props.apa_fields,
   (newVal) => {
-    fields.value = newVal;
-    console.log("FormSituationFamiliale", fields.value);
+    fields.value = JSON.parse(JSON.stringify(newVal));
   },
   { deep: true },
 );

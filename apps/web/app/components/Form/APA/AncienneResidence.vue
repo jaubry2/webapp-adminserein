@@ -72,7 +72,7 @@ const isOpen = ref(false);
 watch(
   () => props.apa_fields,
   (newVal) => {
-    fields.value = newVal;
+    fields.value = JSON.parse(JSON.stringify(newVal));
   },
   { deep: true },
 );

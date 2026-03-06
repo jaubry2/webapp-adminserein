@@ -111,7 +111,7 @@ const adresses = ref([]);
 watch(
   () => props.apa_fields,
   (newVal) => {
-    fields.value = newVal;
+    fields.value = JSON.parse(JSON.stringify(newVal));
   },
   { deep: true },
 );
