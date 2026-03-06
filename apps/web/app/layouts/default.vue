@@ -161,6 +161,11 @@ const handleSignOut = async () => {
             label="Faire une demande"
             to="/demandes"
           />
+          <ButtonLayout
+            icon="i-lucide-folder-open"
+            label="Mes demandes"
+            to="/mes-demandes"
+          />
         </template>
         <!-- Menu pour particuliers -->
         <template v-else-if="isParticulier">
@@ -178,6 +183,11 @@ const handleSignOut = async () => {
             icon="i-lucide-file-plus-2"
             label="Faire une demande"
             to="/demandes"
+          />
+          <ButtonLayout
+            icon="i-lucide-folder-open"
+            label="Mes demandes"
+            to="/mes-demandes"
           />
         </template>
       </div>

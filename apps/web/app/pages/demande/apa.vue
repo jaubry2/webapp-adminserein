@@ -11,7 +11,8 @@
 
         <p class="text-xs quaternary--text--color" v-if="isProfessionnel">
           Sélectionnez le patient pour lequel vous remplissez cette demande
-          d’APA.
+          d'APA, ou continuez sans patient pour remplir le formulaire
+          manuellement.
         </p>
         <p class="text-xs quaternary--text--color" v-else-if="isParticulier">
           Cette demande sera remplie pour vous-même. Vos informations seront
@@ -31,7 +32,7 @@
               v-model="selectedPatientId"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
             >
-              <option :value="null">Sélectionner un patient</option>
+              <option :value="null">Sans patient (saisie manuelle)</option>
               <option
                 v-for="patient in patientOptions"
                 :key="patient.id"
@@ -41,8 +42,8 @@
               </option>
             </select>
 
-            <p v-if="!selectedPatientId" class="text-xs text-amber-600">
-              Aucun patient sélectionné pour le moment.
+            <p v-if="!selectedPatientId" class="text-xs quaternary--text--color">
+              Le formulaire sera vide, vous pourrez saisir les informations manuellement.
             </p>
           </div>
         </template>
@@ -75,7 +76,7 @@
       class="w-[50%]"
       :apa_fields="fields"
       @updateApaFields="updateFields($event, 'coordonnee')"
-      v-show="currentStep === 'identite' && !!selectedPatient"
+      v-show="currentStep === 'identite'"
     />
     <FormAPACoordonnee
       class="w-[50%]"
@@ -150,7 +151,7 @@
         class="text-white px-6 py-2 rounded transition"
         @click="modifyDocument()"
       >
-        Télécharger le formualaire APA rempli
+        Télécharger le formulaire APA rempli
       </button>
       <button
         class="text-white px-6 py-2 rounded transition"
@@ -158,6 +159,19 @@
       >
         Télécharger la to-do List
       </button>
+
+      <button
+        v-if="!demandeSaved"
+        class="rounded-full border border-gray-300 bg-[#a7c7e7] px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:opacity-90 disabled:opacity-50"
+        :disabled="isSavingDemande"
+        @click="saveDemande()"
+      >
+        <span v-if="isSavingDemande">Enregistrement...</span>
+        <span v-else>Enregistrer la demande</span>
+      </button>
+      <p v-else class="text-sm text-green-600 font-medium">
+        Demande enregistrée avec succès.
+      </p>
     </div>
   </div>
 </template>
@@ -172,7 +186,7 @@ import {
 } from "~/composables/useInfoFormulaire";
 import type { infoFormulaire } from "~/types";
 import type { Patient } from "~/types/patient";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useMutation } from "@tanstack/vue-query";
 
 definePageMeta({
   middleware: ["auth"],
@@ -186,6 +200,7 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const { $orpc } = useNuxtApp();
+const toast = useToast();
 
 /* VARIABLES REACTIVES */
 
@@ -264,7 +279,6 @@ const prefillFormFromPatient = (patient: any) => {
   const info = patient.informationIdentite ?? {};
   const coord = patient.informationCoordonnee ?? {};
 
-  // Identité
   if (info.nomNaissance || info.nomUsage) {
     modifyValue(
       "demandeur_nom_naissance",
@@ -279,7 +293,6 @@ const prefillFormFromPatient = (patient: any) => {
     modifyValue("demandeur_prenom", info.prenom as string, fields.value);
   }
 
-  // Date de naissance (format ISO YYYY-MM-DD ou string similaire)
   if (info.dateNaissance) {
     let dateStr: string;
     if (typeof info.dateNaissance === "string") {
@@ -321,14 +334,12 @@ const prefillFormFromPatient = (patient: any) => {
     );
   }
 
-  // Genre -> civilité
   if (info.genre === "FEMININ") {
     modifyValue("demandeur_sexe", "est_demandeur_femme", fields.value);
   } else if (info.genre === "MASCULIN") {
     modifyValue("demandeur_sexe", "est_demandeur_homme", fields.value);
   }
 
-  // Coordonnées
   if (coord.numeroTelephone) {
     modifyValue(
       "demandeur_numero_telephone",
@@ -353,7 +364,6 @@ const prefillFormFromPatient = (patient: any) => {
     modifyValue("demandeur_ville", coord.ville as string, fields.value);
   }
 
-  // Caisse de retraite -> champ APA
   if (info.caisseRetraite) {
     let caisseValue = "";
     switch (info.caisseRetraite) {
@@ -385,7 +395,7 @@ watch(
   { immediate: true },
 );
 
-/* VARIALBES CALCULEES */
+/* VARIABLES CALCULEES */
 
 const currentStep = computed(() => route.query.step || "identite");
 const isAPADemande = computed(() => {
@@ -421,62 +431,94 @@ const isAPADemande = computed(() => {
   }
 });
 
-/* Charge le PDF et retorune le document */
+/* SAUVEGARDE DE LA DEMANDE */
+
+const demandeSaved = ref(false);
+const isSavingDemande = ref(false);
+
+const createDemandeMutation = useMutation({
+  ...$orpc.createDemande.mutationOptions(),
+  onSuccess: () => {
+    demandeSaved.value = true;
+    toast.add({
+      title: "Demande enregistrée",
+      description: "La demande a été sauvegardée avec succès.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible d'enregistrer la demande.",
+      color: "error",
+    });
+  },
+  onSettled: () => {
+    isSavingDemande.value = false;
+  },
+});
+
+const saveDemande = async () => {
+  isSavingDemande.value = true;
+
+  const nomBeneficiaire =
+    getValue(fields.value, "demandeur_nom_naissance") ||
+    getValue(fields.value, "demandeur_nom_usage") ||
+    undefined;
+  const prenomBeneficiaire =
+    getValue(fields.value, "demandeur_prenom") || undefined;
+
+  await createDemandeMutation.mutateAsync({
+    typeDemande: "APA",
+    patientId: selectedPatientId.value ?? undefined,
+    nomBeneficiaire: nomBeneficiaire || undefined,
+    prenomBeneficiaire: prenomBeneficiaire || undefined,
+  });
+};
+
+/* PDF */
 
 async function loadPdfForm(pdfUrl: string) {
-  // 1. Récupérer le PDF (depuis vos assets locaux ou un serveur)
   const existingPdfBytes = await fetch(pdfUrl).then((res) => res.arrayBuffer());
-
-  // 2. Charger le document PDF
   const pdfDoc = await PDFDocument.load(existingPdfBytes);
-
   return pdfDoc;
 }
+
 async function downloadToList() {
   const { default: html2pdf } = await import("html2pdf.js");
 
   const element = document.getElementById("element-to-convert");
 
   if (element) {
-    // 1. Rendre l'élément visible juste avant la capture
     (element as HTMLElement).style.display = "block";
 
-    await nextTick(); // Assure que le DOM a bien appliqué le style 'block'
+    await nextTick();
 
-    // 2. Lancer la conversion (elle renvoie une promesse)
     html2pdf(element, {
       margin: 1,
       filename: "Recap.pdf",
-    })
-      // 3. .finally() s'exécute une fois le processus de création/téléchargement terminé
-      .finally(() => {
-        // 4. Masquer l'élément immédiatement
-        (element as HTMLElement).style.display = "none";
-      });
+    }).finally(() => {
+      (element as HTMLElement).style.display = "none";
+    });
   } else {
     console.error("Élément 'element-to-convert' introuvable.");
   }
 }
+
 async function modifyDocument() {
-  // On charge le document PDF
   const pdf_doc = await loadPdfForm("/pdf/apa_remplissable.pdf");
-  // On récupère le formulaire du document
   const form = pdf_doc.getForm();
-  // Liste des champs du formulaire du document
   const field_names = form.getFields().map((field: any) => field.getName());
-  // Faire une boucle sur les champs APA, récupérer les champs du document et les modifier
+
   Object.keys(fields.value).forEach((key) => {
     const value = getValue(fields.value, key);
     const fields_list = getListFieldForm(fields.value, key);
     if (value === "") {
       null;
     } else if (fields_list.length === 1) {
-      // C'est un champ texte simple
       if (field_names.includes(fields_list[0])) {
         form.getTextField(fields_list[0]).setText(value);
       }
     } else if (fields_list[0].startsWith("est")) {
-      // C'est un champ radio
       form.getCheckBox(value).check();
     } else {
       let charList = value.split("");
@@ -493,41 +535,30 @@ async function modifyDocument() {
         ];
         charList = wait;
       }
-      // On remplit les champs un par un
       for (let i = 0; i < fields_list.length; i++) {
         form.getTextField(fields_list[i]).setText(charList[i] || "");
       }
     }
   });
-  // ----------------------------------------------------
-  // 2. Sérialiser le PDF modifié
-  // ----------------------------------------------------
+
   const pdfBytes = await pdf_doc.save();
-  // ----------------------------------------------------
-  // 3. Créer un Blob et déclencher le téléchargement
-  // ----------------------------------------------------
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-  // Créer un lien temporaire pour le téléchargement
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-
-  // Nom du fichier téléchargé
   link.download = "apa_rempli_test.pdf";
-  // Simuler le clic pour lancer le téléchargement
   document.body.appendChild(link);
   link.click();
 
-  // Nettoyer l'URL temporaire et l'élément link
   document.body.removeChild(link);
   URL.revokeObjectURL(link.href);
 }
+
 const updateFields = (_apa_fields: infoFormulaire, _nextPage: string) => {
   fields.value = _apa_fields;
   router.push({
     query: {
       step: _nextPage,
-      // conserver le patient sélectionné dans l'URL si présent (pro uniquement)
       ...(isProfessionnel.value && selectedPatientId.value
         ? { patientId: selectedPatientId.value }
         : {}),
