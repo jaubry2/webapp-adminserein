@@ -14,6 +14,7 @@ export const demandesData: DemandeDefinition[] = [
     dureeMinutes: 10,
     organisme: "Département / Caisse de retraite",
   },
+  /*
   {
     id: "caf-aide-logement",
     titre: "Aide au logement (CAF)",
@@ -35,6 +36,7 @@ export const demandesData: DemandeDefinition[] = [
     dureeMinutes: 15,
     organisme: "CAF / MDPH",
   },
+  */
 ];
 
 export function getAllDemandes(): DemandeDefinition[] {
