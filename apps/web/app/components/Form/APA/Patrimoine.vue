@@ -3,6 +3,7 @@
     <h2 class="text-3xl text-center">Ressources et Patrimoine</h2>
     <FormInput
       placeholder="Adresse (numéro et rue)"
+      :value="getValue(fields, 'demandeur_residence_principal_adresse')"
       @updateValue="
         (val) =>
           modifyValue('demandeur_residence_principal_adresse', val, fields)
@@ -10,6 +11,7 @@
     />
     <FormInput
       placeholder="Code postal"
+      :value="getValue(fields, 'demandeur_residence_principal_code_postal')"
       @updateValue="
         (val) =>
           modifyValue('demandeur_residence_principal_code_postal', val, fields)
@@ -17,6 +19,7 @@
     />
     <FormInput
       placeholder="Ville"
+      :value="getValue(fields, 'demandeur_residence_principal_ville')"
       @updateValue="
         (val) => modifyValue('demandeur_residence_principal_ville', val, fields)
       "
@@ -30,6 +33,9 @@
           'Locataire de sa résidence principale',
       }"
       :col="true"
+      :modelValue="
+        getValue(fields, 'demandeur_residence_principale_proprietaire')
+      "
       @update="
         modifyValue(
           'demandeur_residence_principale_proprietaire',
@@ -52,6 +58,7 @@
           'Non louée (vide ou occupée à titre gracieux par un tiers autre que le conjoint et les enfants et petits-enfants du demandeur)',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'habitant_residence_principal')"
       @update="modifyValue('habitant_residence_principal', $event, fields)"
     />
     <p class="text-xl font-bold">
@@ -61,53 +68,62 @@
     <div class="pl-2 flex flex-col gap-2">
       <FormInput
         placeholder="Adresse 1 (numéro et rue)"
+        :value="getValue(fields, 'demandeur_residence_1_adresse')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_1_adresse', val, fields)
         "
       />
       <FormInput
         placeholder="Code postal"
+        :value="getValue(fields, 'demandeur_residence_1_code_postal')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_1_code_postal', val, fields)
         "
       />
       <FormInput
         placeholder="Ville"
+        :value="getValue(fields, 'demandeur_residence_1_ville')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_1_ville', val, fields)
         "
       /><FormInput
         placeholder="Adresse 2 (numéro et rue)"
+        :value="getValue(fields, 'demandeur_residence_2_adresse')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_2_adresse', val, fields)
         "
       />
       <FormInput
         placeholder="Code postal"
+        :value="getValue(fields, 'demandeur_residence_2_code_postal')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_2_code_postal', val, fields)
         "
       />
       <FormInput
         placeholder="Ville"
+        :value="getValue(fields, 'demandeur_residence_2_ville')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_2_ville', val, fields)
         "
       />
       <FormInput
         placeholder="Adresse 3 (numéro et rue)"
+        :value="getValue(fields, 'demandeur_residence_3_adresse')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_3_adresse', val, fields)
         "
       />
       <FormInput
         placeholder="Code postal"
+        :value="getValue(fields, 'demandeur_residence_3_code_postal')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_3_code_postal', val, fields)
         "
       />
       <FormInput
         placeholder="Ville"
+        :value="getValue(fields, 'demandeur_residence_3_ville')"
         @updateValue="
           (val) => modifyValue('demandeur_residence_3_ville', val, fields)
         "
@@ -121,10 +137,12 @@
       <div class="flex flex-row gap-4">
         <FormInput
           placeholder="Nature du bien 1"
+          :value="getValue(fields, 'demandeur_bien_1')"
           @updateValue="(val) => modifyValue('demandeur_bien_1', val, fields)"
         />
         <FormInput
           placeholder="Prix du bien 1"
+          :value="getValue(fields, 'demandeur_bien_prix_1')"
           @updateValue="
             (val) => modifyValue('demandeur_bien_prix_1', val, fields)
           "
@@ -133,10 +151,12 @@
       <div class="flex flex-row gap-4">
         <FormInput
           placeholder="Nature du bien 2"
+          :value="getValue(fields, 'demandeur_bien_2')"
           @updateValue="(val) => modifyValue('demandeur_bien_2', val, fields)"
         />
         <FormInput
           placeholder="Prix du bien 2"
+          :value="getValue(fields, 'demandeur_bien_prix_2')"
           @updateValue="
             (val) => modifyValue('demandeur_bien_prix_2', val, fields)
           "
@@ -145,10 +165,12 @@
       <div class="flex flex-row gap-4">
         <FormInput
           placeholder="Nature du bien 3"
+          :value="getValue(fields, 'demandeur_bien_3')"
           @updateValue="(val) => modifyValue('demandeur_bien_3', val, fields)"
         />
         <FormInput
           placeholder="Prix du bien 3"
+          :value="getValue(fields, 'demandeur_bien_prix_3')"
           @updateValue="
             (val) => modifyValue('demandeur_bien_prix_3', val, fields)
           "
@@ -179,6 +201,16 @@ const props = defineProps({
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
 const fields = ref(props.apa_fields);
+/**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal;
+  },
+  { deep: true },
+);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

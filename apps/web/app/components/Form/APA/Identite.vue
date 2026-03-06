@@ -112,6 +112,17 @@ const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
 const fields = ref(props.apa_fields);
 /**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal as infoFormulaire;
+    console.log("FormIdentite", fields.value);
+  },
+  { deep: true },
+);
+/**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/
 // On regarde la variable adresseInput pour récupérer les adresses de l'API

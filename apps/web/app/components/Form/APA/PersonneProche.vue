@@ -8,41 +8,49 @@
           est_personne_proche_femme: 'Madame',
           est_personne_proche_homme: 'Monsieur',
         }"
+        :modelValue="getValue(fields, 'personne_proche_sexe')"
         @update="modifyValue('personne_proche_sexe', $event, fields)"
       />
     </div>
     <FormInput
       placeholder="Nom"
+      :value="getValue(fields, 'personne_proche_nom')"
       @updateValue="(val) => modifyValue('personne_proche_nom', val, fields)"
     />
     <FormInput
       placeholder="Prénom"
+      :value="getValue(fields, 'personne_proche_prenom')"
       @updateValue="(val) => modifyValue('personne_proche_prenom', val, fields)"
     />
     <FormInput
       placeholder="Adresse (Numéro et voie)"
+      :value="getValue(fields, 'personne_proche_adresse')"
       @updateValue="
         (val) => modifyValue('personne_proche_adresse', val, fields)
       "
     />
     <FormInput
       placeholder="Code postal"
+      :value="getValue(fields, 'personne_proche_code_postal')"
       @updateValue="
         (val) => modifyValue('personne_proche_code_postal', val, fields)
       "
     />
     <FormInput
       placeholder="Commune / Ville"
+      :value="getValue(fields, 'personne_proche_ville')"
       @updateValue="(val) => modifyValue('personne_proche_ville', val, fields)"
     />
     <FormInput
       placeholder="Numéro de téléphone"
+      :value="getValue(fields, 'personne_proche_telephone')"
       @updateValue="
         (val) => modifyValue('personne_proche_telephone', val, fields)
       "
     />
     <FormInput
       placeholder="Adresse e-mail"
+      :value="getValue(fields, 'personne_proche_mail')"
       @updateValue="(val) => modifyValue('personne_proche_mail', val, fields)"
     />
     <FormRadioInput
@@ -55,6 +63,7 @@
         est_personne_proche_lien_autre: 'Autre',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'personne_proche_lien')"
       @update="modifyValue('personne_proche_lien', $event, fields)"
     />
     <FormInput
@@ -63,6 +72,7 @@
         'est_personne_proche_lien_autre'
       "
       placeholder="Précisez le lieu de résidence"
+      :value="getValue(fields, 'personne_proche_lien_autre')"
       @updateValue="
         (val) => modifyValue('personne_proche_lien_autre', val, fields)
       "
@@ -91,6 +101,16 @@ const props = defineProps({
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
 const fields = ref(props.apa_fields);
+/**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal;
+  },
+  { deep: true },
+);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

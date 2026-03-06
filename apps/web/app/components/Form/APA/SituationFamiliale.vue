@@ -24,47 +24,56 @@
             est_demandeur_femme: 'Madame',
             est_demandeur_homme: 'Monsieur',
           }"
+          :modelValue="getValue(fields, 'conjoint_sexe')"
           @update="modifyValue('conjoint_sexe', $event, fields)"
         />
       </div>
       <FormInput
         placeholder="Nom de naissance"
+        :value="getValue(fields, 'conjoint_nom_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_nom_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Nom d'usage (Si différent du nom de naissance)"
+        :value="getValue(fields, 'conjoint_nom_usage')"
         @updateValue="(val) => modifyValue('conjoint_nom_usage', val, fields)"
       />
       <FormInput
         placeholder="Prénom"
+        :value="getValue(fields, 'conjoint_prenom')"
         @updateValue="(val) => modifyValue('conjoint_prenom', val, fields)"
       />
       <FormDate
         placeholder="Date de naissance :"
+        :modelValue="getValue(fields, 'conjoint_date_naissance')"
         @updateValue="modifyValue('conjoint_date_naissance', $event, fields)"
       />
       <FormInput
         placeholder="Lieu de naissance"
+        :value="getValue(fields, 'conjoint_ville_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_ville_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Département de naissance"
+        :value="getValue(fields, 'conjoint_departement_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_departement_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Pays de naissance"
+        :value="getValue(fields, 'conjoint_pays_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_pays_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Numéro de sécurité sociale"
+        :value="getValue(fields, 'conjoint_numero_securite_sociale')"
         @updateValue="
           (val) => modifyValue('conjoint_numero_securite_sociale', val, fields)
         "
@@ -81,10 +90,12 @@
           est_conjoint_domicile_autre: 'Autre',
         }"
         :col="true"
+        :modelValue="getValue(fields, 'conjoint_domicile')"
         @update="(val) => modifyValue('conjoint_domicile', val, fields)"
       />
       <FormInput
         placeholder="Précisez le domicile"
+        :value="getValue(fields, 'conjoint_domicile_autre')"
         @updateValue="
           (val) => modifyValue('conjoint_domicile_autre', val, fields)
         "
@@ -95,6 +106,7 @@
       />
       <FormDate
         placeholder="Date d'entrée dans l'EHPAD :"
+        :modelValue="getValue(fields, 'conjoint_domicile_ehpad_date_entree')"
         @updateValue="
           modifyValue('conjoint_domicile_ehpad_date_entree', $event, fields)
         "
@@ -141,6 +153,17 @@ const isOpen = computed(() => {
       return false;
   }
 });
+/**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal;
+    console.log("FormSituationFamiliale", fields.value);
+  },
+  { deep: true },
+);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

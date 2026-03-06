@@ -11,6 +11,7 @@
         est_demandeur_mesure_protection_non: 'Non',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'mesure_protection')"
       @update="modifyValue('mesure_protection', $event, fields)"
     />
     <div
@@ -35,6 +36,7 @@
             'Mandat de protection future',
         }"
         :col="true"
+        :modelValue="getValue(fields, 'mesure_protection_type')"
         @update="modifyValue('mesure_protection_type', $event, fields)"
       />
       <p class="text-xl text-bold py-4">
@@ -42,6 +44,7 @@
       </p>
       <FormInput
         placeholder="Nom de l'organisme"
+        :value="getValue(fields, 'organisme_mesure_protection_nom')"
         @updateValue="
           (val) => modifyValue('organisme_mesure_protection_nom', val, fields)
         "
@@ -53,6 +56,9 @@
             est_personne_organisme_mesure_protection_femme: 'Madame',
             est_personne_organisme_mesure_protection_homme: 'Monsieur',
           }"
+          :modelValue="
+            getValue(fields, 'personne_organisme_mesure_protection_sexe')
+          "
           @update="
             modifyValue(
               'personne_organisme_mesure_protection_sexe',
@@ -64,6 +70,7 @@
       </div>
       <FormInput
         placeholder="Nom"
+        :value="getValue(fields, 'personne_organisme_mesure_protection_nom')"
         @updateValue="
           (val) =>
             modifyValue('personne_organisme_mesure_protection_nom', val, fields)
@@ -71,6 +78,7 @@
       />
       <FormInput
         placeholder="Prénom"
+        :value="getValue(fields, 'personne_organisme_mesure_protection_prenom')"
         @updateValue="
           (val) =>
             modifyValue(
@@ -82,6 +90,7 @@
       />
       <FormInput
         placeholder="Adresse (Numéro et rue)"
+        :value="getValue(fields, 'personne_organisme_mesure_protection_adresse')"
         @updateValue="
           (val) =>
             modifyValue(
@@ -93,6 +102,9 @@
       />
       <FormInput
         placeholder="Code postal"
+        :value="
+          getValue(fields, 'personne_organisme_mesure_protection_code_postal')
+        "
         @updateValue="
           (val) =>
             modifyValue(
@@ -104,6 +116,7 @@
       />
       <FormInput
         placeholder="Commune / Ville"
+        :value="getValue(fields, 'personne_organisme_mesure_protection_ville')"
         @updateValue="
           (val) =>
             modifyValue(
@@ -115,6 +128,9 @@
       />
       <FormInput
         placeholder="Téléphone"
+        :value="
+          getValue(fields, 'personne_organisme_mesure_protection_telephone')
+        "
         @updateValue="
           (val) =>
             modifyValue(
@@ -126,6 +142,7 @@
       />
       <FormInput
         placeholder="Adresse e-mail"
+        :value="getValue(fields, 'personne_organisme_mesure_protection_mail')"
         @updateValue="
           (val) =>
             modifyValue(
@@ -161,6 +178,16 @@ const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
 const fields = ref(props.apa_fields);
 const mesureProtection = ref("");
+/**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal;
+  },
+  { deep: true },
+);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

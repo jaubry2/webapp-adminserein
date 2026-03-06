@@ -10,15 +10,18 @@
           est_signature_femme: 'Madame',
           est_signature_homme: 'Monsieur',
         }"
+        :modelValue="getValue(fields, 'personne_signature_sexe')"
         @update="modifyValue('personne_signature_sexe', $event, fields)"
       />
     </div>
     <FormInput
       placeholder="Nom de la personne signataire"
+      :value="getValue(fields, 'personne_signature_nom')"
       @updateValue="(val) => modifyValue('personne_signature_nom', val, fields)"
     />
     <FormInput
       placeholder="Prénom de la personne signataire"
+      :value="getValue(fields, 'personne_signature_prenom')"
       @updateValue="
         (val) => modifyValue('personne_signature_prenom', val, fields)
       "
@@ -30,6 +33,7 @@
         est_signature_pour_quelquun: 'En qualité de représentant légal de :',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'personne_signature_pour')"
       @update="modifyValue('personne_signature_pour', $event, fields)"
     />
     <FormInput
@@ -38,6 +42,7 @@
         'est_signature_pour_quelquun'
       "
       placeholder="Précisez la personne représentée"
+      :value="getValue(fields, 'personne_signature_pour_quelquun')"
       @updateValue="
         (val) => modifyValue('personne_signature_pour_quelquun', val, fields)
       "
@@ -66,6 +71,16 @@ const props = defineProps({
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
 const fields = ref(props.apa_fields);
+/**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal;
+  },
+  { deep: true },
+);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

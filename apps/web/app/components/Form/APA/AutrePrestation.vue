@@ -13,6 +13,7 @@
           est_demandeur_actp_oui: 'Oui',
           est_demandeur_actp_non: 'Non',
         }"
+        :modelValue="getValue(fields, 'demandeur_actp')"
         @update="modifyValue('demandeur_actp', $event, fields)"
       />
       <FormRadioInput
@@ -21,6 +22,7 @@
           est_demandeur_aide_sociale_departementale_oui: 'Oui',
           est_demandeur_aide_sociale_departementale_non: 'Non',
         }"
+        :modelValue="getValue(fields, 'demandeur_aide_sociale_departementale')"
         @update="
           modifyValue('demandeur_aide_sociale_departementale', $event, fields)
         "
@@ -31,6 +33,7 @@
           est_demandeur_mtp_oui: 'Oui',
           est_demandeur_mtp_non: 'Non',
         }"
+        :modelValue="getValue(fields, 'demandeur_mtp')"
         @update="modifyValue('demandeur_mtp', $event, fields)"
       />
       <FormRadioInput
@@ -39,6 +42,7 @@
           est_demandeur_pch_oui: 'Oui',
           est_demandeur_pch_non: 'Non',
         }"
+        :modelValue="getValue(fields, 'demandeur_pch')"
         @update="modifyValue('demandeur_pch', $event, fields)"
       />
       <FormRadioInput
@@ -47,6 +51,7 @@
           est_demandeur_pcrtp_oui: 'Oui',
           est_demandeur_pcrtp_non: 'Non',
         }"
+        :modelValue="getValue(fields, 'demandeur_pcrtp')"
         @update="modifyValue('demandeur_pcrtp', $event, fields)"
       />
     </div>
@@ -74,6 +79,16 @@ const props = defineProps({
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
 const fields = ref(props.apa_fields);
+/**************************************************************************************************************/
+/* SYNCHRONISATION AVEC LE PARENT */
+/**************************************************************************************************************/
+watch(
+  () => props.apa_fields,
+  (newVal) => {
+    fields.value = newVal;
+  },
+  { deep: true },
+);
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/
