@@ -17,6 +17,7 @@ import {
   document,
   notification,
   user,
+  demande,
 } from "@webapp-adminserein/db";
 import { protectedProcedure, publicProcedure } from "../index";
 
@@ -2969,6 +2970,317 @@ export const appRouter = {
         .orderBy(desc(notification.createdAt));
 
       return notifications;
+    }),
+
+  // --- DEMANDES ---
+
+  createDemande: protectedProcedure
+    .input(
+      z.object({
+        typeDemande: z.enum(["APA", "CAF_AIDE_LOGEMENT", "RSA", "AAH"]),
+        patientId: z.string().uuid().optional(),
+        nomBeneficiaire: z.string().optional(),
+        prenomBeneficiaire: z.string().optional(),
+        details: z.string().optional(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      let professionnelId: string | null = null;
+      let particulierId: string | null = null;
+
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof) {
+          throw new Error("Aucun professionnel associé à ce compte");
+        }
+
+        professionnelId = prof.id;
+
+        if (input.patientId) {
+          const [link] = await db
+            .select()
+            .from(patientProfessionnel)
+            .where(
+              and(
+                eq(patientProfessionnel.patientId, input.patientId),
+                eq(patientProfessionnel.professionnelId, prof.id)
+              )
+            )
+            .limit(1);
+
+          if (!link) {
+            throw new Error("Patient non trouvé ou non autorisé");
+          }
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part) {
+          throw new Error("Aucun particulier associé à ce compte");
+        }
+
+        particulierId = part.id;
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      const [created] = await db
+        .insert(demande)
+        .values({
+          professionnelId,
+          patientId: input.patientId ?? null,
+          particulierId,
+          typeDemande: input.typeDemande,
+          nomBeneficiaire: input.nomBeneficiaire ?? null,
+          prenomBeneficiaire: input.prenomBeneficiaire ?? null,
+          details: input.details ?? null,
+        })
+        .returning();
+
+      return created;
+    }),
+
+  listDemandes: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    const [userData] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, context.session.user.id))
+      .limit(1);
+
+    if (!userData) {
+      throw new Error("Utilisateur non trouvé");
+    }
+
+    let demandes: (typeof demande.$inferSelect)[] = [];
+
+    if (userData.type === "PROFESSIONNEL") {
+      const [prof] = await db
+        .select()
+        .from(professionnel)
+        .where(eq(professionnel.userId, context.session.user.id))
+        .limit(1);
+
+      if (!prof) {
+        throw new Error("Aucun professionnel associé à ce compte");
+      }
+
+      demandes = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.professionnelId, prof.id))
+        .orderBy(desc(demande.createdAt));
+    } else if (userData.type === "PARTICULIER") {
+      const [part] = await db
+        .select()
+        .from(particulier)
+        .where(eq(particulier.userId, context.session.user.id))
+        .limit(1);
+
+      if (!part) {
+        throw new Error("Aucun particulier associé à ce compte");
+      }
+
+      demandes = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.particulierId, part.id))
+        .orderBy(desc(demande.createdAt));
+    } else {
+      throw new Error("Type d'utilisateur non supporté");
+    }
+
+    // Enrichir avec les infos patient si lie
+    const patientIds = demandes
+      .map((d) => d.patientId)
+      .filter((id): id is string => id !== null);
+
+    let patientsMap = new Map<string, { prenom: string; nom: string }>();
+
+    if (patientIds.length > 0) {
+      const patients = await db
+        .select()
+        .from(patient)
+        .where(inArray(patient.id, patientIds));
+
+      const infoIds = patients.map((p) => p.informationIdentiteId);
+      const infos = await db
+        .select()
+        .from(informationIdentite)
+        .where(inArray(informationIdentite.id, infoIds));
+
+      const infoById = new Map(infos.map((i) => [i.id, i]));
+
+      for (const p of patients) {
+        const info = infoById.get(p.informationIdentiteId);
+        if (info) {
+          patientsMap.set(p.id, {
+            prenom: info.prenom,
+            nom: info.nomUsage,
+          });
+        }
+      }
+    }
+
+    return demandes.map((d) => {
+      const patientInfo = d.patientId ? patientsMap.get(d.patientId) : null;
+      return {
+        ...d,
+        patientInfo: patientInfo ?? null,
+      };
+    });
+  }),
+
+  getDemandeById: protectedProcedure
+    .input(z.object({ demandeId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      // Verification d'acces
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part || d.particulierId !== part.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      return d;
+    }),
+
+  updateDemandeStatut: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        statut: z.enum(["BROUILLON", "EN_COURS", "TERMINEE", "ANNULEE"]),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      // Verification d'acces
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part || d.particulierId !== part.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      await db
+        .update(demande)
+        .set({ statut: input.statut })
+        .where(eq(demande.id, input.demandeId));
+
+      const [updated] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      return updated;
     }),
 };
 
