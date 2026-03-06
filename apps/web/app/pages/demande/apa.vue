@@ -42,21 +42,34 @@
               </option>
             </select>
 
-            <p v-if="!selectedPatientId" class="text-xs quaternary--text--color">
-              Le formulaire sera vide, vous pourrez saisir les informations manuellement.
+            <p
+              v-if="!selectedPatientId"
+              class="text-xs quaternary--text--color"
+            >
+              Le formulaire sera vide, vous pourrez saisir les informations
+              manuellement.
             </p>
           </div>
         </template>
 
         <!-- Affichage du patient pour les particuliers -->
         <template v-else-if="isParticulier">
-          <div v-if="isLoadingParticulierPatient" class="text-xs quaternary--text--color">
+          <div
+            v-if="isLoadingParticulierPatient"
+            class="text-xs quaternary--text--color"
+          >
             Chargement de vos informations patient...
           </div>
-          <div v-else-if="isErrorParticulierPatient" class="text-xs text-red-500">
+          <div
+            v-else-if="isErrorParticulierPatient"
+            class="text-xs text-red-500"
+          >
             Impossible de charger vos informations patient.
           </div>
-          <div v-else-if="selectedPatient" class="text-sm secondary--text--color">
+          <div
+            v-else-if="selectedPatient"
+            class="text-sm secondary--text--color"
+          >
             <p class="font-medium">
               {{
                 selectedPatient.informationIdentite
@@ -65,7 +78,8 @@
               }}
             </p>
             <p class="text-xs quaternary--text--color">
-              Vos informations personnelles seront utilisées pour pré-remplir le formulaire.
+              Vos informations personnelles seront utilisées pour pré-remplir le
+              formulaire.
             </p>
           </div>
         </template>
@@ -183,7 +197,7 @@ import {
 } from "~/composables/useInfoFormulaire";
 import type { infoFormulaire } from "~/types";
 import type { Patient } from "~/types/patient";
-import { useQuery, useMutation, skipToken } from "@tanstack/vue-query";
+import { useQuery, useMutation } from "@tanstack/vue-query";
 
 definePageMeta({
   middleware: ["auth"],
@@ -400,23 +414,23 @@ watch(
 
 const demandeSaved = ref(false);
 
-const { data: existingDemande } = useQuery(
-  computed(() => ({
-    ...$orpc.getDemandeById.queryOptions({
-      input: editDemandeId.value
-        ? { demandeId: editDemandeId.value }
-        : skipToken,
-    }),
-    enabled: !!editDemandeId.value,
-  }))
-);
-
+const { data: existingDemande } = useQuery({
+  ...$orpc.getDemandeById.queryOptions({
+    input: {
+      demandeId: editDemandeId.value as string,
+    },
+  }),
+  // La requête ne s'exécute que si on a réellement un id de demande
+  enabled: computed(() => !!editDemandeId.value),
+});
 watch(
   () => existingDemande.value,
   (d) => {
     if (!d) return;
     if (d.donneesFormulaire) {
       fields.value = d.donneesFormulaire as infoFormulaire;
+      console.log("APA", fields.value);
+      console.log("APA", d.donneesFormulaire);
     }
     if (d.patientId) {
       selectedPatientId.value = d.patientId;
@@ -626,9 +640,7 @@ const updateFields = (_apa_fields: infoFormulaire, _nextPage: string) => {
       ...(isProfessionnel.value && selectedPatientId.value
         ? { patientId: selectedPatientId.value }
         : {}),
-      ...(editDemandeId.value
-        ? { demandeId: editDemandeId.value }
-        : {}),
+      ...(editDemandeId.value ? { demandeId: editDemandeId.value } : {}),
     },
   });
 };

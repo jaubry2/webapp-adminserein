@@ -23,6 +23,9 @@ const {
 } = useQuery({
   ...$orpc.listDemandes.queryOptions(),
   enabled: computed(() => !!session.value?.data && !session.value.isPending),
+  staleTime: 0,
+  refetchOnMount: "always",
+  refetchOnWindowFocus: "always",
 });
 
 const filterStatut = ref<"TOUS" | "BROUILLON" | "EN_COURS" | "EN_ATTENTE_COMPLEMENT" | "TERMINEE" | "ANNULEE">("TOUS");
