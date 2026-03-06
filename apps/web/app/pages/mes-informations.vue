@@ -2,7 +2,7 @@
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
-import { useQuery, useMutation } from "@tanstack/vue-query";
+import { useQuery, useMutation, skipToken } from "@tanstack/vue-query";
 
 definePageMeta({
   middleware: ["auth"],
@@ -161,6 +161,65 @@ const personnesProches = computed<PersonneProche[]>(() => {
     ordre: typeof p.ordre === "number" ? p.ordre : 0,
   }));
 });
+
+// Demandes liées au patient du particulier
+const patientIdForDemandes = computed(() => apiPatient.value?.id ?? null);
+
+const {
+  data: patientDemandes,
+  isLoading: isLoadingDemandes,
+  isError: isErrorDemandes,
+} = useQuery(
+  computed(() => ({
+    ...$orpc.listDemandesByPatient.queryOptions({
+      input: patientIdForDemandes.value
+        ? { patientId: patientIdForDemandes.value }
+        : skipToken,
+    }),
+    enabled:
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isParticulier.value &&
+      !!patientIdForDemandes.value,
+  }))
+);
+
+const typeDemandeLabels: Record<string, string> = {
+  APA: "APA",
+  CAF_AIDE_LOGEMENT: "Aide au logement (CAF)",
+  RSA: "RSA",
+  AAH: "AAH",
+};
+
+const statutDemandeLabels: Record<string, string> = {
+  BROUILLON: "Brouillon",
+  EN_COURS: "En cours",
+  TERMINEE: "Terminée",
+  ANNULEE: "Annulée",
+};
+
+const statutDemandeColors: Record<string, string> = {
+  BROUILLON: "bg-gray-100 text-gray-700",
+  EN_COURS: "bg-blue-100 text-blue-700",
+  TERMINEE: "bg-green-100 text-green-700",
+  ANNULEE: "bg-red-100 text-red-700",
+};
+
+const getDemandeCreateur = (d: any): string => {
+  if (d.professionnelInfo) {
+    return `${d.professionnelInfo.prenom} ${d.professionnelInfo.nom}`;
+  }
+  return "Moi-même";
+};
+
+const formatDemandeDate = (dateStr: string | Date): string => {
+  const date = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
 
 const createPersonneProcheParticulierMutationOptions =
   $orpc.createPersonneProcheByParticulier.mutationOptions();
@@ -522,6 +581,7 @@ const tabs = [
   { id: "information", label: "Information", icon: "i-lucide-info" },
   { id: "document", label: "Document", icon: "i-lucide-file-text" },
   { id: "tache", label: "Tâche", icon: "i-lucide-check-square" },
+  { id: "demande", label: "Demande", icon: "i-lucide-folder-open" },
   { id: "acces", label: "Accès", icon: "i-lucide-shield-check" },
 ];
 
@@ -678,6 +738,76 @@ const getAccentColorByType = (
               "
               :tache="tache"
             />
+          </div>
+        </div>
+
+        <!-- Onglet Demande -->
+        <div v-if="activeTab === 'demande'" class="space-y-4">
+          <h2 class="text-lg font-semibold secondary--text--color">
+            Mes demandes
+          </h2>
+
+          <div
+            v-if="isLoadingDemandes"
+            class="text-center py-8"
+          >
+            <p class="text-sm quaternary--text--color">
+              Chargement des demandes...
+            </p>
+          </div>
+          <div
+            v-else-if="isErrorDemandes"
+            class="text-center py-8"
+          >
+            <p class="text-sm text-red-500">
+              Erreur lors du chargement des demandes.
+            </p>
+          </div>
+          <div
+            v-else-if="!patientDemandes || patientDemandes.length === 0"
+            class="text-center py-8"
+          >
+            <p class="text-sm quaternary--text--color">
+              Aucune demande pour le moment.
+            </p>
+          </div>
+
+          <div v-else class="rounded-lg border border-gray-200 bg-white shadow-sm overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Type</th>
+                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Créée par</th>
+                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Statut</th>
+                  <th class="px-6 py-3 text-left text-xs font-semibold secondary--text--color">Date</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr
+                  v-for="d in patientDemandes"
+                  :key="d.id"
+                  class="hover:bg-gray-50 transition-colors"
+                >
+                  <td class="px-6 py-3 text-sm font-medium secondary--text--color">
+                    {{ typeDemandeLabels[d.typeDemande] || d.typeDemande }}
+                  </td>
+                  <td class="px-6 py-3 text-sm quaternary--text--color">
+                    {{ getDemandeCreateur(d) }}
+                  </td>
+                  <td class="px-6 py-3">
+                    <span
+                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      :class="statutDemandeColors[d.statut] || 'bg-gray-100 text-gray-700'"
+                    >
+                      {{ statutDemandeLabels[d.statut] || d.statut }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-sm quaternary--text--color">
+                    {{ formatDemandeDate(d.createdAt) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

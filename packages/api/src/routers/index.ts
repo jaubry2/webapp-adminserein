@@ -3282,6 +3282,100 @@ export const appRouter = {
 
       return updated;
     }),
+
+  listDemandesByPatient: protectedProcedure
+    .input(z.object({ patientId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof) {
+          throw new Error("Aucun professionnel associé à ce compte");
+        }
+
+        const [link] = await db
+          .select()
+          .from(patientProfessionnel)
+          .where(
+            and(
+              eq(patientProfessionnel.patientId, input.patientId),
+              eq(patientProfessionnel.professionnelId, prof.id)
+            )
+          )
+          .limit(1);
+
+        if (!link) {
+          throw new Error("Patient non trouvé ou non autorisé");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part) {
+          throw new Error("Aucun particulier associé à ce compte");
+        }
+
+        if (part.patientId !== input.patientId) {
+          throw new Error("Patient non autorisé");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      const demandes = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.patientId, input.patientId))
+        .orderBy(desc(demande.createdAt));
+
+      // Enrichir avec les noms des professionnels
+      const profIds = demandes
+        .map((d) => d.professionnelId)
+        .filter((id): id is string => id !== null);
+
+      let profsMap = new Map<string, { prenom: string; nom: string; fonction: string }>();
+
+      if (profIds.length > 0) {
+        const profs = await db
+          .select()
+          .from(professionnel)
+          .where(inArray(professionnel.id, profIds));
+
+        for (const p of profs) {
+          profsMap.set(p.id, {
+            prenom: p.prenom,
+            nom: p.nom,
+            fonction: p.fonction,
+          });
+        }
+      }
+
+      return demandes.map((d) => ({
+        ...d,
+        professionnelInfo: d.professionnelId ? profsMap.get(d.professionnelId) ?? null : null,
+      }));
+    }),
 };
 
 export type AppRouter = typeof appRouter;
