@@ -28,9 +28,11 @@ function buildLink(demande: DemandeDefinition) {
   const basePath =
     lowerId === "apa"
       ? "/demande/apa"
-      : `/demande/${lowerId}`;
+      : lowerId === "mdph"
+        ? "/demande/mdph"
+        : `/demande/${lowerId}`;
 
-  if (props.patientId && lowerId === "apa") {
+  if (props.patientId && (lowerId === "apa" || lowerId === "mdph")) {
     return `${basePath}?patientId=${props.patientId}`;
   }
 

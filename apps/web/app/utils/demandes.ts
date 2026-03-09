@@ -14,6 +14,13 @@ export const demandesData: DemandeDefinition[] = [
     dureeMinutes: 10,
     organisme: "Département / Caisse de retraite",
   },
+  {
+    id: "mdph",
+    titre: "Dossier MDPH",
+    description: "Constitution et suivi d’un dossier auprès de la MDPH.",
+    dureeMinutes: 15,
+    organisme: "MDPH",
+  },
   /*
   {
     id: "caf-aide-logement",

@@ -21,7 +21,7 @@ export const backendStepsByDemandeType: Record<TypeDemandeValue, BackendStepDef[
         { label: "Relevé d'identité bancaire" },
         {
           label:
-            "Photocopie du dernier avis d'imposition ou de non-imposition sur le revenu du demandeur et celui de son conjoint. Certains documents sont demandés sous certaines conditions.",
+            "Photocopie du dernier avis d'imposition ou de non-imposition sur le revenu du demandeur et celui de son conjoint. Certains document sont demandés sous certaines conditions.",
         },
         {
           label:
@@ -44,13 +44,32 @@ export const backendStepsByDemandeType: Record<TypeDemandeValue, BackendStepDef[
       id: "visite_medicale",
       label: "Visite médicale / évaluation",
       defaultDescription:
-        "Organiser et réaliser la visite médicale ou l’évaluation à domicile.",
+        "Réaliser une visite médical afin de remplir le certificat médical.",
     },
     {
       id: "envoi_dossier",
       label: "Envoyer le dossier",
       defaultDescription:
-        "Vérifier et transmettre le dossier complet aux services du département.",
+        "Vérifier et transmettre le dossier complet aux services du département ou la caisse de retraite.",
+    },
+  ],
+  MDPH: [
+    {
+      id: "collecte_documents",
+      label: "Rassembler les documents",
+      defaultDescription: "Préparer tous les justificatifs nécessaires pour le dossier MDPH.",
+    },
+    {
+      id: "remplir_formulaire",
+      label: "Remplir le formulaire MDPH",
+      defaultDescription:
+        "Compléter le formulaire MDPH avec les informations du bénéficiaire.",
+    },
+    {
+      id: "envoi_dossier",
+      label: "Envoyer le dossier",
+      defaultDescription:
+        "Vérifier et transmettre le dossier complet à la MDPH compétente.",
     },
   ],
   CAF_AIDE_LOGEMENT: [

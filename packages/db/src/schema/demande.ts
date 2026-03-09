@@ -18,6 +18,7 @@ export const typeDemandeEnum = pgEnum("type_demande", [
   "CAF_AIDE_LOGEMENT",
   "RSA",
   "AAH",
+  "MDPH",
 ]);
 
 export const statutDemandeEnum = pgEnum("statut_demande", [
