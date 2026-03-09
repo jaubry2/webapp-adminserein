@@ -5,6 +5,7 @@ import type { Document } from "~/types/document";
 import { useQuery, useMutation, useQueryClient, skipToken } from "@tanstack/vue-query";
 import { PDFDocument } from "pdf-lib";
 import { getListFieldForm, getValue } from "~/composables/useInfoFormulaire";
+import NouvelleDemandeModal from "~/components/NouvelleDemandeModal.vue";
 
 definePageMeta({
   middleware: ["auth"],
@@ -186,6 +187,8 @@ const {
       !!patientIdForDemandes.value,
   }))
 );
+
+const showNouvelleDemandeModal = ref(false);
 
 const typeDemandeLabels: Record<string, string> = {
   APA: "APA",
@@ -888,6 +891,17 @@ const getAccentColorByType = (
 
         <!-- Onglet Demande -->
         <div v-if="activeTab === 'demande'" class="space-y-4">
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg bg-[var(--primary-color)] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90"
+              @click="showNouvelleDemandeModal = true"
+            >
+              <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+              Nouvelle demande
+            </button>
+          </div>
+
           <OngletInformationDemande
             title="Mes demandes"
             :demandes="patientDemandes"
@@ -936,6 +950,11 @@ const getAccentColorByType = (
               </div>
             </template>
           </OngletInformationDemande>
+
+          <NouvelleDemandeModal
+            v-model="showNouvelleDemandeModal"
+            :patient-id="patient?.id ?? null"
+          />
         </div>
 
         <!-- Onglet Accès -->

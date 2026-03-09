@@ -2,10 +2,16 @@
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
-import { useQuery, useMutation, useQueryClient, skipToken } from "@tanstack/vue-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  skipToken,
+} from "@tanstack/vue-query";
 import type { Change } from "~/components/OngletInformation/ModificationSummary.vue";
 import { PDFDocument } from "pdf-lib";
 import { getListFieldForm, getValue } from "~/composables/useInfoFormulaire";
+import NouvelleDemandeModal from "~/components/NouvelleDemandeModal.vue";
 
 definePageMeta({
   middleware: ["auth"],
@@ -19,6 +25,7 @@ const { calculateAge, getHistoriqueByPatientId } =
   await import("~/utils/patients");
 
 const patientId = computed(() => String(route.params.id));
+const showNouvelleDemandeModal = ref(false);
 
 // Vérifier la session avant de faire les requêtes
 const session = $authClient.useSession();
@@ -238,7 +245,7 @@ const personnesProches = computed<PersonneProche[]>(() => {
     prenom: p.prenom,
     autresPrenoms: Array.isArray(p.autresPrenoms)
       ? p.autresPrenoms.join(", ")
-      : p.autresPrenoms ?? "",
+      : (p.autresPrenoms ?? ""),
     adresse: p.adresse,
     codePostal: p.codePostal,
     ville: p.ville,
@@ -257,15 +264,11 @@ const {
 } = useQuery(
   computed(() => ({
     ...$orpc.listDemandesByPatient.queryOptions({
-      input: patientId.value
-        ? { patientId: patientId.value }
-        : skipToken,
+      input: patientId.value ? { patientId: patientId.value } : skipToken,
     }),
     enabled:
-      !!session.value?.data &&
-      !session.value.isPending &&
-      !!patientId.value,
-  }))
+      !!session.value?.data && !session.value.isPending && !!patientId.value,
+  })),
 );
 
 const typeDemandeLabels: Record<string, string> = {
@@ -425,9 +428,7 @@ const formattedPatientTaches = computed(() => {
 });
 
 // Fonction pour obtenir la couleur d'accent selon le type de démarche
-const getAccentColorByType = (
-  type: Tache["typeDemarche"],
-): TaskAccentColor => {
+const getAccentColorByType = (type: Tache["typeDemarche"]): TaskAccentColor => {
   switch (type) {
     case "ADMINISTRATIVE":
       return "amber";
@@ -711,9 +712,7 @@ const generateSummary = (
   return changes;
 };
 
-const normalizeAutresPrenoms = (
-  value?: string[] | string,
-): string[] => {
+const normalizeAutresPrenoms = (value?: string[] | string): string[] => {
   if (Array.isArray(value)) {
     return value;
   }
@@ -846,18 +845,9 @@ const handleReorderPersonneProche = async (payload: {
   if (index === -1) return;
 
   if (payload.direction === "up" && index > 0) {
-    [current[index - 1], current[index]] = [
-      current[index],
-      current[index - 1],
-    ];
-  } else if (
-    payload.direction === "down" &&
-    index < current.length - 1
-  ) {
-    [current[index], current[index + 1]] = [
-      current[index + 1],
-      current[index],
-    ];
+    [current[index - 1], current[index]] = [current[index], current[index - 1]];
+  } else if (payload.direction === "down" && index < current.length - 1) {
+    [current[index], current[index + 1]] = [current[index + 1], current[index]];
   } else {
     return;
   }
@@ -1052,6 +1042,7 @@ const cancelModifications = () => {
                 label="Nouvelle demande"
                 bg_color="corail-soft-color"
                 text_color="tertiary-color"
+                @click="showNouvelleDemandeModal = true"
               />
               <ButtonSecondary
                 icon="i-lucide-plus"
@@ -1202,7 +1193,7 @@ const cancelModifications = () => {
               </div>
 
               <!-- Contenu de l'onglet Demande -->
-              <div v-else-if="activeTab === 'demande'" class="pb-6">
+              <div v-else-if="activeTab === 'demande'" class="pb-6 space-y-4">
                 <OngletInformationDemande
                   :demandes="patientDemandes"
                   :is-loading="isLoadingDemandes"
@@ -1220,10 +1211,9 @@ const cancelModifications = () => {
                       class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
                       @click="
                         d.typeDemande === 'APA' && d.donneesFormulaire
-                          ? generateApaPdfFromDemande(
-                              d.donneesFormulaire,
-                              { download: false },
-                            )
+                          ? generateApaPdfFromDemande(d.donneesFormulaire, {
+                              download: false,
+                            })
                           : navigateTo(
                               `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
                             )
@@ -1236,10 +1226,9 @@ const cancelModifications = () => {
                       class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
                       @click="
                         d.typeDemande === 'APA' && d.donneesFormulaire
-                          ? generateApaPdfFromDemande(
-                              d.donneesFormulaire,
-                              { download: true },
-                            )
+                          ? generateApaPdfFromDemande(d.donneesFormulaire, {
+                              download: true,
+                            })
                           : navigateTo(
                               `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
                             )
@@ -1285,5 +1274,9 @@ const cancelModifications = () => {
         @cancel="cancelModifications"
       />
     </div>
+    <NouvelleDemandeModal
+      v-model="showNouvelleDemandeModal"
+      :patient-id="patientId"
+    />
   </div>
 </template>
