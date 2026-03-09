@@ -90,7 +90,8 @@ export const stepsByDemandeType: DemandeStepsConfig = {
       id: "recuperer_formulaire",
       label: "Recuperer le formulaire",
       icon: "i-lucide-file-text",
-      defaultDescription: "Recuperer le formulaire officiel ASH auprès du CCAS départemental.",
+      defaultDescription:
+        "Recuperer le formulaire officiel ASH auprès du CCAS départemental (annuaire des CCAS : https://www.pour-les-personnes-agees.gouv.fr/annuaire-ccas).",
     },
     {
       id: "remplir_formulaire",

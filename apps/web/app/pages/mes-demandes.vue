@@ -248,6 +248,33 @@ const submitComplementRequest = async () => {
     commentaire: complementMessage.value.trim(),
   });
 };
+
+const updateDetailsMutation = useMutation({
+  ...$orpc.updateDemandeDetails.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: $orpc.listDemandes.queryKey(),
+    });
+    toast.add({
+      title: "Commentaire mis à jour",
+      description: "Le commentaire de la demande a été enregistré.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de mettre à jour le commentaire.",
+      color: "error",
+    });
+  },
+});
+
+const handleUpdateComment = async (payload: { id: string; details: string }) => {
+  await updateDetailsMutation.mutateAsync({
+    demandeId: payload.id,
+    details: payload.details,
+  });
+};
 </script>
 
 <template>
@@ -286,6 +313,7 @@ const submitComplementRequest = async () => {
         :get-creator-name="getCreatorName"
         :format-date="formatDate"
         :show-actions="true"
+        @updateComment="handleUpdateComment"
       >
         <template #actions="{ demande: d }">
           <div class="flex items-center justify-end gap-2">

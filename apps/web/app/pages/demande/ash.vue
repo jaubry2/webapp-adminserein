@@ -413,18 +413,12 @@ async function saveDemandeAsh() {
   isSavingDemande.value = true;
 
   const url = buildCcasUrl();
-  const detailsParts = [
-    `Personne concernée : ${personneConcernee.value === "moi" ? "Moi-même" : "Un proche"}`,
-    `Lieu de vie : ${lieu.value}`,
-    `Code postal : ${codePostal.value}`,
-    commune.value ? `Commune : ${commune.value}` : null,
-    url ? `Lien annuaire CCAS : ${url}` : null,
-  ].filter(Boolean);
+  const details = url ? `lien : ${url}` : "";
 
   await createDemandeMutation.mutateAsync({
     typeDemande: "ASH",
     patientId: currentPatientId.value ?? undefined,
-    details: detailsParts.join(" | "),
+    details,
   });
 
   router.push("/mes-demandes");

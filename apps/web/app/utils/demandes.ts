@@ -23,7 +23,7 @@ export const demandesData: DemandeDefinition[] = [
   },
   {
     id: "ash",
-    titre: "Aide sociale à l’hébergement",
+    titre: "Aide sociale à l’hébergement (ASH)",
     description: "Constitution et suivi d’un dossier auprès de l'Aide sociale à l’hébergement.",
     dureeMinutes: 15,
     organisme: "Département",

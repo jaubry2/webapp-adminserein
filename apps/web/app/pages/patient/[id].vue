@@ -327,6 +327,37 @@ const changeStatut = async (demandeId: string, statut: string) => {
   });
 };
 
+const updateDetailsDemandeMutation = useMutation({
+  ...$orpc.updateDemandeDetails.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Commentaire mis à jour",
+      description: "Le commentaire de la demande a été enregistré.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description:
+        error?.message || "Impossible de mettre à jour le commentaire.",
+      color: "error",
+    });
+  },
+});
+
+const handleUpdateCommentPatient = async (payload: {
+  id: string;
+  details: string;
+}) => {
+  await updateDetailsDemandeMutation.mutateAsync({
+    demandeId: payload.id,
+    details: payload.details,
+  });
+};
+
 const getDemandeCreateur = (d: any): string => {
   if (d.professionnelInfo) {
     return `${d.professionnelInfo.prenom} ${d.professionnelInfo.nom}`;
@@ -1238,6 +1269,7 @@ const cancelModifications = () => {
                   :get-creator-name="getDemandeCreateur"
                   :format-date="formatDemandeDate"
                   :show-actions="true"
+            @updateComment="handleUpdateCommentPatient"
                 >
                   <template #actions="{ demande: d }">
                     <button

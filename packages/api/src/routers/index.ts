@@ -3574,6 +3574,77 @@ export const appRouter = {
       return updated;
     }),
 
+  updateDemandeDetails: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        details: z.string(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      // Vérification d'accès similaire à updateDemandeStatut
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part || d.particulierId !== part.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      await db
+        .update(demande)
+        .set({ details: input.details })
+        .where(eq(demande.id, input.demandeId));
+
+      const [updated] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      return updated;
+    }),
+
   listDemandesByPatient: protectedProcedure
     .input(z.object({ patientId: z.string().uuid() }))
     .handler(async ({ input, context }) => {

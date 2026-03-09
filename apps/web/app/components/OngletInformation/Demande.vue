@@ -22,6 +22,10 @@ const props = defineProps<{
   showStepTracker?: boolean;
 }>();
 
+const emit = defineEmits<{
+  (e: "updateComment", payload: { id: string; details: string }): void;
+}>();
+
 const expandedById = ref<Record<string, boolean>>({});
 
 function isExpanded(id: string): boolean {
@@ -44,6 +48,20 @@ const hasActions = computed(() => props.showActions && !!slots.actions);
 
 const hasDemandes = computed(
   () => !!props.demandes && props.demandes.length > 0,
+);
+
+const localDetails = ref<Record<string, string>>({});
+
+watch(
+  () => props.demandes,
+  (ds) => {
+    const map: Record<string, string> = {};
+    (ds ?? []).forEach((d: any) => {
+      map[d.id] = d.details ?? "";
+    });
+    localDetails.value = map;
+  },
+  { immediate: true },
 );
 
 function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
@@ -119,7 +137,7 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
         <div
           class="flex flex-col gap-3 border-b border-gray-100 px-6 py-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <div class="flex flex-1 items-start gap-3">
+            <div class="flex flex-1 items-start gap-3">
             <div class="flex flex-col gap-1">
               <p class="text-sm font-medium secondary--text--color">
                 {{ typeLabels[d.typeDemande] || d.typeDemande }}
@@ -164,7 +182,29 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
           </div>
         </div>
 
-        <div v-if="isExpanded(d.id)" class="border-t border-gray-100 px-4 py-3 space-y-3">
+        <div v-if="isExpanded(d.id)" class="border-t border-gray-100 px-4 py-3 space-y-4">
+          <div class="space-y-2">
+            <label class="text-xs font-medium secondary--text--color">
+              Commentaire sur la demande
+            </label>
+            <textarea
+              v-model="localDetails[d.id]"
+              rows="2"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs secondary--text--color input-focus-primary resize-none"
+              placeholder="Ajouter un commentaire ou un lien utile (ex : lien CCAS pour l’ASH)…"
+            />
+            <div class="flex justify-end">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-[11px] font-medium quaternary--text--color transition-colors hover:bg-gray-50"
+                @click="emit('updateComment', { id: d.id, details: localDetails[d.id] ?? '' })"
+              >
+                <UIcon name="i-lucide-save" class="h-3 w-3" />
+                Enregistrer le commentaire
+              </button>
+            </div>
+          </div>
+
           <DemandStepTracker
             :demande-type="d.typeDemande"
             :status-by-step="buildStepStatusFromStatut(d)"

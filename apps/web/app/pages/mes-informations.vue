@@ -403,6 +403,37 @@ const changeStatutDemande = async (demandeId: string, statut: string) => {
   });
 };
 
+const updateDetailsMutation = useMutation({
+  ...$orpc.updateDemandeDetails.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Commentaire mis à jour",
+      description: "Le commentaire de la demande a été enregistré.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description:
+        error?.message || "Impossible de mettre à jour le commentaire.",
+      color: "error",
+    });
+  },
+});
+
+const handleUpdateCommentMesInfos = async (payload: {
+  id: string;
+  details: string;
+}) => {
+  await updateDetailsMutation.mutateAsync({
+    demandeId: payload.id,
+    details: payload.details,
+  });
+};
+
 const createPersonneProcheParticulierMutationOptions =
   $orpc.createPersonneProcheByParticulier.mutationOptions();
 const createPersonneProcheParticulierMutation = useMutation({
@@ -948,6 +979,7 @@ const getAccentColorByType = (
             :get-creator-name="getDemandeCreateur"
             :format-date="formatDemandeDate"
             :show-actions="true"
+            @updateComment="handleUpdateCommentMesInfos"
           >
             <template #actions="{ demande: d }">
               <div class="flex items-center justify-end gap-2">
