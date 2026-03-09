@@ -311,6 +311,7 @@ const handleUpdateComment = async (payload: { id: string; details: string }) => 
         :statut-labels="statutLabels"
         :statut-colors="statutColors"
         :get-creator-name="getCreatorName"
+        :get-beneficiaire-name="getBeneficiaireName"
         :format-date="formatDate"
         :show-actions="true"
         @updateComment="handleUpdateComment"

@@ -17,6 +17,7 @@ const props = defineProps<{
   statutLabels: Record<string, string>;
   statutColors: Record<string, string>;
   getCreatorName: (d: any) => string;
+  getBeneficiaireName?: (d: any) => string;
   formatDate: (date: string | Date) => string;
   showActions?: boolean;
   showStepTracker?: boolean;
@@ -145,6 +146,15 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
               <p class="text-xs quaternary--text--color">
                 Créée par
                 <span class="font-medium">{{ getCreatorName(d) }}</span>
+              </p>
+              <p
+                v-if="getBeneficiaireName"
+                class="text-xs quaternary--text--color"
+              >
+                Pour
+                <span class="font-medium">
+                  {{ getBeneficiaireName(d) }}
+                </span>
               </p>
             </div>
           </div>
