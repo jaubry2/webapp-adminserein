@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { PDFDocument } from "pdf-lib";
+import { getListFieldForm, getValue } from "~/composables/useInfoFormulaire";
+import OngletInformationDemande from "~/components/OngletInformation/Demande.vue";
 
 const { $authClient, $orpc } = useNuxtApp();
 const queryClient = useQueryClient();
@@ -28,7 +31,9 @@ const {
   refetchOnWindowFocus: "always",
 });
 
-const filterStatut = ref<"TOUS" | "BROUILLON" | "EN_COURS" | "EN_ATTENTE_COMPLEMENT" | "TERMINEE" | "ANNULEE">("TOUS");
+const filterStatut = ref<
+  "TOUS" | "BROUILLON" | "EN_COURS" | "EN_ATTENTE_COMPLEMENT" | "TERMINEE" | "ANNULEE"
+>("TOUS");
 
 const filteredDemandes = computed(() => {
   if (!demandes.value) return [];
@@ -41,12 +46,13 @@ const typeDemandeLabels: Record<string, string> = {
   CAF_AIDE_LOGEMENT: "Aide au logement (CAF)",
   RSA: "RSA",
   AAH: "AAH",
+  ASH: "ASH",
 };
 
 const statutLabels: Record<string, string> = {
   BROUILLON: "Brouillon",
   EN_COURS: "En cours",
-  EN_ATTENTE_COMPLEMENT: "En attente de complément",
+  EN_ATTENTE_COMPLEMENT: "En attente de réponse / validation",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
 };
@@ -57,6 +63,16 @@ const statutColors: Record<string, string> = {
   EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
   TERMINEE: "bg-green-100 text-green-700",
   ANNULEE: "bg-red-100 text-red-700",
+};
+
+const getCreatorName = (d: any): string => {
+  // Si un professionnel est stocké côté backend
+  if (d.professionnelInfo) {
+    return `${d.professionnelInfo.prenom} ${d.professionnelInfo.nom}`;
+  }
+
+  // Sinon, on considère que c'est le particulier connecté
+  return "Moi-même";
 };
 
 const getBeneficiaireName = (d: any): string => {
@@ -78,6 +94,95 @@ const formatDate = (dateStr: string | Date): string => {
   });
 };
 
+const APA_OFFICIAL_PDF_PATH = "/pdf/apa_remplissable.pdf";
+
+const generateApaPdfFromDemande = async (
+  donneesFormulaire: any,
+  options: { download: boolean },
+) => {
+  if (!process.client) return;
+
+  const existingPdfBytes = await fetch(APA_OFFICIAL_PDF_PATH).then((res) =>
+    res.arrayBuffer(),
+  );
+  const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  const form = pdfDoc.getForm();
+  const field_names = form.getFields().map((field: any) => field.getName());
+
+  Object.keys(donneesFormulaire ?? {}).forEach((key) => {
+    const value = getValue(donneesFormulaire, key);
+    const fields_list = getListFieldForm(donneesFormulaire, key);
+    if (!value) {
+      return;
+    } else if (fields_list.length === 1) {
+      if (field_names.includes(fields_list[0])) {
+        form.getTextField(fields_list[0]).setText(value);
+      }
+    } else if (fields_list[0].startsWith("est")) {
+      if (field_names.includes(value)) {
+        form.getCheckBox(value).check();
+      }
+    } else {
+      let charList = value.split("");
+      if (charList.includes("-")) {
+        const wait = [
+          charList[8],
+          charList[9],
+          charList[5],
+          charList[6],
+          charList[0],
+          charList[1],
+          charList[2],
+          charList[3],
+        ];
+        charList = wait;
+      }
+      for (let i = 0; i < fields_list.length; i++) {
+        if (field_names.includes(fields_list[i])) {
+          form.getTextField(fields_list[i]).setText(charList[i] || "");
+        }
+      }
+    }
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
+  if (options.download) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "demande_APA_remplie.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  } else {
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+};
+
+const handleViewDemandeDocument = (d: any) => {
+  if (d.typeDemande === "APA" && d.donneesFormulaire) {
+    generateApaPdfFromDemande(d.donneesFormulaire, { download: false });
+    return;
+  }
+
+  navigateTo(`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`);
+};
+
+const handleDownloadDemandeDocument = (d: any) => {
+  if (d.typeDemande === "APA" && d.donneesFormulaire) {
+    generateApaPdfFromDemande(d.donneesFormulaire, { download: true });
+    return;
+  }
+
+  navigateTo(
+    `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
+  );
+};
+
 const updateStatutMutation = useMutation({
   ...$orpc.updateDemandeStatut.mutationOptions(),
   onSuccess: () => {
@@ -85,8 +190,8 @@ const updateStatutMutation = useMutation({
       queryKey: $orpc.listDemandes.queryKey(),
     });
     toast.add({
-      title: "Statut mis à jour",
-      description: "Le statut de la demande a été modifié.",
+      title: "Demande mise à jour",
+      description: "Le statut a été mis à jour en temps réel.",
     });
   },
   onError: (error: any) => {
@@ -162,134 +267,62 @@ const submitComplementRequest = async () => {
             <option value="TOUS">Tous</option>
             <option value="BROUILLON">Brouillon</option>
             <option value="EN_COURS">En cours</option>
-            <option value="EN_ATTENTE_COMPLEMENT">En attente de complément</option>
+            <option value="EN_ATTENTE_COMPLEMENT">En attente de réponse / validation</option>
             <option value="TERMINEE">Terminée</option>
             <option value="ANNULEE">Annulée</option>
           </select>
         </div>
       </header>
 
-      <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-4 text-left text-sm font-semibold secondary--text--color">
-                  Type
-                </th>
-                <th class="px-6 py-4 text-left text-sm font-semibold secondary--text--color">
-                  Bénéficiaire
-                </th>
-                <th class="px-6 py-4 text-left text-sm font-semibold secondary--text--color">
-                  Statut
-                </th>
-                <th class="px-6 py-4 text-left text-sm font-semibold secondary--text--color">
-                  Date
-                </th>
-                <th class="px-6 py-4 text-right text-sm font-semibold secondary--text--color">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-
-            <tbody class="divide-y divide-gray-200 bg-white">
-              <tr v-if="isLoading">
-                <td colspan="5" class="px-6 py-12 text-center">
-                  <p class="text-sm quaternary--text--color">
-                    Chargement des demandes...
-                  </p>
-                </td>
-              </tr>
-              <tr v-else-if="isError">
-                <td colspan="5" class="px-6 py-12 text-center">
-                  <p class="text-sm text-red-500">
-                    Erreur lors du chargement des demandes.
-                  </p>
-                </td>
-              </tr>
-              <tr
-                v-for="d in filteredDemandes"
-                v-else
-                :key="d.id"
-                class="hover:bg-gray-50 transition-colors"
-              >
-                <td class="px-6 py-4 text-sm font-medium secondary--text--color">
-                  {{ typeDemandeLabels[d.typeDemande] || d.typeDemande }}
-                </td>
-                <td class="px-6 py-4 text-sm quaternary--text--color">
-                  {{ getBeneficiaireName(d) }}
-                </td>
-                <td class="px-6 py-4">
-                  <span
-                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    :class="statutColors[d.statut] || 'bg-gray-100 text-gray-700'"
-                  >
-                    {{ statutLabels[d.statut] || d.statut }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 text-sm quaternary--text--color">
-                  {{ formatDate(d.createdAt) }}
-                </td>
-                <td class="px-6 py-4 text-right">
-                  <div class="flex items-center justify-end gap-2">
-                    <NuxtLink
-                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
-                      :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
-                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                    >
-                      <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
-                      Modifier
-                    </NuxtLink>
-                    <button
-                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE' && d.statut !== 'EN_ATTENTE_COMPLEMENT' && d.patientId && userType === 'PROFESSIONNEL'"
-                      @click="openComplementModal(d.id)"
-                      class="inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-600 transition-colors hover:bg-orange-50"
-                    >
-                      <UIcon name="i-lucide-message-circle" class="h-3.5 w-3.5" />
-                      Demander un complément
-                    </button>
-                    <button
-                      v-if="d.statut !== 'TERMINEE'"
-                      @click="changeStatut(d.id, 'TERMINEE')"
-                      :disabled="updateStatutMutation.isPending.value"
-                      class="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
-                    >
-                      <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
-                      Terminer
-                    </button>
-                    <button
-                      v-if="d.statut !== 'ANNULEE' && d.statut !== 'TERMINEE'"
-                      @click="changeStatut(d.id, 'ANNULEE')"
-                      :disabled="updateStatutMutation.isPending.value"
-                      class="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-                    >
-                      <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
-                      Annuler
-                    </button>
-                    <button
-                      v-if="d.statut === 'TERMINEE' || d.statut === 'ANNULEE'"
-                      @click="changeStatut(d.id, 'EN_COURS')"
-                      :disabled="updateStatutMutation.isPending.value"
-                      class="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50"
-                    >
-                      <UIcon name="i-lucide-rotate-ccw" class="h-3.5 w-3.5" />
-                      Rouvrir
-                    </button>
-                  </div>
-                </td>
-              </tr>
-
-              <tr v-if="!isLoading && !isError && filteredDemandes.length === 0">
-                <td colspan="5" class="px-6 py-12 text-center">
-                  <p class="text-sm quaternary--text--color">
-                    Aucune demande trouvée.
-                  </p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <OngletInformationDemande
+        title="Mes demandes"
+        :demandes="filteredDemandes"
+        :is-loading="isLoading"
+        :is-error="isError"
+        empty-text="Aucune demande trouvée."
+        :type-labels="typeDemandeLabels"
+        :statut-labels="statutLabels"
+        :statut-colors="statutColors"
+        :get-creator-name="getCreatorName"
+        :format-date="formatDate"
+        :show-actions="true"
+      >
+        <template #actions="{ demande: d }">
+          <div class="flex items-center justify-end gap-2">
+            <button
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+              @click="handleViewDemandeDocument(d)"
+            >
+              <UIcon name="i-lucide-file-text" class="h-3.5 w-3.5" />
+              Voir
+            </button>
+            <button
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+              @click="handleDownloadDemandeDocument(d)"
+            >
+              <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
+              Télécharger
+            </button>
+            <NuxtLink
+              v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
+              :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+            >
+              <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
+              Modifier
+            </NuxtLink>
+            <button
+              v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
+              @click="changeStatut(d.id, 'TERMINEE')"
+              :disabled="updateStatutMutation.isPending.value"
+              class="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
+            >
+              <UIcon name="i-lucide-check-circle" class="h-3.5 w-3.5" />
+              Terminer
+            </button>
+          </div>
+        </template>
+      </OngletInformationDemande>
     </div>
 
     <!-- Modal demande de complément -->

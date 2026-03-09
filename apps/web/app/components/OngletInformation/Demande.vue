@@ -26,7 +26,7 @@ const expandedById = ref<Record<string, boolean>>({});
 
 function isExpanded(id: string): boolean {
   if (expandedById.value[id] === undefined) {
-    return true;
+    return false;
   }
   return expandedById.value[id];
 }
@@ -146,10 +146,7 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
               <button
                 type="button"
                 class="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-medium quaternary--text--color transition-colors hover:bg-gray-50"
-                @click="
-                  toggleExpanded(d.id);
-                  console.log(d);
-                "
+                @click="toggleExpanded(d.id)"
               >
                 <UIcon
                   :name="
@@ -164,13 +161,10 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
                 }}</span>
               </button>
             </div>
-            <div v-if="hasActions" class="flex items-center gap-2">
-              <slot name="actions" :demande="d" />
-            </div>
           </div>
         </div>
 
-        <div v-if="isExpanded(d.id)" class="border-t border-gray-100 px-4 py-3">
+        <div v-if="isExpanded(d.id)" class="border-t border-gray-100 px-4 py-3 space-y-3">
           <DemandStepTracker
             :demande-type="d.typeDemande"
             :status-by-step="buildStepStatusFromStatut(d)"
@@ -178,6 +172,9 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
             :etapes="d.etapes"
             :editable="false"
           />
+          <div v-if="hasActions" class="flex items-center justify-end gap-2 pt-2 border-t border-dashed border-gray-200">
+            <slot name="actions" :demande="d" />
+          </div>
         </div>
       </div>
     </div>

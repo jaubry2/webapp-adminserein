@@ -201,7 +201,7 @@ const typeDemandeLabels: Record<string, string> = {
 const statutDemandeLabels: Record<string, string> = {
   BROUILLON: "Brouillon",
   EN_COURS: "En cours",
-  EN_ATTENTE_COMPLEMENT: "En attente de complément",
+  EN_ATTENTE_COMPLEMENT: "En attente de réponse / validation",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
 };
@@ -255,8 +255,8 @@ const completerDemandeMutation = useMutation({
       queryKey: ["listDemandesByPatient"],
     });
     toast.add({
-      title: "Informations envoyées",
-      description: "Le professionnel a été notifié de votre complément.",
+      title: "Demande terminée",
+      description: "Le professionnel a été notifié et la demande est marquée comme terminée.",
     });
     showCompleterModal.value = false;
   },
@@ -368,6 +368,39 @@ const handleDownloadDemandeDocument = (d: any) => {
   navigateTo(
     `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
   );
+};
+
+// Mise à jour en temps réel du statut des demandes (particulier)
+const updateDemandeStatutMutation = useMutation({
+  ...$orpc.updateDemandeStatut.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Demande mise à jour",
+      description: "Le statut de la demande a été mis à jour.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de mettre à jour le statut.",
+      color: "error",
+    });
+  },
+});
+
+const changeStatutDemande = async (demandeId: string, statut: string) => {
+  await updateDemandeStatutMutation.mutateAsync({
+    demandeId,
+    statut: statut as
+      | "BROUILLON"
+      | "EN_COURS"
+      | "EN_ATTENTE_COMPLEMENT"
+      | "TERMINEE"
+      | "ANNULEE",
+  });
 };
 
 const createPersonneProcheParticulierMutationOptions =
@@ -942,11 +975,11 @@ const getAccentColorByType = (
                 </NuxtLink>
                 <button
                   v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
-                  @click="openCompleterModal(d)"
-                  class="inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-600 transition-colors hover:bg-orange-50"
+                  @click="changeStatutDemande(d.id, 'TERMINEE')"
+                  class="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
                 >
-                  <UIcon name="i-lucide-edit" class="h-3.5 w-3.5" />
-                  Compléter
+                  <UIcon name="i-lucide-check-circle" class="h-3.5 w-3.5" />
+                  Terminer
                 </button>
               </div>
             </template>

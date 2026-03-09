@@ -3414,6 +3414,8 @@ export const appRouter = {
         (s) => s.id === input.stepCode,
       );
 
+      let etapeResult;
+
       if (existing) {
         await db
           .update(demandeEtape)
@@ -3430,22 +3432,46 @@ export const appRouter = {
           .where(eq(demandeEtape.id, existing.id))
           .limit(1);
 
-        return updated;
+        etapeResult = updated;
+      } else {
+        const [createdEtape] = await db
+          .insert(demandeEtape)
+          .values({
+            demandeId: input.demandeId,
+            stepCode: input.stepCode,
+            description:
+              input.description ?? defaultStepDef?.label ?? input.stepCode,
+            statut: input.statut ?? "A_FAIRE",
+            todos: input.todos ?? null,
+          })
+          .returning();
+
+        etapeResult = createdEtape;
       }
 
-      const [createdEtape] = await db
-        .insert(demandeEtape)
-        .values({
-          demandeId: input.demandeId,
-          stepCode: input.stepCode,
-          description:
-            input.description ?? defaultStepDef?.label ?? input.stepCode,
-          statut: input.statut ?? "A_FAIRE",
-          todos: input.todos ?? null,
-        })
-        .returning();
+      // Si toutes les étapes sont terminées, passer la demande en "EN_ATTENTE_COMPLEMENT"
+      const allEtapes = await db
+        .select()
+        .from(demandeEtape)
+        .where(eq(demandeEtape.demandeId, input.demandeId));
 
-      return createdEtape;
+      const hasEtapes = allEtapes.length > 0;
+      const allDone =
+        hasEtapes && allEtapes.every((e) => e.statut === "TERMINEE");
+
+      if (
+        allDone &&
+        d.statut !== "EN_ATTENTE_COMPLEMENT" &&
+        d.statut !== "TERMINEE" &&
+        d.statut !== "ANNULEE"
+      ) {
+        await db
+          .update(demande)
+          .set({ statut: "EN_ATTENTE_COMPLEMENT" })
+          .where(eq(demande.id, input.demandeId));
+      }
+
+      return etapeResult;
     }),
 
   updateDemandeStatut: protectedProcedure
@@ -3480,6 +3506,8 @@ export const appRouter = {
         throw new Error("Demande non trouvée");
       }
 
+      const previousStatut = d.statut;
+
       // Verification d'acces
       if (userData.type === "PROFESSIONNEL") {
         const [prof] = await db
@@ -3509,6 +3537,33 @@ export const appRouter = {
         .update(demande)
         .set({ statut: input.statut })
         .where(eq(demande.id, input.demandeId));
+
+      // Notifications / messages liés au changement de statut
+      if (input.statut === "TERMINEE" && previousStatut === "EN_ATTENTE_COMPLEMENT") {
+        // Si un particulier termine : prévenir le professionnel
+        if (userData.type === "PARTICULIER" && d.professionnelId) {
+          await db.insert(notification).values({
+            professionnelId: d.professionnelId,
+            patientId: null,
+            type: "INFO",
+            titre: "Dossier validé",
+            message: `Le particulier a indiqué que le dossier ${d.typeDemande} est validé.`,
+            lien: "/mes-demandes",
+          });
+        }
+
+        // Si un professionnel termine : prévenir le patient (si lié)
+        if (userData.type === "PROFESSIONNEL" && d.patientId) {
+          await db.insert(notification).values({
+            professionnelId: null,
+            patientId: d.patientId,
+            type: "INFO",
+            titre: "Demande terminée",
+            message: `Votre demande ${d.typeDemande} a été marquée comme terminée (dossier validé).`,
+            lien: "/mes-informations",
+          });
+        }
+      }
 
       const [updated] = await db
         .select()
@@ -3723,8 +3778,8 @@ export const appRouter = {
         patientId: d.patientId,
         professionnelId: null,
         type: "INFO",
-        titre: "Complément d'informations requis",
-        message: `Le professionnel ${prof.prenom} ${prof.nom} demande un complément d'informations pour une demande ${d.typeDemande}. Message : "${input.commentaire}"`,
+        titre: "Validation du dossier requise",
+        message: `Le professionnel ${prof.prenom} ${prof.nom} attend votre retour pour valider la demande ${d.typeDemande}. Message : "${input.commentaire}"`,
         lien: "/mes-informations",
       });
 
@@ -3734,7 +3789,7 @@ export const appRouter = {
         typeDemarche: "ADMINISTRATIVE",
         etat: "A_FAIRE",
         date: new Date(),
-        details: `Complément d'informations demandé pour la demande ${d.typeDemande} du patient ${patientNom}. En attente de réponse.`,
+        details: `Retour attendu pour valider la demande ${d.typeDemande} du patient ${patientNom}.`,
       });
 
       const [updated] = await db
@@ -3805,7 +3860,8 @@ export const appRouter = {
           throw new Error("Cette demande n'est pas en attente de complément");
         }
 
-        updateData.statut = "EN_COURS";
+        // Le particulier signale que la réponse a été reçue : on passe la demande à TERMINEE
+        updateData.statut = "TERMINEE";
         if (input.reponseComplement !== undefined) {
           updateData.reponseComplement = input.reponseComplement;
         }
@@ -3840,8 +3896,8 @@ export const appRouter = {
             professionnelId: d.professionnelId,
             patientId: null,
             type: "INFO",
-            titre: "Complément d'informations reçu",
-            message: `Le patient ${patientNom} a complété les informations demandées pour la demande ${d.typeDemande}.`,
+            titre: "Dossier validé",
+            message: `Le patient ${patientNom} a indiqué que le dossier ${d.typeDemande} est validé.`,
             lien: "/mes-demandes",
           });
 
@@ -3858,7 +3914,10 @@ export const appRouter = {
               );
 
             for (const t of matchingTaches) {
-              if (t.details?.includes("Complément d'informations demandé")) {
+              if (
+                t.details?.includes("Complément d'informations demandé") ||
+                t.details?.includes("Retour attendu pour valider")
+              ) {
                 await db
                   .update(tache)
                   .set({ etat: "TERMINEE" })

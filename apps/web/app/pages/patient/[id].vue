@@ -282,7 +282,7 @@ const typeDemandeLabels: Record<string, string> = {
 const statutDemandeLabels: Record<string, string> = {
   BROUILLON: "Brouillon",
   EN_COURS: "En cours",
-  EN_ATTENTE_COMPLEMENT: "En attente de complément",
+  EN_ATTENTE_COMPLEMENT: "En attente de réponse / validation",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
 };
@@ -293,6 +293,38 @@ const statutDemandeColors: Record<string, string> = {
   EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
   TERMINEE: "bg-green-100 text-green-700",
   ANNULEE: "bg-red-100 text-red-700",
+};
+
+const updateStatutMutation = useMutation({
+  ...$orpc.updateDemandeStatut.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Demande mise à jour",
+      description: "Le statut a été mis à jour en temps réel.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de mettre à jour le statut.",
+      color: "error",
+    });
+  },
+});
+
+const changeStatut = async (demandeId: string, statut: string) => {
+  await updateStatutMutation.mutateAsync({
+    demandeId,
+    statut: statut as
+      | "BROUILLON"
+      | "EN_COURS"
+      | "EN_ATTENTE_COMPLEMENT"
+      | "TERMINEE"
+      | "ANNULEE",
+  });
 };
 
 const getDemandeCreateur = (d: any): string => {
@@ -1246,6 +1278,15 @@ const cancelModifications = () => {
                       <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
                       Modifier
                     </NuxtLink>
+                    <button
+                      v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
+                      @click="changeStatut(d.id, 'TERMINEE')"
+                      :disabled="updateStatutMutation.isPending.value"
+                      class="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50 disabled:opacity-50"
+                    >
+                      <UIcon name="i-lucide-check-circle" class="h-3.5 w-3.5" />
+                      Terminer
+                    </button>
                   </template>
                 </OngletInformationDemande>
               </div>

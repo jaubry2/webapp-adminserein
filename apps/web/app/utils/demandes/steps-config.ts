@@ -71,5 +71,34 @@ export const stepsByDemandeType: DemandeStepsConfig = {
       defaultDescription: "Vérifier et transmettre le dossier complet à la MDPH compétente.",
     },
   ],
+  ASH: [
+    {
+      id: "collecte_documents",
+      label: "Rassembler les documents",
+      icon: "i-lucide-folder-open",
+      defaultDescription: "Préparer tous les justificatifs nécessaires pour l’APA.",
+      defaultTodos: [
+        { id: "justificatif_identite", label: "Justificatif d'identité", status: "TODO" as EtapeTodoStatus },
+        { id: "justificatif_ressources", label: "Justificatif de ressources", status: "TODO" as EtapeTodoStatus },
+        {
+          id: "devis", label: "Devis des frais", status: "TODO" as EtapeTodoStatus
+        },
+        { id: "Grille AGGIR", label: "Grille AGGIR", status: "TODO" as EtapeTodoStatus },
+      ],
+    },
+    {
+      id: "recuperer_formulaire",
+      label: "Recuperer le formulaire",
+      icon: "i-lucide-file-text",
+      defaultDescription: "Recuperer le formulaire officiel ASH auprès du CCAS départemental.",
+    },
+    {
+      id: "remplir_formulaire",
+      label: "Remplir le formulaire",
+      icon: "i-lucide-file-text",
+      defaultDescription: "Compléter le formulaire officiel ASH avec les informations du bénéficiaire.",
+
+    },
+  ],
 };
 
