@@ -7,6 +7,11 @@ const props = defineProps<{
   demandeType: string;
   statusByStep?: Record<string, StepStatus>;
   editable?: boolean;
+  etapes?: {
+    stepCode: string;
+    description?: string | null;
+    todos?: unknown | null;
+  }[];
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +24,8 @@ const allSteps = computed<DemandeStep[]>(() => {
 });
 
 const localStatus = ref<Record<string, StepStatus>>({});
+const activeStepId = ref<string | null>(null);
+const isPanelOpen = ref(false);
 
 watch(
   () => props.statusByStep,
@@ -81,9 +88,26 @@ function cycleStatus(current: StepStatus): StepStatus {
   return "todo";
 }
 
+const activeStep = computed<DemandeStep | null>(() => {
+  if (!activeStepId.value) return null;
+  return allSteps.value.find((s) => s.id === activeStepId.value) ?? null;
+});
+
+const activeEtapeInfo = computed<{
+  description?: string | null;
+  todos?: unknown | null;
+} | null>(() => {
+  if (!activeStepId.value || !props.etapes) return null;
+  const match = props.etapes.find((e) => e.stepCode === activeStepId.value);
+  return match ?? null;
+});
+
 function handleStepClick(step: DemandeStep) {
   const current = localStatus.value[step.id] ?? "todo";
   const effective = computeEffectiveStatus(step);
+
+  activeStepId.value = step.id;
+  isPanelOpen.value = true;
 
   if (!props.editable || effective === "blocked") {
     emit("stepClick", { stepId: step.id, status: effective });
@@ -162,6 +186,76 @@ function handleStepClick(step: DemandeStep) {
         <div class="flex items-center gap-2 text-[11px] quaternary--text--color">
           <span class="inline-flex h-2 w-2 rounded-full bg-gray-300" />
           <span>Bloqué (étapes avant)</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div
+      v-if="isPanelOpen && activeStep"
+      class="fixed inset-0 z-40 flex justify-end"
+    >
+      <div
+        class="flex-1 bg-black/20"
+        @click="isPanelOpen = false"
+      />
+      <div
+        class="h-full w-80 sm:w-96 bg-white shadow-xl border-l border-gray-200 flex flex-col p-4"
+      >
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <h4 class="text-xs font-semibold secondary--text--color">
+            Détail de l'étape
+          </h4>
+          <button
+            type="button"
+            class="rounded-full border border-gray-300 bg-white px-2 py-0.5 text-[11px] quaternary--text--color hover:bg-gray-50"
+            @click="isPanelOpen = false"
+          >
+            Fermer
+          </button>
+        </div>
+
+        <p class="text-xs font-medium secondary--text--color mb-1">
+          {{ activeStep.label }}
+        </p>
+        <p class="mb-3 text-[11px] quaternary--text--color leading-snug">
+          {{
+            activeEtapeInfo?.description && activeEtapeInfo.description.length > 0
+              ? activeEtapeInfo.description
+              : "Aucune description supplémentaire pour cette étape."
+          }}
+        </p>
+
+        <div class="space-y-1.5 overflow-y-auto pr-1">
+          <p class="text-[11px] font-semibold secondary--text--color">
+            To-do de l'étape
+          </p>
+          <div v-if="Array.isArray((activeEtapeInfo?.todos as any) ?? null)">
+            <ul class="space-y-1">
+              <li
+                v-for="(item, idx) in (activeEtapeInfo?.todos as any[])"
+                :key="idx"
+                class="flex items-start gap-2 text-[11px] quaternary--text--color"
+              >
+                <span
+                  class="mt-[3px] inline-flex h-2 w-2 rounded-full bg-gray-300"
+                />
+                <span>
+                  {{
+                    typeof item === "string"
+                      ? item
+                      : (item && (item.label || item.title)) || JSON.stringify(item)
+                  }}
+                </span>
+              </li>
+            </ul>
+          </div>
+          <p
+            v-else
+            class="text-[11px] quaternary--text--color italic"
+          >
+            Aucune to-do enregistrée pour cette étape.
+          </p>
         </div>
       </div>
     </div>

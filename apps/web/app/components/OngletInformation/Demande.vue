@@ -174,6 +174,7 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
           <DemandStepTracker
             :demande-type="d.typeDemande"
             :status-by-step="buildStepStatusFromStatut(d)"
+            :etapes="d.etapes"
             :editable="false"
           />
         </div>
