@@ -4,8 +4,11 @@ import { useMutation } from "@tanstack/vue-query";
 import { useNuxtApp } from "#app";
 import {
   stepStatusToBackendStatut,
+  normalizeEtapeTodos,
+  toggleTodoStatus,
   type DemandeStep,
   type StepStatus,
+  type EtapeTodoItem,
 } from "~/types/demandes";
 import { stepsByDemandeType } from "~/utils/demandes/steps-config";
 
@@ -33,6 +36,7 @@ const allSteps = computed<DemandeStep[]>(() => {
 const localStatus = ref<Record<string, StepStatus>>({});
 const activeStepId = ref<string | null>(null);
 const isPanelOpen = ref(false);
+const localTodosByStep = ref<Record<string, EtapeTodoItem[]>>({});
 
 const { $orpc } = useNuxtApp();
 
@@ -115,6 +119,11 @@ const activeEtapeInfo = computed<{
   return match ?? null;
 });
 
+const activeTodos = computed<EtapeTodoItem[]>(() => {
+  if (!activeStepId.value) return [];
+  return localTodosByStep.value[activeStepId.value] ?? [];
+});
+
 function handleStepClick(step: DemandeStep) {
   const current = localStatus.value[step.id] ?? "todo";
   const effective = computeEffectiveStatus(step);
@@ -152,6 +161,52 @@ function validateActiveStep() {
     });
   }
 }
+
+function updateActiveTodos(updater: (current: EtapeTodoItem[]) => EtapeTodoItem[]) {
+  if (!activeStepId.value || !props.demandeId) return;
+  const current = localTodosByStep.value[activeStepId.value] ?? [];
+  const updated = updater(current);
+  localTodosByStep.value = {
+    ...localTodosByStep.value,
+    [activeStepId.value]: updated,
+  };
+
+  upsertEtapeMutation.mutate({
+    demandeId: props.demandeId,
+    stepCode: activeStepId.value,
+    todos: updated,
+  });
+}
+
+function handleToggleTodo(item: EtapeTodoItem) {
+  updateActiveTodos((current) =>
+    current.map((t) =>
+      t.id === item.id ? toggleTodoStatus(t, "click") : t,
+    ),
+  );
+}
+
+function handleToggleIgnore(item: EtapeTodoItem) {
+  updateActiveTodos((current) =>
+    current.map((t) =>
+      t.id === item.id ? toggleTodoStatus(t, "ignore") : t,
+    ),
+  );
+}
+
+watch(
+  () => props.etapes,
+  (value) => {
+    const map: Record<string, EtapeTodoItem[]> = { ...localTodosByStep.value };
+    for (const etape of value ?? []) {
+      if (!map[etape.stepCode]) {
+        map[etape.stepCode] = normalizeEtapeTodos(etape.todos);
+      }
+    }
+    localTodosByStep.value = map;
+  },
+  { immediate: true, deep: true },
+);
 </script>
 
 <template>
@@ -273,24 +328,53 @@ function validateActiveStep() {
           <p class="text-[11px] font-semibold secondary--text--color">
             To-do de l'étape
           </p>
-          <div v-if="Array.isArray((activeEtapeInfo?.todos as any) ?? null)">
+          <div v-if="activeTodos.length > 0">
             <ul class="space-y-1">
               <li
-                v-for="(item, idx) in activeEtapeInfo?.todos as any[]"
-                :key="idx"
-                class="flex items-start gap-2 text-[11px] quaternary--text--color"
+                v-for="item in activeTodos"
+                :key="item.id"
+                class="flex items-start gap-2 text-[11px]"
               >
+                <button
+                  type="button"
+                  class="mt-[2px] inline-flex h-3 w-3 items-center justify-center rounded border border-gray-400"
+                  @click="handleToggleTodo(item)"
+                >
+                  <span
+                    v-if="item.status === 'DONE'"
+                    class="h-2 w-2 bg-emerald-500 rounded-[2px]"
+                  />
+                </button>
                 <span
-                  class="mt-[3px] inline-flex h-2 w-2 rounded-full bg-gray-300"
-                />
-                <span>
-                  {{
-                    typeof item === "string"
-                      ? item
-                      : (item && (item.label || item.title)) ||
-                        JSON.stringify(item)
-                  }}
+                  class="flex-1"
+                  :class="[
+                    'quaternary--text--color',
+                    item.status === 'DONE' && 'line-through text-gray-400',
+                    item.status === 'IGNORED' &&
+                      'line-through text-gray-400 italic',
+                  ]"
+                >
+                  {{ item.label }}
                 </span>
+                <button
+                  type="button"
+                  class="mt-[1px] inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 bg-white text-[10px] text-gray-500 hover:bg-gray-50"
+                  :title="
+                    item.status === 'IGNORED'
+                      ? 'Réintégrer cet élément'
+                      : 'Ignorer cet élément'
+                  "
+                  @click="handleToggleIgnore(item)"
+                >
+                  <UIcon
+                    :name="
+                      item.status === 'IGNORED'
+                        ? 'i-lucide-undo-2'
+                        : 'i-lucide-ban'
+                    "
+                    class="h-3 w-3"
+                  />
+                </button>
               </li>
             </ul>
           </div>

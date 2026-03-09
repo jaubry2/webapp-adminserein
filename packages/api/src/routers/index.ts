@@ -3072,9 +3072,9 @@ export const appRouter = {
           defaultSteps.map((step) => ({
             demandeId: created.id,
             stepCode: step.id,
-            description: step.label,
+            description: step.defaultDescription ?? step.label,
             statut: "A_FAIRE" as const,
-            todos: null,
+            todos: step.defaultTodos ?? null,
           })),
         );
       }
@@ -3171,7 +3171,7 @@ export const appRouter = {
 
     let etapesMap = new Map<
       string,
-      { stepCode: string; statut: string }[]
+      { stepCode: string; statut: string; description: string; todos: unknown }[]
     >();
 
     if (demandeIds.length > 0) {
@@ -3182,7 +3182,12 @@ export const appRouter = {
 
       for (const e of etapes) {
         const list = etapesMap.get(e.demandeId) ?? [];
-        list.push({ stepCode: e.stepCode, statut: e.statut });
+        list.push({
+          stepCode: e.stepCode,
+          statut: e.statut,
+          description: e.description,
+          todos: e.todos,
+        });
         etapesMap.set(e.demandeId, list);
       }
     }
@@ -3600,7 +3605,7 @@ export const appRouter = {
 
       let etapesMap = new Map<
         string,
-        { stepCode: string; statut: string }[]
+        { stepCode: string; statut: string; description: string; todos: unknown }[]
       >();
 
       if (demandeIds.length > 0) {
@@ -3611,7 +3616,12 @@ export const appRouter = {
 
         for (const e of etapes) {
           const list = etapesMap.get(e.demandeId) ?? [];
-          list.push({ stepCode: e.stepCode, statut: e.statut });
+          list.push({
+            stepCode: e.stepCode,
+            statut: e.statut,
+            description: e.description,
+            todos: e.todos,
+          });
           etapesMap.set(e.demandeId, list);
         }
       }
