@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { DemandeStep, StepStatus } from "~/types/demandes";
+import { useMutation } from "@tanstack/vue-query";
+import { useNuxtApp } from "#app";
+import {
+  stepStatusToBackendStatut,
+  type DemandeStep,
+  type StepStatus,
+} from "~/types/demandes";
 import { stepsByDemandeType } from "~/utils/demandes/steps-config";
 
 const props = defineProps<{
   demandeType: string;
   statusByStep?: Record<string, StepStatus>;
   editable?: boolean;
+  demandeId?: string;
   etapes?: {
     stepCode: string;
     description?: string | null;
@@ -26,6 +33,12 @@ const allSteps = computed<DemandeStep[]>(() => {
 const localStatus = ref<Record<string, StepStatus>>({});
 const activeStepId = ref<string | null>(null);
 const isPanelOpen = ref(false);
+
+const { $orpc } = useNuxtApp();
+
+const upsertEtapeMutation = useMutation({
+  ...$orpc.upsertDemandeEtape.mutationOptions(),
+});
 
 watch(
   () => props.statusByStep,
@@ -120,6 +133,25 @@ function handleStepClick(step: DemandeStep) {
   emit("update:statusByStep", updated);
   emit("stepClick", { stepId: step.id, status: next });
 }
+
+function validateActiveStep() {
+  if (!activeStepId.value) return;
+  const updated = {
+    ...localStatus.value,
+    [activeStepId.value]: "done" as StepStatus,
+  };
+  localStatus.value = updated;
+  emit("update:statusByStep", updated);
+  emit("stepClick", { stepId: activeStepId.value, status: "done" });
+
+  if (props.demandeId) {
+    upsertEtapeMutation.mutate({
+      demandeId: props.demandeId,
+      stepCode: activeStepId.value,
+      statut: stepStatusToBackendStatut("done"),
+    });
+  }
+}
 </script>
 
 <template>
@@ -129,7 +161,7 @@ function handleStepClick(step: DemandeStep) {
         Suivi de la demande
       </h3>
       <p class="text-[11px] quaternary--text--color">
-        Cliquez sur une étape pour la faire avancer.
+        Cliquez sur une étape pour voir le détail.
       </p>
     </div>
 
@@ -175,30 +207,32 @@ function handleStepClick(step: DemandeStep) {
       </div>
 
       <div class="mt-2 flex flex-wrap gap-2 md:mt-0 md:w-40 md:flex-col">
-        <div class="flex items-center gap-2 text-[11px] quaternary--text--color">
+        <div
+          class="flex items-center gap-2 text-[11px] quaternary--text--color"
+        >
           <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           <span>Fait</span>
         </div>
-        <div class="flex items-center gap-2 text-[11px] quaternary--text--color">
+        <div
+          class="flex items-center gap-2 text-[11px] quaternary--text--color"
+        >
           <span class="inline-flex h-2 w-2 rounded-full bg-amber-500" />
           <span>En cours / à faire</span>
         </div>
-        <div class="flex items-center gap-2 text-[11px] quaternary--text--color">
+        <div
+          class="flex items-center gap-2 text-[11px] quaternary--text--color"
+        >
           <span class="inline-flex h-2 w-2 rounded-full bg-gray-300" />
           <span>Bloqué (étapes avant)</span>
         </div>
       </div>
-
     </div>
 
     <div
       v-if="isPanelOpen && activeStep"
       class="fixed inset-0 z-40 flex justify-end"
     >
-      <div
-        class="flex-1 bg-black/20"
-        @click="isPanelOpen = false"
-      />
+      <div class="flex-1 bg-black/20" @click="isPanelOpen = false" />
       <div
         class="h-full w-80 sm:w-96 bg-white shadow-xl border-l border-gray-200 flex flex-col p-4"
       >
@@ -206,6 +240,14 @@ function handleStepClick(step: DemandeStep) {
           <h4 class="text-xs font-semibold secondary--text--color">
             Détail de l'étape
           </h4>
+          <button
+            type="button"
+            class="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-medium text-white hover:bg-emerald-600"
+            @click="validateActiveStep"
+          >
+            <UIcon name="i-lucide-check" class="h-3 w-3" />
+            Valider cette étape
+          </button>
           <button
             type="button"
             class="rounded-full border border-gray-300 bg-white px-2 py-0.5 text-[11px] quaternary--text--color hover:bg-gray-50"
@@ -220,7 +262,8 @@ function handleStepClick(step: DemandeStep) {
         </p>
         <p class="mb-3 text-[11px] quaternary--text--color leading-snug">
           {{
-            activeEtapeInfo?.description && activeEtapeInfo.description.length > 0
+            activeEtapeInfo?.description &&
+            activeEtapeInfo.description.length > 0
               ? activeEtapeInfo.description
               : "Aucune description supplémentaire pour cette étape."
           }}
@@ -233,7 +276,7 @@ function handleStepClick(step: DemandeStep) {
           <div v-if="Array.isArray((activeEtapeInfo?.todos as any) ?? null)">
             <ul class="space-y-1">
               <li
-                v-for="(item, idx) in (activeEtapeInfo?.todos as any[])"
+                v-for="(item, idx) in activeEtapeInfo?.todos as any[]"
                 :key="idx"
                 class="flex items-start gap-2 text-[11px] quaternary--text--color"
               >
@@ -244,16 +287,14 @@ function handleStepClick(step: DemandeStep) {
                   {{
                     typeof item === "string"
                       ? item
-                      : (item && (item.label || item.title)) || JSON.stringify(item)
+                      : (item && (item.label || item.title)) ||
+                        JSON.stringify(item)
                   }}
                 </span>
               </li>
             </ul>
           </div>
-          <p
-            v-else
-            class="text-[11px] quaternary--text--color italic"
-          >
+          <p v-else class="text-[11px] quaternary--text--color italic">
             Aucune to-do enregistrée pour cette étape.
           </p>
         </div>
@@ -261,4 +302,3 @@ function handleStepClick(step: DemandeStep) {
     </div>
   </div>
 </template>
-
