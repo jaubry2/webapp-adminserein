@@ -18,7 +18,9 @@ import {
   notification,
   user,
   demande,
+  demandeEtape,
 } from "@webapp-adminserein/db";
+import { backendStepsByDemandeType } from "../utils/demandes-steps";
 import { protectedProcedure, publicProcedure } from "../index";
 
 // Schémas Zod pour (dé)sérialiser les données côté API
@@ -3062,6 +3064,21 @@ export const appRouter = {
         })
         .returning();
 
+      const defaultSteps =
+        backendStepsByDemandeType[created.typeDemande as keyof typeof backendStepsByDemandeType];
+
+      if (defaultSteps && defaultSteps.length > 0) {
+        await db.insert(demandeEtape).values(
+          defaultSteps.map((step) => ({
+            demandeId: created.id,
+            stepCode: step.id,
+            description: step.label,
+            statut: "A_FAIRE" as const,
+            todos: null,
+          })),
+        );
+      }
+
       return created;
     }),
 
@@ -3150,11 +3167,32 @@ export const appRouter = {
       }
     }
 
+    const demandeIds = demandes.map((d) => d.id);
+
+    let etapesMap = new Map<
+      string,
+      { stepCode: string; statut: string }[]
+    >();
+
+    if (demandeIds.length > 0) {
+      const etapes = await db
+        .select()
+        .from(demandeEtape)
+        .where(inArray(demandeEtape.demandeId, demandeIds));
+
+      for (const e of etapes) {
+        const list = etapesMap.get(e.demandeId) ?? [];
+        list.push({ stepCode: e.stepCode, statut: e.statut });
+        etapesMap.set(e.demandeId, list);
+      }
+    }
+
     return demandes.map((d) => {
       const patientInfo = d.patientId ? patientsMap.get(d.patientId) : null;
       return {
         ...d,
         patientInfo: patientInfo ?? null,
+        etapes: etapesMap.get(d.id) ?? [],
       };
     });
   }),
@@ -3217,6 +3255,185 @@ export const appRouter = {
       }
 
       return d;
+    }),
+
+  listDemandeEtapes: protectedProcedure
+    .input(z.object({ demandeId: z.string().uuid() }))
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        const hasAccess =
+          part &&
+          (d.particulierId === part.id ||
+            (d.patientId != null && d.patientId === part.patientId));
+
+        if (!hasAccess) {
+          throw new Error("Demande non autorisée");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      const etapes = await db
+        .select()
+        .from(demandeEtape)
+        .where(eq(demandeEtape.demandeId, input.demandeId));
+
+      return etapes;
+    }),
+
+  upsertDemandeEtape: protectedProcedure
+    .input(
+      z.object({
+        demandeId: z.string().uuid(),
+        stepCode: z.string(),
+        statut: z.enum(["A_FAIRE", "EN_COURS", "TERMINEE", "BLOQUEE"]).optional(),
+        description: z.string().optional(),
+        todos: z.any().optional(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const [userData] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
+        .limit(1);
+
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const [d] = await db
+        .select()
+        .from(demande)
+        .where(eq(demande.id, input.demandeId))
+        .limit(1);
+
+      if (!d) {
+        throw new Error("Demande non trouvée");
+      }
+
+      if (userData.type === "PROFESSIONNEL") {
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof || d.professionnelId !== prof.id) {
+          throw new Error("Demande non autorisée");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        const hasAccess =
+          part &&
+          (d.particulierId === part.id ||
+            (d.patientId != null && d.patientId === part.patientId));
+
+        if (!hasAccess) {
+          throw new Error("Demande non autorisée");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
+      }
+
+      const [existing] = await db
+        .select()
+        .from(demandeEtape)
+        .where(
+          and(
+            eq(demandeEtape.demandeId, input.demandeId),
+            eq(demandeEtape.stepCode, input.stepCode),
+          ),
+        )
+        .limit(1);
+
+      const defaultsForType =
+        backendStepsByDemandeType[d.typeDemande as keyof typeof backendStepsByDemandeType];
+      const defaultStepDef = defaultsForType?.find(
+        (s) => s.id === input.stepCode,
+      );
+
+      if (existing) {
+        await db
+          .update(demandeEtape)
+          .set({
+            statut: input.statut ?? existing.statut,
+            description: input.description ?? existing.description,
+            todos: input.todos ?? existing.todos,
+          })
+          .where(eq(demandeEtape.id, existing.id));
+
+        const [updated] = await db
+          .select()
+          .from(demandeEtape)
+          .where(eq(demandeEtape.id, existing.id))
+          .limit(1);
+
+        return updated;
+      }
+
+      const [createdEtape] = await db
+        .insert(demandeEtape)
+        .values({
+          demandeId: input.demandeId,
+          stepCode: input.stepCode,
+          description:
+            input.description ?? defaultStepDef?.label ?? input.stepCode,
+          statut: input.statut ?? "A_FAIRE",
+          todos: input.todos ?? null,
+        })
+        .returning();
+
+      return createdEtape;
     }),
 
   updateDemandeStatut: protectedProcedure
@@ -3378,9 +3595,33 @@ export const appRouter = {
         }
       }
 
+      // Enrichir avec les étapes de chaque demande
+      const demandeIds = demandes.map((d) => d.id);
+
+      let etapesMap = new Map<
+        string,
+        { stepCode: string; statut: string }[]
+      >();
+
+      if (demandeIds.length > 0) {
+        const etapes = await db
+          .select()
+          .from(demandeEtape)
+          .where(inArray(demandeEtape.demandeId, demandeIds));
+
+        for (const e of etapes) {
+          const list = etapesMap.get(e.demandeId) ?? [];
+          list.push({ stepCode: e.stepCode, statut: e.statut });
+          etapesMap.set(e.demandeId, list);
+        }
+      }
+
       return demandes.map((d) => ({
         ...d,
-        professionnelInfo: d.professionnelId ? profsMap.get(d.professionnelId) ?? null : null,
+        professionnelInfo: d.professionnelId
+          ? profsMap.get(d.professionnelId) ?? null
+          : null,
+        etapes: etapesMap.get(d.id) ?? [],
       }));
     }),
 

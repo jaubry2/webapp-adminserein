@@ -6,6 +6,7 @@ import {
   text,
   uuid,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 import { professionnel } from "./professionnel";
@@ -25,6 +26,14 @@ export const statutDemandeEnum = pgEnum("statut_demande", [
   "EN_ATTENTE_COMPLEMENT",
   "TERMINEE",
   "ANNULEE",
+]);
+
+// Statut d'une étape de demande (suivi fin / to-do)
+export const demandeEtapeStatutEnum = pgEnum("demande_etape_statut", [
+  "A_FAIRE",
+  "EN_COURS",
+  "TERMINEE",
+  "BLOQUEE",
 ]);
 
 export const demande = pgTable("demande", {
@@ -64,7 +73,45 @@ export const demande = pgTable("demande", {
     .notNull(),
 });
 
-export const demandeRelations = relations(demande, ({ one }) => ({
+// Étapes associées à une demande (suivi détaillé)
+export const demandeEtape = pgTable(
+  "demande_etape",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    demandeId: uuid("demande_id")
+      .notNull()
+      .references(() => demande.id, { onDelete: "cascade" }),
+
+    // Code technique d'étape, aligné avec DemandeStep.id (ex: "collecte_documents")
+    stepCode: text("step_code").notNull(),
+
+    // Exemple : "Collecte des documents", "Remplir le formulaire", etc.
+    description: text("description").notNull(),
+
+    statut: demandeEtapeStatutEnum("statut")
+      .notNull()
+      .default("A_FAIRE"),
+
+    // JSON pour stocker la to-do list liée à cette étape
+    // (ex: tableau de tâches, cases cochées, métadonnées)
+    todos: jsonb("todos"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    demandeEtapeUniqueParCode: uniqueIndex("demande_etape_unique_par_demande_code").on(
+      table.demandeId,
+      table.stepCode,
+    ),
+  }),
+);
+
+export const demandeRelations = relations(demande, ({ one, many }) => ({
   professionnel: one(professionnel, {
     fields: [demande.professionnelId],
     references: [professionnel.id],
@@ -76,5 +123,13 @@ export const demandeRelations = relations(demande, ({ one }) => ({
   particulier: one(particulier, {
     fields: [demande.particulierId],
     references: [particulier.id],
+  }),
+  etapes: many(demandeEtape),
+}));
+
+export const demandeEtapeRelations = relations(demandeEtape, ({ one }) => ({
+  demande: one(demande, {
+    fields: [demandeEtape.demandeId],
+    references: [demande.id],
   }),
 }));
