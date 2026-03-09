@@ -74,98 +74,35 @@
       </div>
     </section>
 
-    <!-- Actions MDPH -->
-    <section class="w-full max-w-3xl flex flex-col items-center gap-4">
-      <button
-        class="rounded-full border border-gray-300 bg-[#a7c7e7] px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:opacity-90"
-        @click="showPdfPopup = true"
-      >
-        Remplir le formulaire MDPH
-      </button>
+    <!-- Formulaire MDPH (identité / type de demande) -->
+    <section class="w-full max-w-3xl">
+      <FormMDPHIntro
+        :mdph_fields="mdphFields"
+        @updateMdphFields="handleUpdateMdphFields"
+      />
     </section>
 
-    <!-- Popup PDF -->
-    <div
-      v-if="showPdfPopup"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      @click.self="showPdfPopup = false"
-    >
-      <div
-        class="relative w-full max-w-5xl h-[80vh] rounded-xl bg-white shadow-xl border border-gray-200 flex flex-col"
+    <!-- Bouton d'enregistrement de la demande -->
+    <section class="w-full max-w-3xl flex flex-col items-center gap-4">
+      <button
+        class="rounded-full border border-gray-300 bg-[#a7c7e7] px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:opacity-90 disabled:opacity-50"
+        :disabled="isSavingDemande"
+        @click="handleSaveDemande"
       >
-        <header
-          class="flex items-center justify-between px-4 py-2 border-b border-gray-200"
-        >
-          <h2 class="text-sm font-semibold secondary--text--color font--title">
-            Formulaire MDPH remplissable
-          </h2>
-          <button
-            type="button"
-            class="text-xs quaternary--text--color hover:text-gray-800"
-            @click="showPdfPopup = false"
-          >
-            Fermer
-          </button>
-        </header>
-
-        <div class="flex-1 flex flex-col">
-          <div class="px-4 py-2 border-b border-gray-100">
-            <p class="text-[11px] quaternary--text--color">
-              Remplissez le formulaire directement dans le PDF ci-dessous, puis utilisez
-              le bouton de téléchargement du lecteur PDF pour récupérer le document complété.
-              Ensuite, cliquez sur <span class="font-semibold">"Enregistrer la demande"</span>
-              pour créer la demande MDPH et ajoutez le PDF dans les documents de la demande.
-            </p>
-          </div>
-          <div class="flex-1">
-            <object
-              data="/pdf/mdph_remplissable.pdf"
-              type="application/pdf"
-              class="w-full h-full"
-            >
-              <p class="p-4 text-xs quaternary--text--color">
-                Votre navigateur ne permet pas d’afficher le PDF. Vous pouvez
-                le télécharger
-                <a
-                  href="/pdf/mdph_remplissable.pdf"
-                  target="_blank"
-                  class="text-blue-600 underline"
-                >
-                  en cliquant ici
-                </a>.
-              </p>
-            </object>
-          </div>
-        </div>
-
-        <footer
-          class="flex items-center justify-end gap-3 px-4 py-3 border-t border-gray-200"
-        >
-          <button
-            type="button"
-            class="rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-medium quaternary--text--color hover:bg-gray-50"
-            @click="showPdfPopup = false"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            class="rounded-full border border-gray-300 bg-[#a7c7e7] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:opacity-90 disabled:opacity-50"
-            :disabled="isSavingDemande"
-            @click="handleSaveDemande"
-          >
-            <span v-if="isSavingDemande">Enregistrement...</span>
-            <span v-else>Enregistrer la demande</span>
-          </button>
-        </footer>
-      </div>
-    </div>
+        <span v-if="isSavingDemande">Enregistrement...</span>
+        <span v-else-if="editDemandeId">Mettre à jour la demande</span>
+        <span v-else>Enregistrer la demande</span>
+      </button>
+    </section>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useQuery, useMutation } from "@tanstack/vue-query";
+import FormMDPHIdentite from "~/components/Form/MDPH/Identite.vue";
+import { mdph_fields } from "~/utils/demandes/mdph_fields";
+import type { infoFormulaire } from "~/types";
 
 definePageMeta({
   middleware: ["auth"],
@@ -174,7 +111,9 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const { $orpc } = useNuxtApp();
+const toast = useToast();
 
+// --- Type d'utilisateur ---
 const { data: userTypeData } = useQuery({
   ...$orpc.getUserType.queryOptions(),
 });
@@ -183,26 +122,21 @@ const userType = computed(() => userTypeData.value?.type || null);
 const isProfessionnel = computed(() => userType.value === "PROFESSIONNEL");
 const isParticulier = computed(() => userType.value === "PARTICULIER");
 
-const editDemandeId = computed<string | null>(() => {
-  if (typeof route.query.demandeId === "string") {
-    return route.query.demandeId as string;
-  }
-  if (Array.isArray(route.query.demandeId) && route.query.demandeId.length > 0) {
-    return route.query.demandeId[0] as string;
-  }
-  return null;
-});
+// --- Mode édition : id de la demande MDPH si on arrive avec ?demandeId= ---
+const editDemandeId = ref<string | null>(
+  typeof route.query.demandeId === "string"
+    ? (route.query.demandeId as string)
+    : null,
+);
+
+// --- Patient sélectionné ---
+type PatientOption = { id: string; label: string };
 
 const selectedPatientId = ref<string | null>(
   typeof route.query.patientId === "string"
     ? (route.query.patientId as string)
     : null,
 );
-
-type PatientOption = {
-  id: string;
-  label: string;
-};
 
 const {
   data: apiPatients,
@@ -214,13 +148,19 @@ const {
 });
 
 const patientOptions = computed<PatientOption[]>(() => {
-  if (!apiPatients.value) return [];
-  return apiPatients.value.map((p: any) => ({
-    id: p.id,
-    label: p.informationIdentite
-      ? `${p.informationIdentite.prenom} ${p.informationIdentite.nomUsage || p.informationIdentite.nomNaissance}`
-      : "Patient inconnu",
-  }));
+  if (!isProfessionnel.value || !apiPatients.value) return [];
+
+  return apiPatients.value.map((p: any) => {
+    const info = p.informationIdentite;
+    const nom = info?.nomUsage ?? info?.nomNaissance ?? "";
+    const prenom = info?.prenom ?? "";
+    const dossier = p.numeroDossier ? ` (${p.numeroDossier})` : "";
+
+    return {
+      id: p.id as string,
+      label: `${nom} ${prenom}${dossier}`.trim(),
+    };
+  });
 });
 
 const {
@@ -228,27 +168,66 @@ const {
   isLoading: isLoadingParticulierPatient,
   isError: isErrorParticulierPatient,
 } = useQuery({
-  ...$orpc.getParticulierPatient.queryOptions(),
+  ...$orpc.getPatientByIdForParticulier.queryOptions(),
   enabled: computed(() => isParticulier.value),
 });
 
-const selectedPatient = computed(() => {
-  if (isProfessionnel.value) {
-    const id = selectedPatientId.value;
-    return apiPatients.value?.find((p: any) => p.id === id) ?? null;
-  }
+const selectedPatient = computed<any | null>(() => {
   if (isParticulier.value) {
     return particulierPatient.value ?? null;
   }
-  return null;
+
+  if (!apiPatients.value || !selectedPatientId.value) return null;
+  return (
+    apiPatients.value.find((p: any) => p.id === selectedPatientId.value) ?? null
+  );
 });
 
-const showPdfPopup = ref(false);
+// --- État du formulaire MDPH (comme APA) ---
+const mdphFields = ref<infoFormulaire>({ ...mdph_fields });
 
+// --- Chargement d'une demande existante (édition) ---
+const { data: existingDemande } = useQuery({
+  ...$orpc.getDemandeById.queryOptions({
+    input: {
+      demandeId: editDemandeId.value as string,
+    },
+  }),
+  enabled: computed(() => !!editDemandeId.value),
+});
+
+watch(
+  () => existingDemande.value,
+  (d) => {
+    if (!d) return;
+    if (d.donneesFormulaire) {
+      mdphFields.value = d.donneesFormulaire as infoFormulaire;
+    }
+    if (d.patientId) {
+      selectedPatientId.value = d.patientId;
+    }
+  },
+);
+
+// --- Sauvegarde de la demande MDPH ---
 const isSavingDemande = ref(false);
 
 const createDemandeMutation = useMutation({
   ...$orpc.createDemande.mutationOptions(),
+  onSuccess: () => {
+    toast.add({
+      title: "Demande MDPH enregistrée",
+      description: "La demande a été sauvegardée avec succès.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description:
+        error?.message || "Impossible d'enregistrer la demande MDPH.",
+      color: "error",
+    });
+  },
   onSettled: () => {
     isSavingDemande.value = false;
   },
@@ -256,39 +235,45 @@ const createDemandeMutation = useMutation({
 
 const updateDemandeMutation = useMutation({
   ...$orpc.updateDemande.mutationOptions(),
+  onSuccess: () => {
+    toast.add({
+      title: "Demande MDPH mise à jour",
+      description: "Les modifications ont été sauvegardées.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description:
+        error?.message || "Impossible de mettre à jour la demande MDPH.",
+      color: "error",
+    });
+  },
   onSettled: () => {
     isSavingDemande.value = false;
   },
 });
 
-watch(
-  editDemandeId,
-  (val) => {
-    // Si on est en mode édition (demande MDPH existante), on ouvre le PDF
-    if (val) {
-      showPdfPopup.value = true;
-    }
-  },
-  { immediate: true },
-);
+function handleUpdateMdphFields(updated: infoFormulaire) {
+  mdphFields.value = { ...updated };
+}
 
 async function handleSaveDemande() {
   isSavingDemande.value = true;
 
   if (editDemandeId.value) {
-    // Pour l'instant, on ne modifie aucune donnée côté backend pour MDPH :
-    // on considère simplement que l'utilisateur a mis à jour le PDF en local.
-    // Donc pas d'appel à updateDemande pour éviter les erreurs serveur inutiles.
+    await updateDemandeMutation.mutateAsync({
+      demandeId: editDemandeId.value,
+      donneesFormulaire: mdphFields.value,
+    });
   } else {
-    // Création d'une nouvelle demande MDPH
     await createDemandeMutation.mutateAsync({
       typeDemande: "MDPH",
       patientId: selectedPatientId.value ?? undefined,
+      donneesFormulaire: mdphFields.value,
     });
   }
 
-  showPdfPopup.value = false;
   router.push("/mes-demandes");
 }
 </script>
-
