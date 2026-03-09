@@ -118,5 +118,25 @@ export const backendStepsByDemandeType: Record<TypeDemandeValue, BackendStepDef[
       label: "Envoyer le dossier",
     },
   ],
+  ASH: [
+    {
+      id: "orientation_ccas",
+      label: "Identifier le bon CCAS / département",
+      defaultDescription:
+        "Repérer le CCAS ou le service départemental compétent en fonction de la commune et du code postal.",
+    },
+    {
+      id: "rdv_ccas",
+      label: "Contacter le CCAS / département",
+      defaultDescription:
+        "Prendre contact avec le CCAS ou le département pour connaître la procédure et récupérer le dossier de demande d’ASH.",
+    },
+    {
+      id: "envoi_dossier",
+      label: "Déposer ou envoyer le dossier",
+      defaultDescription:
+        "Compléter le dossier papier avec les justificatifs demandés puis le déposer ou l’envoyer au service compétent.",
+    },
+  ],
 };
 

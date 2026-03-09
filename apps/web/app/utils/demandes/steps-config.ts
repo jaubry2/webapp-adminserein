@@ -47,6 +47,15 @@ export const stepsByDemandeType: DemandeStepsConfig = {
       label: "Rassembler les documents",
       icon: "i-lucide-folder-open",
       defaultDescription: "Préparer tous les justificatifs nécessaires pour le dossier MDPH.",
+      defaultTodos: [
+        { id: "justificatif_identite", label: "Justificatif d'identité", status: "TODO" as EtapeTodoStatus },
+        { id: "justificatif_domicile", label: "Justificatif de domicile", status: "TODO" as EtapeTodoStatus },
+        { id: "releve_identite_bancaire", label: "Relevé d'identité bancaire", status: "TODO" as EtapeTodoStatus },
+        {
+          id: "avis_imposition", label: "Photocopie du dernier avis d'imposition ou de non-imposition sur le revenu du demandeur et celui de son conjoint. Certains document sont demandés sous certaines conditions.", status: "TODO" as EtapeTodoStatus
+        },
+        { id: "certificat_medical", label: "Certificat médical MDPH", status: "TODO" as EtapeTodoStatus },
+      ],
     },
     {
       id: "remplir_formulaire",

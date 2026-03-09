@@ -21,6 +21,13 @@ export const demandesData: DemandeDefinition[] = [
     dureeMinutes: 15,
     organisme: "MDPH",
   },
+  {
+    id: "ash",
+    titre: "Aide sociale à l’hébergement",
+    description: "Constitution et suivi d’un dossier auprès de l'Aide sociale à l’hébergement.",
+    dureeMinutes: 15,
+    organisme: "Département",
+  },
   /*
   {
     id: "caf-aide-logement",

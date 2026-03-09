@@ -195,6 +195,7 @@ const typeDemandeLabels: Record<string, string> = {
   CAF_AIDE_LOGEMENT: "Aide au logement (CAF)",
   RSA: "RSA",
   AAH: "AAH",
+  ASH: "ASH",
 };
 
 const statutDemandeLabels: Record<string, string> = {

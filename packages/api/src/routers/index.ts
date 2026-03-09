@@ -2979,7 +2979,14 @@ export const appRouter = {
   createDemande: protectedProcedure
     .input(
       z.object({
-        typeDemande: z.enum(["APA", "CAF_AIDE_LOGEMENT", "RSA", "AAH", "MDPH"]),
+        typeDemande: z.enum([
+          "APA",
+          "CAF_AIDE_LOGEMENT",
+          "RSA",
+          "AAH",
+          "MDPH",
+          "ASH",
+        ]),
         patientId: z.string().uuid().optional(),
         nomBeneficiaire: z.string().optional(),
         prenomBeneficiaire: z.string().optional(),

@@ -19,6 +19,7 @@ export const typeDemandeEnum = pgEnum("type_demande", [
   "RSA",
   "AAH",
   "MDPH",
+  "ASH",
 ]);
 
 export const statutDemandeEnum = pgEnum("statut_demande", [
