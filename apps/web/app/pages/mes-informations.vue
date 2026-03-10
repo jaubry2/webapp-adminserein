@@ -111,14 +111,14 @@ type TaskAccentColor =
   | "indigo"
   | "slate";
 
-const { data: tachesData } = useQuery({
+const { data: tachesData, refetch: refetchTaches } = useQuery({
   ...$orpc.listTachesByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
       !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
-}) as { data: Ref<Tache[] | undefined> };
+}) as { data: Ref<Tache[] | undefined>; refetch: () => Promise<any> };
 
 // Récupération des documents
 const {
@@ -937,7 +937,10 @@ const getAccentColorByType = (
             :is-loading="false"
             :is-error="false"
             :requested-documents="requestedDocumentsForParticulier"
-            @uploaded="refetchDocuments()"
+            @uploaded="() => {
+              refetchDocuments();
+              refetchTaches();
+            }"
           />
         </div>
 

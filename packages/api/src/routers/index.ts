@@ -2515,6 +2515,7 @@ export const appRouter = {
         contenuBase64: z.string(),
         typeMime: z.string(),
         taille: z.number(),
+        tacheId: z.string().uuid().optional(),
       })
     )
     .handler(async ({ input, context }) => {
@@ -2612,6 +2613,20 @@ export const appRouter = {
             taille: String(input.taille),
           })
           .returning();
+
+        // Si une tâche est associée à cette demande de document,
+        // la passer en "TERMINEE"
+        if (input.tacheId) {
+          await db
+            .update(tache)
+            .set({ etat: "TERMINEE" })
+            .where(
+              and(
+                eq(tache.id, input.tacheId),
+                eq(tache.patientId, input.patientId),
+              ),
+            );
+        }
 
         return newDocument;
       } catch (error: any) {

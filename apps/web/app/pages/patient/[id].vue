@@ -1239,7 +1239,18 @@ const cancelModifications = () => {
                   :can-request-document="true"
                   :requested-documents="requestedDocuments"
                   @request-document="handleDemanderDocument"
-                  @uploaded="() => queryClient.invalidateQueries({ queryKey: $orpc.listDocumentsByPatient.queryKey({ input: { patientId: patientId.value } }) })"
+                  @uploaded="() => {
+                    queryClient.invalidateQueries({
+                      queryKey: $orpc.listDocumentsByPatient.queryKey({
+                        input: { patientId: patientId.value },
+                      }),
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: $orpc.listTachesByPatient.queryKey({
+                        input: { patientId: patientId.value },
+                      }),
+                    });
+                  }"
                 />
 
                 <ModalDemandeDocument

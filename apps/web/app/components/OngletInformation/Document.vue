@@ -30,29 +30,46 @@
     </div>
 
     <div v-if="documentsExpanded" class="p-6 space-y-4">
-      <!-- Placeholders pour les documents demandés -->
+      <!-- Placeholders pour les documents demandés (présentés comme des cartes de documents) -->
       <div
         v-if="props.requestedDocuments && props.requestedDocuments.length > 0"
-        class="rounded-lg border border-dashed border-blue-200 bg-blue-50 px-4 py-3 space-y-1"
+        class="space-y-3"
       >
-        <h3 class="text-xs font-semibold text-blue-800">
-          Documents demandés à téléverser
+        <h3 class="text-sm font-semibold secondary--text--color uppercase tracking-wide">
+          Documents demandés
         </h3>
-        <ul class="space-y-0.5 text-xs text-blue-900">
-          <li
-            v-for="req in props.requestedDocuments"
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="req in visibleRequestedDocuments"
             :key="req.id"
-            class="flex items-center gap-2"
+            class="group relative rounded-lg border border-blue-200 bg-blue-50 p-4 hover:shadow-md transition-shadow cursor-pointer"
+            @click="startUploadForRequestedDocument(req)"
           >
-            <UIcon name="i-lucide-alert-circle" class="h-3.5 w-3.5 text-blue-500" />
-            <span>
-              {{ req.nom }}
-              <span class="text-[11px] text-blue-800">
-                ({{ getCategorieLabel(req.categorie) }})
-              </span>
-            </span>
-          </li>
-        </ul>
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0">
+                <div
+                  class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500"
+                >
+                  <UIcon
+                    name="i-lucide-upload-cloud"
+                    class="h-6 w-6 text-white"
+                  />
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium secondary--text--color truncate">
+                  {{ req.nom }}
+                </p>
+                <p class="text-xs quaternary--text--color mt-1">
+                  Catégorie : {{ getCategorieLabel(req.categorie) }}
+                </p>
+                <p class="text-xs text-blue-800 mt-1 font-medium">
+                  Cliquer pour téléverser ce document
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- Bouton pour ouvrir le pop-up d'ajout -->
       <div class="flex flex-wrap items-center gap-3">
@@ -442,7 +459,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useMutation } from "@tanstack/vue-query";
 import { useNuxtApp } from "#app";
 import type { Document } from "~/types/document";
@@ -464,6 +481,26 @@ const emit = defineEmits<{
 const documentsExpanded = ref(true);
 const selectedDocument = ref<Document | null>(null);
 
+// Copie locale des documents pour permettre des mises à jour optimistes
+const localDocuments = ref<Document[] | null>(null);
+
+watch(
+  () => props.documents,
+  (docs) => {
+    // Si on n'a jamais initialisé localDocuments, on prend les props comme base
+    if (localDocuments.value === null) {
+      localDocuments.value = docs ? [...docs] : [];
+      return;
+    }
+    // Sinon, on laisse les mises à jour optimistes s'appliquer,
+    // et on se contente de resynchroniser si la longueur change fortement
+    if (docs && docs.length !== localDocuments.value.length) {
+      localDocuments.value = [...docs];
+    }
+  },
+  { immediate: true },
+);
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
 const isUploading = ref(false);
@@ -476,6 +513,10 @@ const uploadCategorie = ref<string | null>("ADMINISTRATIF");
 
 const deleteModalOpen = ref(false);
 const documentToDelete = ref<Document | null>(null);
+const uploadTacheId = ref<string | null>(null);
+
+// IDs de tâches déjà complétées localement (pour masquer les placeholders aussitôt)
+const locallyCompletedRequestIds = ref<string[]>([]);
 
 const { $orpc } = useNuxtApp();
 
@@ -528,21 +569,37 @@ const uploadSelectedFile = async () => {
     }
     const base64 = btoa(binary);
 
-    await uploadDocumentMutation.mutateAsync({
+    const created = await uploadDocumentMutation.mutateAsync({
       patientId: props.patientId,
       nom: uploadNom.value || file.name,
       categorie: uploadCategorie.value as any,
       contenuBase64: base64,
       typeMime: file.type || "application/octet-stream",
       taille: file.size,
+      tacheId: uploadTacheId.value ?? undefined,
     });
 
     uploadSuccess.value = true;
+    if (uploadTacheId.value) {
+      locallyCompletedRequestIds.value = [
+        ...locallyCompletedRequestIds.value,
+        uploadTacheId.value,
+      ];
+    }
     selectedFile.value = null;
     if (fileInput.value) {
       fileInput.value.value = "";
     }
+    uploadTacheId.value = null;
     uploadModalOpen.value = false;
+    // Mise à jour optimiste de la liste locale
+    if (created) {
+      if (!localDocuments.value) {
+        localDocuments.value = [created as Document];
+      } else {
+        localDocuments.value = [created as Document, ...localDocuments.value];
+      }
+    }
     emit("uploaded");
   } catch (error: any) {
     console.error(error);
@@ -569,6 +626,7 @@ const openUploadModal = () => {
   uploadNom.value = "";
   uploadCategorie.value = "ADMINISTRATIF";
   selectedFile.value = null;
+  uploadTacheId.value = null;
   if (fileInput.value) {
     fileInput.value.value = "";
   }
@@ -579,6 +637,34 @@ const closeUploadModal = () => {
   if (isUploading.value) return;
   uploadModalOpen.value = false;
 };
+
+const startUploadForRequestedDocument = (req: {
+  id: string;
+  nom: string;
+  categorie: string;
+}) => {
+  uploadError.value = null;
+  uploadSuccess.value = false;
+  uploadNom.value = req.nom;
+  uploadCategorie.value = req.categorie;
+  selectedFile.value = null;
+  uploadTacheId.value = req.id;
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
+  uploadModalOpen.value = true;
+};
+
+const visibleRequestedDocuments = computed(() => {
+  if (!props.requestedDocuments || props.requestedDocuments.length === 0) {
+    return [];
+  }
+  if (!locallyCompletedRequestIds.value.length) {
+    return props.requestedDocuments;
+  }
+  const completed = new Set(locallyCompletedRequestIds.value);
+  return props.requestedDocuments.filter((req) => !completed.has(req.id));
+});
 
 const confirmDeleteDocument = (doc: Document | null) => {
   if (!doc) return;
@@ -595,12 +681,20 @@ const closeDeleteModal = () => {
 const deleteSelectedDocument = async () => {
   if (!documentToDelete.value) return;
   try {
+    const deletedId = documentToDelete.value.id;
+
     await deleteDocumentMutation.mutateAsync({
-      documentId: documentToDelete.value.id,
+      documentId: deletedId,
     });
     // Si le document supprimé est celui actuellement ouvert, fermer le viewer
     if (selectedDocument.value?.id === documentToDelete.value.id) {
       selectedDocument.value = null;
+    }
+    // Mise à jour optimiste de la liste locale
+    if (localDocuments.value) {
+      localDocuments.value = localDocuments.value.filter(
+        (doc) => doc.id !== deletedId,
+      );
     }
     deleteModalOpen.value = false;
     documentToDelete.value = null;
@@ -612,15 +706,16 @@ const deleteSelectedDocument = async () => {
 
 // Obtenir toutes les catégories uniques
 const categories = computed(() => {
-  if (!props.documents || props.documents.length === 0) return [];
-  const cats = new Set(props.documents.map((doc) => doc.categorie));
+  const source = localDocuments.value ?? props.documents ?? [];
+  if (!source.length) return [];
+  const cats = new Set(source.map((doc) => doc.categorie));
   return Array.from(cats).sort();
 });
 
 // Obtenir les documents d'une catégorie
 const getDocumentsByCategorie = (categorie: string) => {
-  if (!props.documents) return [];
-  return props.documents.filter((doc) => doc.categorie === categorie);
+  const source = localDocuments.value ?? props.documents ?? [];
+  return source.filter((doc) => doc.categorie === categorie);
 };
 
 // Obtenir le label d'une catégorie
