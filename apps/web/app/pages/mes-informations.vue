@@ -12,6 +12,7 @@ definePageMeta({
 });
 
 const { $authClient, $orpc } = useNuxtApp();
+const route = useRoute();
 const session = $authClient.useSession();
 const toast = useToast();
 const queryClient = useQueryClient();
@@ -814,7 +815,11 @@ const age = computed(() => {
   return age;
 });
 
-const activeTab = ref("information");
+const activeTab = ref(
+  (route.query.tab as string) && ["information", "document", "tache", "demande", "acces"].includes(route.query.tab as string)
+    ? (route.query.tab as string)
+    : "information",
+);
 
 const tabs = [
   { id: "information", label: "Information", icon: "i-lucide-info" },
@@ -978,6 +983,7 @@ const getAccentColorByType = (
                         : undefined
               "
               :tache="tache"
+              :redirect-to-documents="true"
             />
           </div>
         </div>
