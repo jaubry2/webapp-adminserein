@@ -938,6 +938,8 @@ const getAccentColorByType = (
       return "teal";
     case "EMPLOI":
       return "indigo";
+    case "DOSSIER":
+      return "sky";
     case "AUTRE":
     default:
       return "slate";

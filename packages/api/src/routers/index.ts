@@ -600,17 +600,17 @@ export const appRouter = {
         lien: "/mes-informations", // page où le patient gère ses demandes
       });
 
-      // Créer une tâche de suivi pour le professionnel
+      // Créer une tâche de suivi pour le professionnel (Dossier - Accès)
       await db.insert(tache).values({
         patientId: existingPatient.id,
         professionnelId: prof.id,
-        typeDemarche: "ADMINISTRATIVE",
+        typeDemarche: "DOSSIER",
         etat: "A_FAIRE",
         date: new Date(),
         details:
           info
-            ? `Demande d'accès au dossier en attente de réponse du patient ${info.prenom} ${info.nomUsage}.`
-            : "Demande d'accès au dossier en attente de réponse du patient.",
+            ? `Dossier - Accès : demande d'accès au dossier en attente de réponse du patient ${info.prenom} ${info.nomUsage}.`
+            : "Dossier - Accès : demande d'accès au dossier en attente de réponse du patient.",
       });
 
       return {
@@ -2388,7 +2388,7 @@ export const appRouter = {
               and(
                 eq(tache.patientId, demande.patientId),
                 eq(tache.professionnelId, demande.professionnelId),
-                eq(tache.typeDemarche, "ADMINISTRATIVE"),
+                eq(tache.typeDemarche, "DOSSIER"),
                 or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS")),
               ),
             );
@@ -2419,7 +2419,7 @@ export const appRouter = {
               and(
                 eq(tache.patientId, demande.patientId),
                 eq(tache.professionnelId, demande.professionnelId),
-                eq(tache.typeDemarche, "ADMINISTRATIVE"),
+                eq(tache.typeDemarche, "DOSSIER"),
                 or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS")),
               ),
             );
