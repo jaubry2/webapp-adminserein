@@ -517,6 +517,8 @@ const handleSave = () => {
 
     props.onSave(changes);
   }
+  isEditing.value = false;
+  emit("update:isEditing", false);
   emit("changes", editedData.value);
 };
 

@@ -2,7 +2,15 @@ export interface Tache {
   id: string;
   patientId: string;
   professionnelId: string;
-  typeDemarche: "ADMINISTRATIVE" | "MEDICALE" | "SOCIALE" | "JURIDIQUE" | "LOGEMENT" | "EMPLOI" | "AUTRE";
+  typeDemarche:
+    | "ADMINISTRATIVE"
+    | "MEDICALE"
+    | "SOCIALE"
+    | "JURIDIQUE"
+    | "LOGEMENT"
+    | "EMPLOI"
+    | "DOSSIER"
+    | "AUTRE";
   etat: "A_FAIRE" | "EN_COURS" | "TERMINEE" | "ANNULEE";
   date: Date | string;
   details: string;

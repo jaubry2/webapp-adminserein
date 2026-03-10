@@ -58,33 +58,25 @@ export const patientProfessionnel = pgTable("patient_professionnel", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const demandeAccesPatient = pgTable(
-  "demande_acces_patient",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
+export const demandeAccesPatient = pgTable("demande_acces_patient", {
+  id: uuid("id").defaultRandom().primaryKey(),
 
-    patientId: uuid("patient_id")
-      .notNull()
-      .references(() => patient.id, { onDelete: "cascade" }),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patient.id, { onDelete: "cascade" }),
 
-    professionnelId: uuid("professionnel_id")
-      .notNull()
-      .references(() => professionnel.id, { onDelete: "cascade" }),
+  professionnelId: uuid("professionnel_id")
+    .notNull()
+    .references(() => professionnel.id, { onDelete: "cascade" }),
 
-    statut: demandeAccesStatutEnum("statut").notNull().default("EN_ATTENTE"),
+  statut: demandeAccesStatutEnum("statut").notNull().default("EN_ATTENTE"),
 
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => ({
-    demandeAccesUniqueParStatut: uniqueIndex(
-      "demande_acces_patient_unique_par_statut"
-    ).on(table.patientId, table.professionnelId, table.statut),
-  })
-);
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
 
 // Relations Drizzle
 export const professionnelRelations = relations(professionnel, ({ one, many }) => ({

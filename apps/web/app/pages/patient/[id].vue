@@ -504,9 +504,14 @@ const formattedPatientTaches = computed(() => {
               ? "À faire"
               : undefined;
 
+    const label =
+      tache.typeDemarche === "DOSSIER"
+        ? getDossierTaskLabel(tache.details)
+        : `Démarche - ${getTypeDemarcheLabel(tache.typeDemarche)}`;
+
     return {
       id: tache.id,
-      label: `Démarche - ${getTypeDemarcheLabel(tache.typeDemarche)}`,
+      label,
       patientName: `${patient.value?.nom} ${patient.value?.prenom}`,
       date,
       accentColor,
@@ -531,6 +536,8 @@ const getAccentColorByType = (type: Tache["typeDemarche"]): TaskAccentColor => {
       return "teal";
     case "EMPLOI":
       return "indigo";
+    case "DOSSIER":
+      return "sky";
     case "AUTRE":
     default:
       return "slate";
@@ -546,9 +553,32 @@ const getTypeDemarcheLabel = (type: Tache["typeDemarche"]): string => {
     JURIDIQUE: "Juridique",
     LOGEMENT: "Logement",
     EMPLOI: "Emploi",
+    DOSSIER: "Dossier",
     AUTRE: "Autre",
   };
   return labels[type] || type;
+};
+
+const getDossierTaskLabel = (details: string): string => {
+  if (details.includes("Demande d'accès au dossier")) {
+    return "Dossier - Accès";
+  }
+  if (details.startsWith('Demande de document à téléverser : "')) {
+    return "Dossier - Document";
+  }
+  if (details.includes("vos informations d'identité")) {
+    return "Dossier - Identité";
+  }
+  if (details.includes("vos coordonnées")) {
+    return "Dossier - Coordonnées";
+  }
+  if (details.includes("les informations concernant votre conjoint")) {
+    return "Dossier - Conjoint";
+  }
+  if (details.includes('la section "Personnes proches"')) {
+    return "Dossier - Personnes proches";
+  }
+  return "Dossier";
 };
 
 const tabs = [

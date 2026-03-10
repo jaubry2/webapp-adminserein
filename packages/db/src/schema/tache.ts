@@ -18,6 +18,7 @@ export const typeDemarcheEnum = pgEnum("type_demarche", [
   "JURIDIQUE",
   "LOGEMENT",
   "EMPLOI",
+  "DOSSIER",
   "AUTRE",
 ]);
 

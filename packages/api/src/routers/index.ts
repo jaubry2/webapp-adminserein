@@ -1999,7 +1999,7 @@ export const appRouter = {
       await db.insert(tache).values({
         patientId: input.patientId,
         professionnelId: prof.id,
-        typeDemarche: "ADMINISTRATIVE",
+        typeDemarche: "DOSSIER",
         etat: "A_FAIRE",
         date: new Date(),
         details: `Demande faite au patient ${
@@ -2261,159 +2261,177 @@ export const appRouter = {
       })
     )
     .handler(async ({ input, context }) => {
-      if (!context.session?.user?.id) {
-        throw new Error("Non authentifié");
-      }
-
-      const [userData] = await db
-        .select()
-        .from(user)
-        .where(eq(user.id, context.session.user.id))
-        .limit(1);
-
-      if (!userData || userData.type !== "PARTICULIER") {
-        throw new Error("Cet utilisateur n'est pas un particulier");
-      }
-
-      const [part] = await db
-        .select()
-        .from(particulier)
-        .where(eq(particulier.userId, context.session.user.id))
-        .limit(1);
-
-      if (!part) {
-        throw new Error("Aucun particulier associé à ce compte");
-      }
-
-      const [demande] = await db
-        .select()
-        .from(demandeAccesPatient)
-        .where(eq(demandeAccesPatient.id, input.demandeId))
-        .limit(1);
-
-      if (!demande) {
-        throw new Error("Demande d'accès non trouvée");
-      }
-
-      if (demande.patientId !== part.patientId) {
-        throw new Error("Demande d'accès non autorisée pour ce patient");
-      }
-
-      if (demande.statut !== "EN_ATTENTE") {
-        throw new Error("Cette demande a déjà été traitée");
-      }
-
-      // Récupérer le patient et le professionnel concernés
-      const [p] = await db
-        .select()
-        .from(patient)
-        .where(eq(patient.id, demande.patientId))
-        .limit(1);
-
-      if (!p) {
-        throw new Error("Patient non trouvé");
-      }
-
-      const [infoPatient] = await db
-        .select()
-        .from(informationIdentite)
-        .where(eq(informationIdentite.id, p.informationIdentiteId))
-        .limit(1);
-
-      const [prof] = await db
-        .select()
-        .from(professionnel)
-        .where(eq(professionnel.id, demande.professionnelId))
-        .limit(1);
-
-      if (!prof) {
-        throw new Error("Professionnel non trouvé");
-      }
-
-      if (input.decision === "ACCEPTER") {
-        // Marquer la demande comme acceptée
-        await db
-          .update(demandeAccesPatient)
-          .set({ statut: "ACCEPTEE" })
-          .where(eq(demandeAccesPatient.id, demande.id));
-
-        // Créer le lien patient-professionnel s'il n'existe pas déjà
-        const [existingLink] = await db
-          .select()
-          .from(patientProfessionnel)
-          .where(
-            and(
-              eq(patientProfessionnel.patientId, demande.patientId),
-              eq(patientProfessionnel.professionnelId, demande.professionnelId)
-            )
-          )
-          .limit(1);
-
-        if (!existingLink) {
-          await db.insert(patientProfessionnel).values({
-            patientId: demande.patientId,
-            professionnelId: demande.professionnelId,
-          });
+      try {
+        if (!context.session?.user?.id) {
+          throw new Error("Non authentifié");
         }
 
-        // Notification pour le professionnel
-        await db.insert(notification).values({
-          professionnelId: prof.id,
-          patientId: null,
-          type: "SUCCESS",
-          titre: "Accès au dossier accordé",
-          message: `Le patient ${
-            infoPatient?.prenom ?? ""
-          } ${infoPatient?.nomUsage ?? ""} a accepté votre demande d'accès.`,
-          lien: `/patient/${p.id}`,
-        });
+        const [userData] = await db
+          .select()
+          .from(user)
+          .where(eq(user.id, context.session.user.id))
+          .limit(1);
 
-        // Mettre à jour la tâche associée à cette demande d'accès
-        await db
-          .update(tache)
-          .set({ etat: "TERMINEE" })
-          .where(
-            and(
-              eq(tache.patientId, demande.patientId),
-              eq(tache.professionnelId, demande.professionnelId),
-              eq(tache.typeDemarche, "ADMINISTRATIVE"),
-              or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS"))
+        if (!userData || userData.type !== "PARTICULIER") {
+          throw new Error("Cet utilisateur n'est pas un particulier");
+        }
+
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part) {
+          throw new Error("Aucun particulier associé à ce compte");
+        }
+
+        const [demande] = await db
+          .select()
+          .from(demandeAccesPatient)
+          .where(eq(demandeAccesPatient.id, input.demandeId))
+          .limit(1);
+
+        if (!demande) {
+          throw new Error("Demande d'accès non trouvée");
+        }
+
+        if (demande.patientId !== part.patientId) {
+          throw new Error("Demande d'accès non autorisée pour ce patient");
+        }
+
+        if (demande.statut !== "EN_ATTENTE") {
+          throw new Error("Cette demande a déjà été traitée");
+        }
+
+        // Récupérer le patient et le professionnel concernés
+        const [p] = await db
+          .select()
+          .from(patient)
+          .where(eq(patient.id, demande.patientId))
+          .limit(1);
+
+        if (!p) {
+          throw new Error("Patient non trouvé");
+        }
+
+        const [infoPatient] = await db
+          .select()
+          .from(informationIdentite)
+          .where(eq(informationIdentite.id, p.informationIdentiteId))
+          .limit(1);
+
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.id, demande.professionnelId))
+          .limit(1);
+
+        if (!prof) {
+          throw new Error("Professionnel non trouvé");
+        }
+
+        if (input.decision === "ACCEPTER") {
+          // Marquer la demande courante comme acceptée
+          try {
+            await db
+              .update(demandeAccesPatient)
+              .set({ statut: "ACCEPTEE" })
+              .where(eq(demandeAccesPatient.id, demande.id));
+          } catch (error: any) {
+            // Si une autre demande "ACCEPTEE" existe déjà malgré tout (concurrence),
+            // on ignore l'erreur d'unicité et on continue.
+            if (error?.code !== "23505") {
+              throw error;
+            }
+          }
+
+          // Créer le lien patient-professionnel s'il n'existe pas déjà
+          const [existingLink] = await db
+            .select()
+            .from(patientProfessionnel)
+            .where(
+              and(
+                eq(patientProfessionnel.patientId, demande.patientId),
+                eq(
+                  patientProfessionnel.professionnelId,
+                  demande.professionnelId,
+                ),
+              ),
             )
-          );
-      } else {
-        // REFUSER : marquer la demande comme refusée
-        await db
-          .update(demandeAccesPatient)
-          .set({ statut: "REFUSEE" })
-          .where(eq(demandeAccesPatient.id, demande.id));
+            .limit(1);
 
-        // Notification pour le professionnel
-        await db.insert(notification).values({
-          professionnelId: prof.id,
-          patientId: null,
-          type: "WARNING",
-          titre: "Accès au dossier refusé",
-          message: `Le patient ${
-            infoPatient?.prenom ?? ""
-          } ${infoPatient?.nomUsage ?? ""} a refusé votre demande d'accès.`,
-          lien: null,
-        });
+          if (!existingLink) {
+            await db.insert(patientProfessionnel).values({
+              patientId: demande.patientId,
+              professionnelId: demande.professionnelId,
+            });
+          }
 
-        // Mettre à jour la tâche associée à cette demande d'accès
-        await db
-          .update(tache)
-          .set({ etat: "ANNULEE" })
-          .where(
-            and(
-              eq(tache.patientId, demande.patientId),
-              eq(tache.professionnelId, demande.professionnelId),
-              eq(tache.typeDemarche, "ADMINISTRATIVE"),
-              or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS"))
-            )
-          );
+          // Notification pour le professionnel
+          await db.insert(notification).values({
+            professionnelId: prof.id,
+            patientId: null,
+            type: "SUCCESS",
+            titre: "Accès au dossier accordé",
+            message: `Le patient ${
+              infoPatient?.prenom ?? ""
+            } ${infoPatient?.nomUsage ?? ""} a accepté votre demande d'accès.`,
+            lien: `/patient/${p.id}`,
+          });
+
+          // Mettre à jour la tâche associée à cette demande d'accès
+          await db
+            .update(tache)
+            .set({ etat: "TERMINEE" })
+            .where(
+              and(
+                eq(tache.patientId, demande.patientId),
+                eq(tache.professionnelId, demande.professionnelId),
+                eq(tache.typeDemarche, "ADMINISTRATIVE"),
+                or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS")),
+              ),
+            );
+        } else {
+          // REFUSER : marquer la demande comme refusée
+          await db
+            .update(demandeAccesPatient)
+            .set({ statut: "REFUSEE" })
+            .where(eq(demandeAccesPatient.id, demande.id));
+
+          // Notification pour le professionnel
+          await db.insert(notification).values({
+            professionnelId: prof.id,
+            patientId: null,
+            type: "WARNING",
+            titre: "Accès au dossier refusé",
+            message: `Le patient ${
+              infoPatient?.prenom ?? ""
+            } ${infoPatient?.nomUsage ?? ""} a refusé votre demande d'accès.`,
+            lien: null,
+          });
+
+          // Mettre à jour la tâche associée à cette demande d'accès
+          await db
+            .update(tache)
+            .set({ etat: "ANNULEE" })
+            .where(
+              and(
+                eq(tache.patientId, demande.patientId),
+                eq(tache.professionnelId, demande.professionnelId),
+                eq(tache.typeDemarche, "ADMINISTRATIVE"),
+                or(eq(tache.etat, "A_FAIRE"), eq(tache.etat, "EN_COURS")),
+              ),
+            );
+        }
+
+        return { success: true };
+      } catch (error: any) {
+        console.error("Erreur dans repondreDemandeAcces:", error);
+        throw new Error(
+          `Erreur repondreDemandeAcces: ${error?.message ?? String(error)}`,
+        );
       }
-
-      return { success: true };
     }),
 
   // --- DOCUMENTS ---

@@ -620,6 +620,74 @@ const handleUpdatePersonneProcheParticulier = async (payload: {
   });
 };
 
+const handleIdentiteChangesParticulier = async (
+  changes: Record<string, any>,
+) => {
+  if (!apiPatient.value) return;
+
+  const info: Record<string, any> = {};
+
+  if (changes.nomUsage !== undefined) info.nomUsage = changes.nomUsage;
+  if (changes.nomNaissance !== undefined)
+    info.nomNaissance = changes.nomNaissance;
+  if (changes.prenom !== undefined) info.prenom = changes.prenom;
+  if (changes.autresPrenoms !== undefined)
+    info.autresPrenoms = normalizeAutresPrenoms(changes.autresPrenoms);
+  if (changes.genre !== undefined) info.genre = changes.genre;
+  if (changes.dateNaissance !== undefined)
+    info.dateNaissance = changes.dateNaissance;
+  if (changes.villeNaissance !== undefined)
+    info.villeNaissance = changes.villeNaissance;
+  if (changes.departementNaissance !== undefined)
+    info.departementNaissance = changes.departementNaissance;
+  if (changes.paysNaissance !== undefined)
+    info.paysNaissance = changes.paysNaissance;
+  if (changes.nationalites !== undefined)
+    info.nationalites = normalizeAutresPrenoms(changes.nationalites);
+  if (changes.numeroSecuriteSociale !== undefined)
+    info.numeroSecuriteSociale = changes.numeroSecuriteSociale;
+  if (changes.situationFamiliale !== undefined)
+    info.situationFamiliale = changes.situationFamiliale;
+  if (changes.caisseRetraite !== undefined && changes.caisseRetraite !== "") {
+    info.caisseRetraite = changes.caisseRetraite;
+  }
+
+  if (Object.keys(info).length === 0) return;
+
+  await updatePatientMutation.mutateAsync({
+    patientId: apiPatient.value.id,
+    informationIdentite: info,
+  });
+};
+
+const handleCoordonneeChangesParticulier = async (
+  changes: Record<string, any>,
+) => {
+  if (!apiPatient.value) return;
+
+  const info: Record<string, any> = {};
+
+  if (changes.adresse !== undefined) info.adresse = changes.adresse;
+  if (changes.informationComplementaires !== undefined)
+    info.informationComplementaires = changes.informationComplementaires;
+  if (changes.codePostal !== undefined) info.codePostal = changes.codePostal;
+  if (changes.ville !== undefined) info.ville = changes.ville;
+  if (changes.departement !== undefined)
+    info.departement = changes.departement;
+  if (changes.pays !== undefined) info.pays = changes.pays;
+  if (changes.numeroTelephone !== undefined)
+    info.numeroTelephone = changes.numeroTelephone;
+  if (changes.adresseMail !== undefined)
+    info.adresseMail = changes.adresseMail;
+
+  if (Object.keys(info).length === 0) return;
+
+  await updatePatientMutation.mutateAsync({
+    patientId: apiPatient.value.id,
+    informationCoordonnee: info,
+  });
+};
+
 const handleReorderPersonneProcheParticulier = async (payload: {
   id: string;
   direction: "up" | "down";
@@ -940,7 +1008,7 @@ const getAccentColorByType = (
             :patient="patient"
             :is-editing="false"
             :is-requested="requestedInfoSectionsForParticulier.has('IDENTITE')"
-            @save="() => {}"
+            @save="handleIdentiteChangesParticulier"
             @cancel="() => {}"
           />
           <OngletInformationConjoint
@@ -952,7 +1020,7 @@ const getAccentColorByType = (
             :patient="patient"
             :is-editing="false"
             :is-requested="requestedInfoSectionsForParticulier.has('COORDONNEES')"
-            @save="() => {}"
+            @save="handleCoordonneeChangesParticulier"
             @cancel="() => {}"
           />
           <OngletInformationPersonnesProches
