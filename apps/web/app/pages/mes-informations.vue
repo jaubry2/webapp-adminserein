@@ -120,14 +120,17 @@ const { data: tachesData } = useQuery({
 }) as { data: Ref<Tache[] | undefined> };
 
 // Récupération des documents
-const { data: documentsData } = useQuery({
+const {
+  data: documentsData,
+  refetch: refetchDocuments,
+} = useQuery({
   ...$orpc.listDocumentsByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
       !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
-}) as { data: Ref<Document[] | undefined> };
+}) as { data: Ref<Document[] | undefined>; refetch: () => Promise<any> };
 
 // Personnes proches pour le patient connecté
 const {

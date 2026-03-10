@@ -2449,31 +2449,62 @@ export const appRouter = {
       }
 
       try {
-        // Récupérer le professionnel lié à l'utilisateur
-        const [prof] = await db
+        // Récupérer le type d'utilisateur
+        const [userData] = await db
           .select()
-          .from(professionnel)
-          .where(eq(professionnel.userId, context.session.user.id))
+          .from(user)
+          .where(eq(user.id, context.session.user.id))
           .limit(1);
 
-        if (!prof) {
-          throw new Error("Aucun professionnel associé à ce compte");
+        if (!userData) {
+          throw new Error("Utilisateur non trouvé");
         }
 
-        // Vérifier que le patient appartient au professionnel
-        const [patientLink] = await db
-          .select()
-          .from(patientProfessionnel)
-          .where(
-            and(
-              eq(patientProfessionnel.patientId, input.patientId),
-              eq(patientProfessionnel.professionnelId, prof.id)
-            )
-          )
-          .limit(1);
+        if (userData.type === "PROFESSIONNEL") {
+          // Récupérer le professionnel lié à l'utilisateur
+          const [prof] = await db
+            .select()
+            .from(professionnel)
+            .where(eq(professionnel.userId, context.session.user.id))
+            .limit(1);
 
-        if (!patientLink) {
-          throw new Error("Patient non trouvé ou non autorisé");
+          if (!prof) {
+            throw new Error("Aucun professionnel associé à ce compte");
+          }
+
+          // Vérifier que le patient appartient au professionnel
+          const [patientLink] = await db
+            .select()
+            .from(patientProfessionnel)
+            .where(
+              and(
+                eq(patientProfessionnel.patientId, input.patientId),
+                eq(patientProfessionnel.professionnelId, prof.id),
+              ),
+            )
+            .limit(1);
+
+          if (!patientLink) {
+            throw new Error("Patient non trouvé ou non autorisé");
+          }
+        } else if (userData.type === "PARTICULIER") {
+          // Récupérer le particulier lié à l'utilisateur
+          const [part] = await db
+            .select()
+            .from(particulier)
+            .where(eq(particulier.userId, context.session.user.id))
+            .limit(1);
+
+          if (!part) {
+            throw new Error("Aucun particulier associé à ce compte");
+          }
+
+          // Vérifier que le patient correspond au particulier
+          if (part.patientId !== input.patientId) {
+            throw new Error("Patient non autorisé");
+          }
+        } else {
+          throw new Error("Type d'utilisateur non reconnu");
         }
 
         // Décoder le contenu base64
