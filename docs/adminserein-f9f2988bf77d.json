@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "adminserein",
+  "private_key_id": "f9f2988bf77def9dcae8189018f8d3057be0fa13",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC7CLOWpgUKzzju\ngQJd5TrBJY5MS9ChR5OpdN1rug/4zOD3gshvKS9WMUu+tU86cMw9T+q4zpXTBBj+\nDavSmg7IO8QbkByzvmaxwjjO1BmbyB1mYvxddTZ4vAs5cySMXGI81GvOhKqqErBc\nWHxvICU8ldvoUZxp8xuKNSjK6Wz7QiREpcndPWnY+XMxK6KEAjPZAPq1k182zIM1\nqde93v1Aawei8dad2YAh2vOsQAn05pmSj1rIq40vGydG7tCyZ46mEzaj8XvV2M6b\nftAMVndW2+HB961azrBG0LRUHx4PonfiuannesULwZAedzIlcg9dfISGryLqqJoL\nM7bgcemrAgMBAAECggEAIYF/DqtiNtwFonB5GJISsvxD4DYqw2G7ub1GV2CnMNaf\nLKgAuS1DHilJnPoFHf6MECXLcl0L6RgQVB7l254erM9MI/XutmKTKiAVpjPH/Kje\nX3O3KxTu87UYO6v9bam1LZmOUJpiqoIblweBDzVOhmqAUT+hijdzhRBd5O/pRp91\nfGi7aWa+YVtBRN7AOazJFP5B6yr5OaY1wGFuU9v9903FHg2Bda/dAQDAsIh+290G\ndBCRJ8n3F91PvL/Q8Zfd/D/tQ0iFG8iRUVmRSAheZayCcX/zvk+HHqeGXf8cZ1/W\nY0yOFkDLVjb2F2FPBfG2/r8o0ZbiJpHI+NpJkxe4BQKBgQDwCENOGWdSUJOs/lvK\nnD1PZHHtRLli7eKxvxPYKjQMc2+f3YGx4H437lond4/U1j1bP7zEqg5/47cEuzpZ\n1mpgzBxjC8R/12RxfI0vmKI8AngGecIGQC6nuTSdiqQqA26hJDSQVWSC2z9TS8LL\nXNIfkEgdkLYkM7bUXHv064PprQKBgQDHeeFso/F7zN9uhLXkvTd4qvRcHUlmV0uJ\n88OAJJNtijXdrIuNTPpo5oa/B4mMwbAM8ceUv7+xB+sHTJm6MdmJj2S5CBJ2CkIO\nxx3KJs5P2NtNEg86LtfdxJ7IDJicL28Tsl1trRsTUdpPyS2bHumNH9/dAcaLUDvo\nZ1sRFtc7twKBgCfBxpwd+w4YSI2Dx+JkRIds5K3fDzHCoyS7uGa6fsp9KET7ZGr4\n+w76jLYyyIEBR0Jg6TxNyn8GUZ8X/883g4Eq7Zy+Kzrdi0Z80cnLZzu3UPgJnMh6\nQwAG3h8mApDu5pkMLSSm8DH4bKG4T7htVGRj+n3jJTgT1LmR4/oqNDw1AoGAdqTj\nk36fbwcYDeAZYAe7KqZj2TYCJkDdyRuXuGwI1CpUh5jNGCok9qfGlXCiO3oogEp+\nbtbt6RnQjPLerIRh4xPK0NMgR90qFSgRa99Q7uUI6vpG3FBoTJtZ5Zq4Wo1L/+ci\n8sz3QbJ5quL5oT3to+bFe+pGcS4zs7Nl0vBG7FkCgYBz4tMhchR4DOxIcfLMS21+\n23Pe0mplvct9b3GR84IytaUj5qJcL1/CesCX0n+wKvkmu+wPDLPKrFdXCmwEyoBj\n7NBdKpSklwct+49ywwbDqY5FGfxCm+Ac116dZjTpTJWKEqNYHEG9wo5n30udEqia\nGGwtDpluI4DPU5Sa2dl8Qg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "adminserein-documents-dev@adminserein.iam.gserviceaccount.com",
+  "client_id": "102891758936056258739",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/adminserein-documents-dev%40adminserein.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

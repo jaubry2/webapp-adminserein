@@ -905,6 +905,7 @@ const getAccentColorByType = (
             :documents="documentsData || []"
             :is-loading="false"
             :is-error="false"
+            @uploaded="refetchDocuments()"
           />
         </div>
 

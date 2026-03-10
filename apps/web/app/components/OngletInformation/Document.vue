@@ -29,30 +29,51 @@
       </div>
     </div>
 
-    <div v-if="documentsExpanded" class="p-6">
+    <div v-if="documentsExpanded" class="p-6 space-y-4">
+      <!-- Bouton pour ouvrir le pop-up d'ajout -->
+      <div class="flex flex-wrap items-center gap-3">
+        <CustomButton
+          color="#a7c7e7"
+          text-color="#0f172a"
+          variant="solid"
+          size="sm"
+          icon="i-lucide-upload"
+          @click="openUploadModal"
+        >
+          Ajouter un document
+        </CustomButton>
+      </div>
+
       <!-- État de chargement -->
       <div v-if="isLoading" class="text-center py-8">
-        <p class="text-sm quaternary--text--color">Chargement des documents...</p>
+        <p class="text-sm quaternary--text--color">
+          Chargement des documents...
+        </p>
       </div>
 
       <!-- État d'erreur -->
       <div v-else-if="isError" class="text-center py-8">
-        <p class="text-sm text-red-500">Erreur lors du chargement des documents.</p>
+        <p class="text-sm text-red-500">
+          Erreur lors du chargement des documents.
+        </p>
       </div>
 
       <!-- Aucun document -->
-      <div v-else-if="!documents || documents.length === 0" class="text-center py-8">
-        <p class="text-sm quaternary--text--color">Aucun document disponible.</p>
+      <div
+        v-else-if="!documents || documents.length === 0"
+        class="text-center py-8"
+      >
+        <p class="text-sm quaternary--text--color">
+          Aucun document disponible.
+        </p>
       </div>
 
       <!-- Liste des documents par catégorie -->
       <div v-else class="space-y-6">
-        <div
-          v-for="categorie in categories"
-          :key="categorie"
-          class="space-y-3"
-        >
-          <h3 class="text-sm font-semibold secondary--text--color uppercase tracking-wide">
+        <div v-for="categorie in categories" :key="categorie" class="space-y-3">
+          <h3
+            class="text-sm font-semibold secondary--text--color uppercase tracking-wide"
+          >
             {{ getCategorieLabel(categorie) }}
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -76,14 +97,20 @@
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium secondary--text--color truncate">
+                  <p
+                    class="text-sm font-medium secondary--text--color truncate"
+                  >
                     {{ doc.nom }}
                   </p>
-                  <p v-if="doc.description" class="text-xs quaternary--text--color mt-1 line-clamp-2">
+                  <p
+                    v-if="doc.description"
+                    class="text-xs quaternary--text--color mt-1 line-clamp-2"
+                  >
                     {{ doc.description }}
                   </p>
                   <p class="text-xs quaternary--text--color mt-1">
-                    {{ formatDate(doc.createdAt) }} • {{ formatFileSize(doc.taille) }}
+                    {{ formatDate(doc.createdAt) }} •
+                    {{ formatFileSize(doc.taille) }}
                   </p>
                 </div>
               </div>
@@ -119,84 +146,204 @@
 
     <!-- Modal pour visualiser le document -->
     <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="selectedDocument"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-        @click.self="closeDocumentViewer"
-      >
-        <div class="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl m-4 flex flex-col">
-          <!-- En-tête du modal -->
-          <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-semibold secondary--text--color truncate">
-                {{ selectedDocument.nom }}
-              </h3>
-              <p class="text-xs quaternary--text--color mt-1">
-                {{ getCategorieLabel(selectedDocument.categorie) }} • {{ formatDate(selectedDocument.createdAt) }}
-              </p>
+      <Transition name="modal">
+        <div
+          v-if="selectedDocument"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          @click.self="closeDocumentViewer"
+        >
+          <div
+            class="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl m-4 flex flex-col"
+          >
+            <!-- En-tête du modal -->
+            <div
+              class="flex items-center justify-between border-b border-gray-200 px-6 py-4"
+            >
+              <div class="flex-1 min-w-0">
+                <h3
+                  class="text-lg font-semibold secondary--text--color truncate"
+                >
+                  {{ selectedDocument.nom }}
+                </h3>
+                <p class="text-xs quaternary--text--color mt-1">
+                  {{ getCategorieLabel(selectedDocument.categorie) }} •
+                  {{ formatDate(selectedDocument.createdAt) }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2 ml-4">
+                <button
+                  @click="downloadDocument(selectedDocument)"
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium secondary--text--color hover:bg-gray-50 transition-colors"
+                >
+                  <UIcon name="i-lucide-download" class="h-4 w-4" />
+                  Télécharger
+                </button>
+                <button
+                  @click="closeDocumentViewer"
+                  type="button"
+                  class="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <UIcon name="i-lucide-x" class="h-6 w-6" />
+                </button>
+              </div>
             </div>
-            <div class="flex items-center gap-2 ml-4">
-              <button
-                @click="downloadDocument(selectedDocument)"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium secondary--text--color hover:bg-gray-50 transition-colors"
-              >
-                <UIcon name="i-lucide-download" class="h-4 w-4" />
-                Télécharger
-              </button>
-              <button
-                @click="closeDocumentViewer"
-                type="button"
-                class="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <UIcon name="i-lucide-x" class="h-6 w-6" />
-              </button>
-            </div>
-          </div>
 
-          <!-- Contenu du modal -->
-          <div class="flex-1 overflow-auto p-6">
-            <div v-if="isImage(selectedDocument.typeMime)" class="flex justify-center">
-              <img
-                :src="getDocumentUrl(selectedDocument)"
-                :alt="selectedDocument.nom"
-                class="max-w-full max-h-[70vh] object-contain rounded-lg"
-              />
-            </div>
-            <div v-else-if="isPdf(selectedDocument.typeMime)" class="flex justify-center">
-              <iframe
-                :src="getDocumentUrl(selectedDocument)"
-                class="w-full h-[70vh] rounded-lg border border-gray-200"
-                frameborder="0"
-              ></iframe>
-            </div>
-            <div v-else class="text-center py-12">
-              <UIcon
-                :name="getFileIcon(selectedDocument.typeMime)"
-                class="h-16 w-16 mx-auto text-gray-400 mb-4"
-              />
-              <p class="text-sm quaternary--text--color mb-4">
-                Aperçu non disponible pour ce type de fichier
-              </p>
-              <button
-                @click="downloadDocument(selectedDocument)"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            <!-- Contenu du modal -->
+            <div class="flex-1 overflow-auto p-6">
+              <div
+                v-if="isImage(selectedDocument.typeMime)"
+                class="flex justify-center"
               >
-                <UIcon name="i-lucide-download" class="h-4 w-4" />
-                Télécharger le fichier
-              </button>
+                <img
+                  :src="getDocumentUrl(selectedDocument)"
+                  :alt="selectedDocument.nom"
+                  class="max-w-full max-h-[70vh] object-contain rounded-lg"
+                />
+              </div>
+              <div
+                v-else-if="isPdf(selectedDocument.typeMime)"
+                class="flex justify-center"
+              >
+                <iframe
+                  :src="getDocumentUrl(selectedDocument)"
+                  class="w-full h-[70vh] rounded-lg border border-gray-200"
+                  frameborder="0"
+                ></iframe>
+              </div>
+              <div v-else class="text-center py-12">
+                <UIcon
+                  :name="getFileIcon(selectedDocument.typeMime)"
+                  class="h-16 w-16 mx-auto text-gray-400 mb-4"
+                />
+                <p class="text-sm quaternary--text--color mb-4">
+                  Aperçu non disponible pour ce type de fichier
+                </p>
+                <button
+                  @click="downloadDocument(selectedDocument)"
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                >
+                  <UIcon name="i-lucide-download" class="h-4 w-4" />
+                  Télécharger le fichier
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal pour ajouter un document -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="uploadModalOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          @click.self="closeUploadModal"
+        >
+          <div
+            class="relative w-full max-w-lg bg-white rounded-lg shadow-xl m-4"
+          >
+            <div
+              class="flex items-center justify-between border-b border-gray-200 px-6 py-4"
+            >
+              <h3 class="text-lg font-semibold secondary--text--color">
+                Ajouter un document
+              </h3>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 transition-colors"
+                @click="closeUploadModal"
+              >
+                <UIcon name="i-lucide-x" class="h-5 w-5" />
+              </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+              <div class="space-y-1">
+                <label class="block text-sm font-medium secondary--text--color">
+                  Fichier
+                </label>
+                <input
+                  ref="fileInput"
+                  type="file"
+                  class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  @change="onFileChange"
+                />
+              </div>
+
+              <div class="space-y-1">
+                <label class="block text-sm font-medium secondary--text--color">
+                  Nom du document
+                </label>
+                <input
+                  v-model="uploadNom"
+                  type="text"
+                  class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  placeholder="Ex: Relevé de compte, Bail de location..."
+                />
+              </div>
+
+              <div class="space-y-1">
+                <label class="block text-sm font-medium secondary--text--color">
+                  Catégorie
+                </label>
+                <select
+                  v-model="uploadCategorie"
+                  class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 bg-white"
+                >
+                  <option
+                    v-for="option in categorieOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+
+              <p v-if="uploadError" class="text-xs text-red-500">
+                {{ uploadError }}
+              </p>
+              <p v-if="uploadSuccess" class="text-xs text-green-600">
+                Document envoyé avec succès.
+              </p>
+            </div>
+
+            <div
+              class="flex justify-end gap-3 border-t border-gray-200 px-6 py-4"
+            >
+              <CustomButton
+                color="#a7c7e7"
+                text-color="#0f172a"
+                variant="solid"
+                size="sm"
+                @click="openUploadModal"
+                >Annuler
+              </CustomButton>
+              <CustomButton
+                :disabled="!selectedFile || isUploading || !uploadCategorie"
+                color="#a7c7e7"
+                text-color="#0f172a"
+                variant="solid"
+                size="sm"
+                icon="i-lucide-upload"
+                @click="uploadSelectedFile"
+                >{{ isUploading ? "Envoi..." : "Téléverser" }}
+              </CustomButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from "vue";
+import { useMutation } from "@tanstack/vue-query";
+import { useNuxtApp } from "#app";
 import type { Document } from "~/types/document";
 
 const props = defineProps<{
@@ -209,17 +356,123 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "request-document"): void;
+  (e: "uploaded"): void;
 }>();
 
 const documentsExpanded = ref(true);
 const selectedDocument = ref<Document | null>(null);
 
+const fileInput = ref<HTMLInputElement | null>(null);
+const selectedFile = ref<File | null>(null);
+const isUploading = ref(false);
+const uploadError = ref<string | null>(null);
+const uploadSuccess = ref(false);
+
+const uploadModalOpen = ref(false);
+const uploadNom = ref("");
+const uploadCategorie = ref<string | null>("ADMINISTRATIF");
+
+const { $orpc } = useNuxtApp();
+
+const uploadDocumentMutation = useMutation({
+  ...$orpc.uploadDocument.mutationOptions(),
+});
+
+const onFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const files = target.files;
+  uploadError.value = null;
+  uploadSuccess.value = false;
+  if (!files || files.length === 0) {
+    selectedFile.value = null;
+    return;
+  }
+  selectedFile.value = files[0];
+  if (!uploadNom.value) {
+    uploadNom.value = files[0].name.replace(/\.[^/.]+$/, "");
+  }
+};
+
+const uploadSelectedFile = async () => {
+  if (!selectedFile.value) return;
+  if (!props.patientId) {
+    uploadError.value = "Patient inconnu.";
+    return;
+  }
+  if (!uploadCategorie.value) {
+    uploadError.value = "Veuillez sélectionner une catégorie.";
+    return;
+  }
+  try {
+    isUploading.value = true;
+    uploadError.value = null;
+    uploadSuccess.value = false;
+
+    const file = selectedFile.value;
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    await uploadDocumentMutation.mutateAsync({
+      patientId: props.patientId,
+      nom: uploadNom.value || file.name,
+      categorie: uploadCategorie.value as any,
+      contenuBase64: base64,
+      typeMime: file.type || "application/octet-stream",
+      taille: file.size,
+    });
+
+    uploadSuccess.value = true;
+    selectedFile.value = null;
+    if (fileInput.value) {
+      fileInput.value.value = "";
+    }
+    uploadModalOpen.value = false;
+    emit("uploaded");
+  } catch (error: any) {
+    console.error(error);
+    uploadError.value = error?.message || "Erreur lors de l'envoi du document.";
+  } finally {
+    isUploading.value = false;
+  }
+};
+
+const categorieOptions = computed(() => [
+  { value: "IDENTITE", label: "Identité" },
+  { value: "MEDICAL", label: "Médical" },
+  { value: "ADMINISTRATIF", label: "Administratif" },
+  { value: "FINANCIER", label: "Financier" },
+  { value: "JURIDIQUE", label: "Juridique" },
+  { value: "LOGEMENT", label: "Logement" },
+  { value: "EMPLOI", label: "Emploi" },
+  { value: "AUTRE", label: "Autre" },
+]);
+
+const openUploadModal = () => {
+  uploadError.value = null;
+  uploadSuccess.value = false;
+  uploadNom.value = "";
+  uploadCategorie.value = "ADMINISTRATIF";
+  selectedFile.value = null;
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
+  uploadModalOpen.value = true;
+};
+
+const closeUploadModal = () => {
+  if (isUploading.value) return;
+  uploadModalOpen.value = false;
+};
+
 // Obtenir toutes les catégories uniques
 const categories = computed(() => {
   if (!props.documents || props.documents.length === 0) return [];
-  const cats = new Set(
-    props.documents.map((doc) => doc.categorie)
-  );
+  const cats = new Set(props.documents.map((doc) => doc.categorie));
   return Array.from(cats).sort();
 });
 
@@ -235,6 +488,7 @@ const getCategorieLabel = (categorie: string): string => {
     IDENTITE: "Identité",
     MEDICAL: "Médical",
     ADMINISTRATIF: "Administratif",
+    FINANCIER: "Financier",
     JURIDIQUE: "Juridique",
     LOGEMENT: "Logement",
     EMPLOI: "Emploi",
@@ -248,7 +502,8 @@ const getFileIcon = (typeMime: string): string => {
   if (typeMime.startsWith("image/")) return "i-lucide-image";
   if (typeMime === "application/pdf") return "i-lucide-file-text";
   if (typeMime.includes("word")) return "i-lucide-file-text";
-  if (typeMime.includes("excel") || typeMime.includes("spreadsheet")) return "i-lucide-file-spreadsheet";
+  if (typeMime.includes("excel") || typeMime.includes("spreadsheet"))
+    return "i-lucide-file-spreadsheet";
   return "i-lucide-file";
 };
 
@@ -257,7 +512,8 @@ const getFileTypeColor = (typeMime: string): string => {
   if (typeMime.startsWith("image/")) return "bg-blue-500";
   if (typeMime === "application/pdf") return "bg-red-500";
   if (typeMime.includes("word")) return "bg-blue-600";
-  if (typeMime.includes("excel") || typeMime.includes("spreadsheet")) return "bg-green-600";
+  if (typeMime.includes("excel") || typeMime.includes("spreadsheet"))
+    return "bg-green-600";
   return "bg-gray-500";
 };
 

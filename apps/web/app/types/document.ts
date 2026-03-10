@@ -2,7 +2,15 @@ export interface Document {
   id: string;
   patientId: string;
   nom: string;
-  categorie: "IDENTITE" | "MEDICAL" | "ADMINISTRATIF" | "JURIDIQUE" | "LOGEMENT" | "EMPLOI" | "AUTRE";
+  categorie:
+    | "IDENTITE"
+    | "MEDICAL"
+    | "ADMINISTRATIF"
+    | "FINANCIER"
+    | "JURIDIQUE"
+    | "LOGEMENT"
+    | "EMPLOI"
+    | "AUTRE";
   cheminFichier: string;
   typeMime: string;
   taille: string;

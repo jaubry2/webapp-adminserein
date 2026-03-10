@@ -1209,6 +1209,7 @@ const cancelModifications = () => {
                   :is-error="isErrorDocuments"
                   :can-request-document="true"
                   @request-document="handleDemanderDocument"
+                  @uploaded="() => queryClient.invalidateQueries({ queryKey: ['listDocumentsByPatient'] })"
                 />
 
                 <ModalDemandeDocument

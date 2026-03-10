@@ -1,6 +1,8 @@
 import type { RouterClient } from "@orpc/server";
 import { eq, and, inArray, or, desc } from "drizzle-orm";
 import { z } from "zod";
+import { Storage } from "@google-cloud/storage";
+import { env } from "@webapp-adminserein/env/server";
 
 import {
   db,
@@ -22,6 +24,14 @@ import {
 } from "@webapp-adminserein/db";
 import { backendStepsByDemandeType } from "../utils/demandes-steps";
 import { protectedProcedure, publicProcedure } from "../index";
+
+// --- GCS client pour le stockage de documents ---
+const storage = new Storage({
+  projectId: env.GCS_PROJECT_ID,
+  keyFilename: env.GCS_KEY_FILE,
+});
+
+const gcsBucket = storage.bucket(env.GCS_BUCKET_NAME);
 
 // Schémas Zod pour (dé)sérialiser les données côté API
 const informationIdentiteInputSchema = z.object({
@@ -2409,6 +2419,104 @@ export const appRouter = {
         .orderBy(desc(document.createdAt));
 
       return documents;
+    }),
+
+  // Upload d'un document vers GCS puis création de l'entrée en base
+  uploadDocument: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.string().uuid(),
+        nom: z.string(),
+        categorie: z.enum([
+          "IDENTITE",
+          "MEDICAL",
+          "ADMINISTRATIF",
+          "FINANCIER",
+          "JURIDIQUE",
+          "LOGEMENT",
+          "EMPLOI",
+          "AUTRE",
+        ]),
+        // contenu du fichier encodé en base64 (sans préfixe data:)
+        contenuBase64: z.string(),
+        typeMime: z.string(),
+        taille: z.number(),
+      })
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      try {
+        // Récupérer le professionnel lié à l'utilisateur
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof) {
+          throw new Error("Aucun professionnel associé à ce compte");
+        }
+
+        // Vérifier que le patient appartient au professionnel
+        const [patientLink] = await db
+          .select()
+          .from(patientProfessionnel)
+          .where(
+            and(
+              eq(patientProfessionnel.patientId, input.patientId),
+              eq(patientProfessionnel.professionnelId, prof.id)
+            )
+          )
+          .limit(1);
+
+        if (!patientLink) {
+          throw new Error("Patient non trouvé ou non autorisé");
+        }
+
+        // Décoder le contenu base64
+        const buffer = Buffer.from(input.contenuBase64, "base64");
+
+        // Chemin dans le bucket : patients/{patientId}/{timestamp}-{nom}
+        const safeName = input.nom.replace(/\s+/g, "_");
+        const filePath = `patients/${input.patientId}/${Date.now()}-${safeName}`;
+
+        const file = gcsBucket.file(filePath);
+
+        // Avec "uniform bucket-level access" activé sur le bucket,
+        // on ne peut pas définir d'ACL "legacy" au niveau de l'objet.
+        // L'accès public doit être géré au niveau du bucket (IAM).
+        await file.save(buffer, {
+          contentType: input.typeMime,
+        });
+
+        // URL publique du fichier
+        const publicUrl = `https://storage.googleapis.com/${gcsBucket.name}/${filePath}`;
+
+        // Enregistrer le document en base
+        const [newDocument] = await db
+          .insert(document)
+          .values({
+            patientId: input.patientId,
+            nom: input.nom,
+            categorie: input.categorie,
+            cheminFichier: publicUrl,
+            typeMime: input.typeMime,
+            taille: String(input.taille),
+          })
+          .returning();
+
+        return newDocument;
+      } catch (error: any) {
+        console.error("Erreur uploadDocument GCS:", error);
+        throw new Error(
+          `Impossible de téléverser le document: ${
+            error?.message || String(error)
+          }`,
+        );
+      }
     }),
 
   // Créer un nouveau document
