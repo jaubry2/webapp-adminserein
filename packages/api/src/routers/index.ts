@@ -1205,8 +1205,9 @@ export const appRouter = {
       .where(eq(user.id, context.session.user.id))
       .limit(1);
 
+    // Si ce n'est pas un professionnel, on renvoie simplement null
     if (!userData || userData.type !== "PROFESSIONNEL") {
-      throw new Error("Cet utilisateur n'est pas un professionnel");
+      return null;
     }
 
     // Récupérer le professionnel lié à l'utilisateur

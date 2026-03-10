@@ -140,7 +140,7 @@ const requestedDocumentsForParticulier = computed(() => {
   return (tachesData.value as Tache[])
     .filter(
       (t) =>
-        t.typeDemarche === "ADMINISTRATIVE" &&
+        t.typeDemarche === "DOSSIER" &&
         t.etat !== "TERMINEE" &&
         t.details.startsWith('Demande de document à téléverser : "'),
     )
@@ -164,7 +164,7 @@ const requestedInfoSectionsForParticulier = computed(() => {
   const sections = new Set<string>();
   for (const t of tachesData.value as Tache[]) {
     if (
-      t.typeDemarche === "ADMINISTRATIVE" &&
+      t.typeDemarche === "DOSSIER" &&
       t.etat !== "TERMINEE" &&
       t.details.includes("pour compléter")
     ) {
@@ -964,11 +964,7 @@ const getAccentColorByType = (
       <p class="text-red-500">Erreur lors du chargement des informations</p>
     </div>
 
-    <div
-      v-else-if="patient"
-      class="mx-auto max-w-5xl space-y-6"
-      :class="showBasicInfoModal ? 'blur-sm pointer-events-none' : ''"
-    >
+    <div v-else-if="patient" class="mx-auto max-w-5xl space-y-6">
       <!-- En-tête -->
       <header class="space-y-2">
         <h1 class="text-3xl font-bold secondary--text--color">
@@ -1310,41 +1306,7 @@ const getAccentColorByType = (
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Popup pour compléter quelques informations de base lors de la première connexion -->
-      <UModal v-model="showBasicInfoModal">
-        <div class="p-6 space-y-4">
-          <h2 class="text-lg font-semibold secondary--text--color">
-            Compléter vos informations
-          </h2>
-          <p class="text-sm quaternary--text--color">
-            Indiquez quelques informations de base pour personnaliser votre dossier.
-          </p>
-
-          <UFormGroup label="Prénom" name="prenom" required>
-            <UInput v-model="basicInfo.prenom" placeholder="Votre prénom" />
-          </UFormGroup>
-
-          <UFormGroup label="Nom" name="nom" required>
-            <UInput v-model="basicInfo.nom" placeholder="Votre nom" />
-          </UFormGroup>
-
-          <UFormGroup label="Date de naissance" name="dateNaissance" required>
-            <UInput
-              v-model="basicInfo.dateNaissance"
-              type="date"
-              placeholder="YYYY-MM-DD"
-            />
-          </UFormGroup>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton :loading="savingBasicInfo" @click="submitBasicInfo">
-              Enregistrer
-            </UButton>
-          </div>
         </div>
-      </UModal>
     </div>
 
     <!-- Modal compléter une demande -->
