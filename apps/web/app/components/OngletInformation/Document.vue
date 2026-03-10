@@ -137,6 +137,15 @@
                   <UIcon name="i-lucide-download" class="h-4 w-4" />
                   Télécharger
                 </button>
+                <button
+                  @click.stop="confirmDeleteDocument(doc)"
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-red-100 transition-colors"
+                  title="Supprimer"
+                >
+                  <UIcon name="i-lucide-trash-2" class="h-4 w-4" />
+                  Supprimer
+                </button>
               </div>
             </div>
           </div>
@@ -178,6 +187,14 @@
                 >
                   <UIcon name="i-lucide-download" class="h-4 w-4" />
                   Télécharger
+                </button>
+                <button
+                  @click="confirmDeleteDocument(selectedDocument)"
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
+                >
+                  <UIcon name="i-lucide-trash-2" class="h-4 w-4" />
+                  Supprimer
                 </button>
                 <button
                   @click="closeDocumentViewer"
@@ -337,6 +354,66 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Modal de confirmation de suppression -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="deleteModalOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          @click.self="closeDeleteModal"
+        >
+          <div class="relative w-full max-w-md bg-white rounded-lg shadow-xl m-4">
+            <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 class="text-lg font-semibold text-red-600">
+                Supprimer le document
+              </h3>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 transition-colors"
+                @click="closeDeleteModal"
+              >
+                <UIcon name="i-lucide-x" class="h-5 w-5" />
+              </button>
+            </div>
+
+            <div class="p-6 space-y-3">
+              <p class="text-sm secondary--text--color">
+                Es-tu sûr de vouloir supprimer ce document&nbsp;?
+              </p>
+              <p v-if="documentToDelete" class="text-sm font-medium">
+                {{ documentToDelete.nom }}
+              </p>
+              <p class="text-xs quaternary--text--color">
+                Cette action est définitive.
+              </p>
+            </div>
+
+            <div class="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <UButton
+                color="primary"
+                variant="solid"
+                size="sm"
+                :disabled="isDeleting"
+                @click="closeDeleteModal"
+              >
+                Annuler
+              </UButton>
+              <UButton
+                color="red"
+                variant="solid"
+                size="sm"
+                icon="i-lucide-trash-2"
+                :loading="isDeleting"
+                @click="deleteSelectedDocument"
+              >
+                Supprimer
+              </UButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -372,11 +449,20 @@ const uploadModalOpen = ref(false);
 const uploadNom = ref("");
 const uploadCategorie = ref<string | null>("ADMINISTRATIF");
 
+const deleteModalOpen = ref(false);
+const documentToDelete = ref<Document | null>(null);
+
 const { $orpc } = useNuxtApp();
 
 const uploadDocumentMutation = useMutation({
   ...$orpc.uploadDocument.mutationOptions(),
 });
+
+const deleteDocumentMutation = useMutation({
+  ...$orpc.deleteDocument.mutationOptions(),
+});
+
+const isDeleting = computed(() => deleteDocumentMutation.isPending.value);
 
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
@@ -467,6 +553,36 @@ const openUploadModal = () => {
 const closeUploadModal = () => {
   if (isUploading.value) return;
   uploadModalOpen.value = false;
+};
+
+const confirmDeleteDocument = (doc: Document | null) => {
+  if (!doc) return;
+  documentToDelete.value = doc;
+  deleteModalOpen.value = true;
+};
+
+const closeDeleteModal = () => {
+  if (isDeleting.value) return;
+  deleteModalOpen.value = false;
+  documentToDelete.value = null;
+};
+
+const deleteSelectedDocument = async () => {
+  if (!documentToDelete.value) return;
+  try {
+    await deleteDocumentMutation.mutateAsync({
+      documentId: documentToDelete.value.id,
+    });
+    // Si le document supprimé est celui actuellement ouvert, fermer le viewer
+    if (selectedDocument.value?.id === documentToDelete.value.id) {
+      selectedDocument.value = null;
+    }
+    deleteModalOpen.value = false;
+    documentToDelete.value = null;
+    emit("uploaded"); // réutilise le même event pour forcer le rafraîchissement
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 // Obtenir toutes les catégories uniques

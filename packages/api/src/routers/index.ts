@@ -2628,18 +2628,7 @@ export const appRouter = {
         throw new Error("Non authentifié");
       }
 
-      // Récupérer le professionnel lié à l'utilisateur
-      const [prof] = await db
-        .select()
-        .from(professionnel)
-        .where(eq(professionnel.userId, context.session.user.id))
-        .limit(1);
-
-      if (!prof) {
-        throw new Error("Aucun professionnel associé à ce compte");
-      }
-
-      // Récupérer le document pour vérifier qu'il appartient à un patient du professionnel
+      // Récupérer le document
       const [doc] = await db
         .select()
         .from(document)
@@ -2650,20 +2639,62 @@ export const appRouter = {
         throw new Error("Document non trouvé");
       }
 
-      // Vérifier que le patient appartient au professionnel
-      const [patientLink] = await db
+      // Récupérer le type d'utilisateur
+      const [userData] = await db
         .select()
-        .from(patientProfessionnel)
-        .where(
-          and(
-            eq(patientProfessionnel.patientId, doc.patientId),
-            eq(patientProfessionnel.professionnelId, prof.id)
-          )
-        )
+        .from(user)
+        .where(eq(user.id, context.session.user.id))
         .limit(1);
 
-      if (!patientLink) {
-        throw new Error("Document non autorisé");
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      if (userData.type === "PROFESSIONNEL") {
+        // Récupérer le professionnel lié à l'utilisateur
+        const [prof] = await db
+          .select()
+          .from(professionnel)
+          .where(eq(professionnel.userId, context.session.user.id))
+          .limit(1);
+
+        if (!prof) {
+          throw new Error("Aucun professionnel associé à ce compte");
+        }
+
+        // Vérifier que le patient appartient au professionnel
+        const [patientLink] = await db
+          .select()
+          .from(patientProfessionnel)
+          .where(
+            and(
+              eq(patientProfessionnel.patientId, doc.patientId),
+              eq(patientProfessionnel.professionnelId, prof.id),
+            ),
+          )
+          .limit(1);
+
+        if (!patientLink) {
+          throw new Error("Document non autorisé");
+        }
+      } else if (userData.type === "PARTICULIER") {
+        // Récupérer le particulier lié à l'utilisateur
+        const [part] = await db
+          .select()
+          .from(particulier)
+          .where(eq(particulier.userId, context.session.user.id))
+          .limit(1);
+
+        if (!part) {
+          throw new Error("Aucun particulier associé à ce compte");
+        }
+
+        // Vérifier que le document appartient bien au patient du particulier
+        if (part.patientId !== doc.patientId) {
+          throw new Error("Document non autorisé");
+        }
+      } else {
+        throw new Error("Type d'utilisateur non reconnu");
       }
 
       // Supprimer le document
