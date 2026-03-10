@@ -2107,11 +2107,11 @@ export const appRouter = {
         lien: "/mes-informations?tab=document",
       });
 
-      // Créer une tâche liée à cette demande
+      // Créer une tâche liée à cette demande (Dossier - Document)
       await db.insert(tache).values({
         patientId: input.patientId,
         professionnelId: prof.id,
-        typeDemarche: "ADMINISTRATIVE",
+        typeDemarche: "DOSSIER",
         etat: "A_FAIRE",
         date: new Date(),
         details: `Demande de document à téléverser : "${input.nomDocument}" (catégorie ${input.categorie}) pour le dossier du patient ${
