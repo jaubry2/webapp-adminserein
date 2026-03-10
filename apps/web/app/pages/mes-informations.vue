@@ -49,6 +49,8 @@ const {
   }),
 });
 
+// (Onboarding des informations de base géré sur la page /onboarding)
+
 // Demandes d'accès au dossier pour ce patient
 const {
   data: demandesAcces,
@@ -660,6 +662,7 @@ const handleIdentiteChangesParticulier = async (
   });
 };
 
+
 const handleCoordonneeChangesParticulier = async (
   changes: Record<string, any>,
 ) => {
@@ -961,7 +964,11 @@ const getAccentColorByType = (
       <p class="text-red-500">Erreur lors du chargement des informations</p>
     </div>
 
-    <div v-else-if="patient" class="mx-auto max-w-5xl space-y-6">
+    <div
+      v-else-if="patient"
+      class="mx-auto max-w-5xl space-y-6"
+      :class="showBasicInfoModal ? 'blur-sm pointer-events-none' : ''"
+    >
       <!-- En-tête -->
       <header class="space-y-2">
         <h1 class="text-3xl font-bold secondary--text--color">
@@ -1304,6 +1311,40 @@ const getAccentColorByType = (
           </div>
         </div>
       </div>
+
+      <!-- Popup pour compléter quelques informations de base lors de la première connexion -->
+      <UModal v-model="showBasicInfoModal">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold secondary--text--color">
+            Compléter vos informations
+          </h2>
+          <p class="text-sm quaternary--text--color">
+            Indiquez quelques informations de base pour personnaliser votre dossier.
+          </p>
+
+          <UFormGroup label="Prénom" name="prenom" required>
+            <UInput v-model="basicInfo.prenom" placeholder="Votre prénom" />
+          </UFormGroup>
+
+          <UFormGroup label="Nom" name="nom" required>
+            <UInput v-model="basicInfo.nom" placeholder="Votre nom" />
+          </UFormGroup>
+
+          <UFormGroup label="Date de naissance" name="dateNaissance" required>
+            <UInput
+              v-model="basicInfo.dateNaissance"
+              type="date"
+              placeholder="YYYY-MM-DD"
+            />
+          </UFormGroup>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton :loading="savingBasicInfo" @click="submitBasicInfo">
+              Enregistrer
+            </UButton>
+          </div>
+        </div>
+      </UModal>
     </div>
 
     <!-- Modal compléter une demande -->

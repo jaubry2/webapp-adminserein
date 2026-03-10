@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent, AuthFormField } from "@nuxt/ui";
+import { useMutation } from "@tanstack/vue-query";
 
-const { $authClient } = useNuxtApp();
+const { $authClient, $orpc } = useNuxtApp();
 
 const emit = defineEmits(["switchToSignIn"]);
 
@@ -51,12 +52,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         password: event.data.password,
       },
       {
-        onSuccess: () => {
-          toast.add({ title: "Sign up successful" });
-          navigateTo("/dashboard", { replace: true });
+        onSuccess: async () => {
+          toast.add({
+            title: "Compte créé",
+            description: "Nous allons configurer votre espace particulier.",
+          });
+          navigateTo("/onboarding", { replace: true });
         },
         onError: (error) => {
-          toast.add({ title: "Sign up failed", description: error.error.message });
+          toast.add({
+            title: "Sign up failed",
+            description: error.error.message,
+          });
         },
       },
     );

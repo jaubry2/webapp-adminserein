@@ -108,6 +108,31 @@ const personneProcheUpdateSchema = personneProcheInputSchema.partial().extend({
   id: z.string().uuid(),
 });
 
+async function generateNextNumeroDossier() {
+  const rows = await db
+    .select({
+      numeroDossier: patient.numeroDossier,
+    })
+    .from(patient);
+
+  if (!rows.length) {
+    return "DOSSIER-0001";
+  }
+
+  const numbers = rows
+    .map((row) => {
+      const value = row.numeroDossier;
+      if (!value) return 0;
+      const match = value.match(/(\d+)$/);
+      return match ? parseInt(match[1] as string, 10) : 0;
+    })
+    .filter((n) => n > 0);
+
+  const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
+  const nextNumber = maxNumber + 1;
+  return `${String(nextNumber).padStart(4, "0")}-${String(nextNumber).padStart(4, "0")}`;
+}
+
 const patientUpdateInputSchema = z.object({
   patientId: z.string().uuid(),
   // Champs optionnels : on ne met à jour que ceux présents
@@ -128,6 +153,146 @@ export const appRouter = {
     return {
       message: "This is private",
       user: context.session?.user,
+    };
+  }),
+
+  // Mettre à jour le profil de l'utilisateur courant (par ex. nom complet)
+  updateCurrentUserProfile: protectedProcedure
+    .input(
+      z.object({
+        prenom: z.string().optional(),
+        nom: z.string().optional(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      if (!context.session?.user?.id) {
+        throw new Error("Non authentifié");
+      }
+
+      const userId = context.session.user.id;
+
+      const [existingUser] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+
+      if (!existingUser) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      // Construire un nom complet à partir des infos fournies
+      const trimmedPrenom = (input.prenom ?? "").trim();
+      const trimmedNom = (input.nom ?? "").trim();
+      const fullName =
+        `${trimmedPrenom} ${trimmedNom}`.trim() || existingUser.name;
+
+      await db
+        .update(user)
+        .set({ name: fullName })
+        .where(eq(user.id, userId));
+
+      return { success: true, name: fullName };
+    }),
+
+  // Initialiser un compte particulier : créer le patient et le lien particulier si besoin
+  initializeParticulierAccount: protectedProcedure.handler(async ({ context }) => {
+    if (!context.session?.user?.id) {
+      throw new Error("Non authentifié");
+    }
+
+    const userId = context.session.user.id;
+
+    const [existingUser] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    if (!existingUser) {
+      throw new Error("Utilisateur non trouvé");
+    }
+
+    // S'assurer que le type est bien PARTICULIER
+    if (existingUser.type !== "PARTICULIER") {
+      await db
+        .update(user)
+        .set({ type: "PARTICULIER" })
+        .where(eq(user.id, userId));
+    }
+
+    // Vérifier si un enregistrement particulier existe déjà
+    const [existingParticulier] = await db
+      .select()
+      .from(particulier)
+      .where(eq(particulier.userId, userId))
+      .limit(1);
+
+    if (existingParticulier) {
+      return {
+        alreadyExists: true,
+        patientId: existingParticulier.patientId,
+      };
+    }
+
+    const numeroDossier = await generateNextNumeroDossier();
+
+    // Valeurs par défaut vides : le particulier complétera depuis son espace
+    const [createdInfo] = await db
+      .insert(informationIdentite)
+      .values({
+        nomUsage: "",
+        nomNaissance: "",
+        prenom: "",
+        autresPrenoms: [],
+        genre: "AUTRE",
+        dateNaissance: new Date("1970-01-01"),
+        villeNaissance: "",
+        departementNaissance: "",
+        paysNaissance: "",
+        nationalites: [],
+        numeroSecuriteSociale: "",
+        situationFamiliale: "CELIBATAIRE",
+        caisseRetraite: null,
+      })
+      .returning();
+
+    const [createdCoordonnee] = await db
+      .insert(informationCoordonnee)
+      .values({
+        adresse: "",
+        informationComplementaires: "",
+        codePostal: "",
+        ville: "",
+        departement: "",
+        pays: "",
+        numeroTelephone: "",
+        adresseMail: "",
+      })
+      .returning();
+
+    const [createdPatient] = await db
+      .insert(patient)
+      .values({
+        numeroDossier,
+        informationIdentiteId: createdInfo.id,
+        informationCoordonneeId: createdCoordonnee.id,
+      })
+      .returning();
+
+    const [createdParticulier] = await db
+      .insert(particulier)
+      .values({
+        userId,
+        patientId: createdPatient.id,
+      })
+      .returning();
+
+    return {
+      alreadyExists: false,
+      patientId: createdPatient.id,
+      numeroDossier,
+      particulierId: createdParticulier.id,
     };
   }),
 
@@ -385,11 +550,11 @@ export const appRouter = {
       const [updatedConjoint] =
         updatedPatient.informationConjointId != null
           ? await db
-              .select()
-              .from(informationConjoint)
-              .where(
-                eq(informationConjoint.id, updatedPatient.informationConjointId)
-              )
+            .select()
+            .from(informationConjoint)
+            .where(
+              eq(informationConjoint.id, updatedPatient.informationConjointId)
+            )
           : [undefined];
 
       return {
@@ -489,9 +654,9 @@ export const appRouter = {
       const [conjoint] =
         p.informationConjointId != null
           ? await db
-              .select()
-              .from(informationConjoint)
-              .where(eq(informationConjoint.id, p.informationConjointId))
+            .select()
+            .from(informationConjoint)
+            .where(eq(informationConjoint.id, p.informationConjointId))
           : [undefined];
 
       return {
@@ -783,10 +948,10 @@ export const appRouter = {
         success: true,
         notification: nombreTachesNonTerminees > 0
           ? {
-              type: "warning" as const,
-              message: messageNotification,
-              nombreTachesSupprimees: nombreTachesNonTerminees,
-            }
+            type: "warning" as const,
+            message: messageNotification,
+            nombreTachesSupprimees: nombreTachesNonTerminees,
+          }
           : null,
       };
     }),
@@ -910,9 +1075,9 @@ export const appRouter = {
           ...t,
           patient: p
             ? {
-                ...p,
-                informationIdentite: info,
-              }
+              ...p,
+              informationIdentite: info,
+            }
             : null,
           professionnel: prof,
         };
@@ -1229,26 +1394,87 @@ export const appRouter = {
         throw new Error("Non authentifié");
       }
 
-      // Vérifier que l'utilisateur est un particulier
+      // Récupérer l'utilisateur et le marquer comme PARTICULIER si nécessaire
       const [userData] = await db
         .select()
         .from(user)
         .where(eq(user.id, context.session.user.id))
         .limit(1);
 
-      if (!userData || userData.type !== "PARTICULIER") {
-        throw new Error("Cet utilisateur n'est pas un particulier");
+      if (!userData) {
+        throw new Error("Utilisateur non trouvé");
       }
 
-      // Récupérer le particulier lié à l'utilisateur
-      const [part] = await db
+      if (userData.type !== "PARTICULIER") {
+        await db
+          .update(user)
+          .set({ type: "PARTICULIER" })
+          .where(eq(user.id, context.session.user.id));
+      }
+
+      // Récupérer (ou créer si nécessaire) le particulier lié à l'utilisateur
+      let [part] = await db
         .select()
         .from(particulier)
         .where(eq(particulier.userId, context.session.user.id))
         .limit(1);
 
       if (!part) {
-        throw new Error("Aucun particulier associé à ce compte");
+        // Aucun particulier/patient encore créé pour cet utilisateur :
+        // on initialise un dossier minimal que le particulier complétera ensuite.
+        const numeroDossier = await generateNextNumeroDossier();
+
+        const [createdInfo] = await db
+          .insert(informationIdentite)
+          .values({
+            nomUsage: "",
+            nomNaissance: "",
+            prenom: "",
+            autresPrenoms: [],
+            genre: "AUTRE",
+            dateNaissance: new Date("1970-01-01"),
+            villeNaissance: "",
+            departementNaissance: "",
+            paysNaissance: "",
+            nationalites: [],
+            numeroSecuriteSociale: "",
+            situationFamiliale: "CELIBATAIRE",
+            caisseRetraite: null,
+          })
+          .returning();
+
+        const [createdCoordonnee] = await db
+          .insert(informationCoordonnee)
+          .values({
+            adresse: "",
+            informationComplementaires: "",
+            codePostal: "",
+            ville: "",
+            departement: "",
+            pays: "",
+            numeroTelephone: "",
+            adresseMail: "",
+          })
+          .returning();
+
+        const [createdPatient] = await db
+          .insert(patient)
+          .values({
+            numeroDossier,
+            informationIdentiteId: createdInfo.id,
+            informationCoordonneeId: createdCoordonnee.id,
+          })
+          .returning();
+
+        const [createdParticulier] = await db
+          .insert(particulier)
+          .values({
+            userId: context.session.user.id,
+            patientId: createdPatient.id,
+          })
+          .returning();
+
+        part = createdParticulier;
       }
 
       // Récupérer le patient associé
@@ -1275,9 +1501,9 @@ export const appRouter = {
       const [conjoint] =
         p.informationConjointId != null
           ? await db
-              .select()
-              .from(informationConjoint)
-              .where(eq(informationConjoint.id, p.informationConjointId))
+            .select()
+            .from(informationConjoint)
+            .where(eq(informationConjoint.id, p.informationConjointId))
           : [undefined];
 
       return {
@@ -1981,9 +2207,8 @@ export const appRouter = {
       };
 
       const titre = "Mise à jour de vos informations";
-      const message = `Le professionnel ${
-        prof.prenom
-      } ${prof.nom} vous demande de compléter ou mettre à jour ${sectionLabels[input.section]} dans votre espace personnel.`;
+      const message = `Le professionnel ${prof.prenom
+        } ${prof.nom} vous demande de compléter ou mettre à jour ${sectionLabels[input.section]} dans votre espace personnel.`;
 
       // Créer une notification pour le patient
       await db.insert(notification).values({
@@ -2002,9 +2227,8 @@ export const appRouter = {
         typeDemarche: "DOSSIER",
         etat: "A_FAIRE",
         date: new Date(),
-        details: `Demande faite au patient ${
-          infoPatient?.prenom ?? ""
-        } ${infoPatient?.nomUsage ?? ""} pour compléter ${sectionLabels[input.section]}.`,
+        details: `Demande faite au patient ${infoPatient?.prenom ?? ""
+          } ${infoPatient?.nomUsage ?? ""} pour compléter ${sectionLabels[input.section]}.`,
       });
 
       return { success: true };
@@ -2087,15 +2311,12 @@ export const appRouter = {
         .limit(1);
 
       const titre = "Demande de document";
-      const message = `Le professionnel ${
-        prof.prenom
-      } ${prof.nom} vous demande de déposer le document "${
-        input.nomDocument
-      }" (catégorie ${input.categorie.toLowerCase()}) dans la section "Documents" de votre espace personnel pour votre dossier${
-        infoPatient
+      const message = `Le professionnel ${prof.prenom
+        } ${prof.nom} vous demande de déposer le document "${input.nomDocument
+        }" (catégorie ${input.categorie.toLowerCase()}) dans la section "Documents" de votre espace personnel pour votre dossier${infoPatient
           ? ` (${infoPatient.nomUsage} ${infoPatient.prenom})`
           : ""
-      }.`;
+        }.`;
 
       // Créer une notification pour le patient
       await db.insert(notification).values({
@@ -2114,9 +2335,8 @@ export const appRouter = {
         typeDemarche: "DOSSIER",
         etat: "A_FAIRE",
         date: new Date(),
-        details: `Demande de document à téléverser : "${input.nomDocument}" (catégorie ${input.categorie}) pour le dossier du patient ${
-          infoPatient?.nomUsage ?? ""
-        } ${infoPatient?.prenom ?? ""}`.trim(),
+        details: `Demande de document à téléverser : "${input.nomDocument}" (catégorie ${input.categorie}) pour le dossier du patient ${infoPatient?.nomUsage ?? ""
+          } ${infoPatient?.prenom ?? ""}`.trim(),
       });
 
       return { success: true };
@@ -2374,9 +2594,8 @@ export const appRouter = {
             patientId: null,
             type: "SUCCESS",
             titre: "Accès au dossier accordé",
-            message: `Le patient ${
-              infoPatient?.prenom ?? ""
-            } ${infoPatient?.nomUsage ?? ""} a accepté votre demande d'accès.`,
+            message: `Le patient ${infoPatient?.prenom ?? ""
+              } ${infoPatient?.nomUsage ?? ""} a accepté votre demande d'accès.`,
             lien: `/patient/${p.id}`,
           });
 
@@ -2405,9 +2624,8 @@ export const appRouter = {
             patientId: null,
             type: "WARNING",
             titre: "Accès au dossier refusé",
-            message: `Le patient ${
-              infoPatient?.prenom ?? ""
-            } ${infoPatient?.nomUsage ?? ""} a refusé votre demande d'accès.`,
+            message: `Le patient ${infoPatient?.prenom ?? ""
+              } ${infoPatient?.nomUsage ?? ""} a refusé votre demande d'accès.`,
             lien: null,
           });
 
@@ -2650,8 +2868,7 @@ export const appRouter = {
       } catch (error: any) {
         console.error("Erreur uploadDocument GCS:", error);
         throw new Error(
-          `Impossible de téléverser le document: ${
-            error?.message || String(error)
+          `Impossible de téléverser le document: ${error?.message || String(error)
           }`,
         );
       }
