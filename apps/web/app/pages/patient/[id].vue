@@ -196,6 +196,31 @@ const {
   }),
 });
 
+const requestedDocuments = computed(() => {
+  if (!patientTaches.value) return [];
+  return (patientTaches.value as Tache[])
+    .filter(
+      (t) =>
+        t.typeDemarche === "ADMINISTRATIVE" &&
+        t.etat !== "TERMINEE" &&
+        t.details.startsWith('Demande de document à téléverser : "'),
+    )
+    .map((t) => {
+      // extraire nomDocument et categorie du détail
+      // format: Demande de document à téléverser : "Nom" (catégorie CATEGORIE) ...
+      const match = t.details.match(
+        /^Demande de document à téléverser : "(.+?)" \(catégorie ([A-Z_]+)\)/,
+      );
+      const nom = match?.[1] ?? t.details;
+      const categorie = match?.[2] ?? "AUTRE";
+      return {
+        id: t.id,
+        nom,
+        categorie,
+      };
+    });
+});
+
 // Récupération des documents du patient
 // Ne faire la requête que si la session est chargée et valide
 const {
@@ -985,12 +1010,16 @@ const handleDemanderDocument = () => {
   showDemandeDocumentModal.value = true;
 };
 
-const handleConfirmDemandeDocument = async (nature: string) => {
+const handleConfirmDemandeDocument = async (payload: {
+  nomDocument: string;
+  categorie: string;
+}) => {
   if (!patient.value) return;
 
   await demanderDocumentMutation.mutateAsync({
     patientId: patient.value.id,
-    nature,
+    nomDocument: payload.nomDocument,
+    categorie: payload.categorie as any,
   });
 
   showDemandeDocumentModal.value = false;
@@ -1208,6 +1237,7 @@ const cancelModifications = () => {
                   :is-loading="isLoadingDocuments"
                   :is-error="isErrorDocuments"
                   :can-request-document="true"
+                  :requested-documents="requestedDocuments"
                   @request-document="handleDemanderDocument"
                   @uploaded="() => queryClient.invalidateQueries({ queryKey: $orpc.listDocumentsByPatient.queryKey({ input: { patientId: patientId.value } }) })"
                 />

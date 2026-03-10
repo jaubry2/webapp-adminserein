@@ -30,6 +30,30 @@
     </div>
 
     <div v-if="documentsExpanded" class="p-6 space-y-4">
+      <!-- Placeholders pour les documents demandés -->
+      <div
+        v-if="props.requestedDocuments && props.requestedDocuments.length > 0"
+        class="rounded-lg border border-dashed border-blue-200 bg-blue-50 px-4 py-3 space-y-1"
+      >
+        <h3 class="text-xs font-semibold text-blue-800">
+          Documents demandés à téléverser
+        </h3>
+        <ul class="space-y-0.5 text-xs text-blue-900">
+          <li
+            v-for="req in props.requestedDocuments"
+            :key="req.id"
+            class="flex items-center gap-2"
+          >
+            <UIcon name="i-lucide-alert-circle" class="h-3.5 w-3.5 text-blue-500" />
+            <span>
+              {{ req.nom }}
+              <span class="text-[11px] text-blue-800">
+                ({{ getCategorieLabel(req.categorie) }})
+              </span>
+            </span>
+          </li>
+        </ul>
+      </div>
       <!-- Bouton pour ouvrir le pop-up d'ajout -->
       <div class="flex flex-wrap items-center gap-3">
         <CustomButton
@@ -429,6 +453,7 @@ const props = defineProps<{
   isLoading?: boolean;
   isError?: boolean;
   canRequestDocument?: boolean;
+  requestedDocuments?: { id: string; nom: string; categorie: string }[];
 }>();
 
 const emit = defineEmits<{

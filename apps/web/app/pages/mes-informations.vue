@@ -132,6 +132,29 @@ const {
   }),
 }) as { data: Ref<Document[] | undefined>; refetch: () => Promise<any> };
 
+const requestedDocumentsForParticulier = computed(() => {
+  if (!tachesData.value) return [];
+  return (tachesData.value as Tache[])
+    .filter(
+      (t) =>
+        t.typeDemarche === "ADMINISTRATIVE" &&
+        t.etat !== "TERMINEE" &&
+        t.details.startsWith('Demande de document à téléverser : "'),
+    )
+    .map((t) => {
+      const match = t.details.match(
+        /^Demande de document à téléverser : "(.+?)" \(catégorie ([A-Z_]+)\)/,
+      );
+      const nom = match?.[1] ?? t.details;
+      const categorie = match?.[2] ?? "AUTRE";
+      return {
+        id: t.id,
+        nom,
+        categorie,
+      };
+    });
+});
+
 // Personnes proches pour le patient connecté
 const {
   data: personnesProchesData,
@@ -908,6 +931,7 @@ const getAccentColorByType = (
             :documents="documentsData || []"
             :is-loading="false"
             :is-error="false"
+            :requested-documents="requestedDocumentsForParticulier"
             @uploaded="refetchDocuments()"
           />
         </div>
