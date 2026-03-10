@@ -25,6 +25,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "updateComment", payload: { id: string; details: string }): void;
+  (e: "uploadAshDossier", demande: any): void;
+  (e: "viewDemande", demande: any): void;
+  (e: "downloadDemande", demande: any): void;
+  (e: "editDemande", demande: any): void;
 }>();
 
 const expandedById = ref<Record<string, boolean>>({});
@@ -222,6 +226,67 @@ function buildStepStatusFromStatut(d: any): Record<string, StepStatus> {
             :etapes="d.etapes"
             :editable="false"
           />
+          <div
+            v-if="d.typeDemande === 'APA'"
+            class="mt-3 flex flex-wrap items-center justify-end gap-2"
+          >
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+              @click="$emit('viewDemande', d)"
+            >
+              <UIcon name="i-lucide-file-text" class="h-3.5 w-3.5" />
+              Voir
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+              @click="$emit('downloadDemande', d)"
+            >
+              <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
+              Télécharger
+            </button>
+            <button
+              v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+              @click="$emit('editDemande', d)"
+            >
+              <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
+              Modifier
+            </button>
+          </div>
+          <div
+            v-if="d.typeDemande === 'ASH'"
+            class="mt-3 flex flex-wrap items-center justify-end gap-2"
+          >
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg bg-[var(--primary-color)] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90"
+              @click="$emit('uploadAshDossier', d)"
+            >
+              <UIcon name="i-lucide-upload-cloud" class="h-3.5 w-3.5" />
+              Téléverser le dossier ASH
+            </button>
+            <a
+              v-if="d.ashDocumentUrl"
+              :href="d.ashDocumentUrl"
+              target="_blank"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+            >
+              <UIcon name="i-lucide-file-text" class="h-3.5 w-3.5" />
+              Voir
+            </a>
+            <a
+              v-if="d.ashDocumentUrl"
+              :href="d.ashDocumentUrl"
+              download
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
+            >
+              <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
+              Télécharger
+            </a>
+          </div>
           <div v-if="hasActions" class="flex items-center justify-end gap-2 pt-2 border-t border-dashed border-gray-200">
             <slot name="actions" :demande="d" />
           </div>

@@ -2838,6 +2838,18 @@ export const appRouter = {
         // URL publique du fichier
         const publicUrl = `https://storage.googleapis.com/${gcsBucket.name}/${filePath}`;
 
+        // Si on téléverse un "Dossier ASH", on remplace l'ancien si présent
+        if (input.nom === "Dossier ASH") {
+          await db
+            .delete(document)
+            .where(
+              and(
+                eq(document.patientId, input.patientId),
+                eq(document.nom, "Dossier ASH"),
+              ),
+            );
+        }
+
         // Enregistrer le document en base
         const [newDocument] = await db
           .insert(document)
@@ -3506,6 +3518,7 @@ export const appRouter = {
 
       let professionnelId: string | null = null;
       let particulierId: string | null = null;
+      let targetPatientId: string | null = input.patientId ?? null;
 
       if (userData.type === "PROFESSIONNEL") {
         const [prof] = await db
@@ -3548,6 +3561,12 @@ export const appRouter = {
         }
 
         particulierId = part.id;
+
+        // Pour un particulier, si aucun patientId explicite n'est fourni,
+        // on lie la demande à son propre patient.
+        if (!targetPatientId) {
+          targetPatientId = part.patientId;
+        }
       } else {
         throw new Error("Type d'utilisateur non reconnu");
       }
@@ -3556,7 +3575,7 @@ export const appRouter = {
         .insert(demande)
         .values({
           professionnelId,
-          patientId: input.patientId ?? null,
+          patientId: targetPatientId,
           particulierId,
           typeDemande: input.typeDemande,
           nomBeneficiaire: input.nomBeneficiaire ?? null,
@@ -3579,6 +3598,20 @@ export const appRouter = {
             todos: step.defaultTodos ?? null,
           })),
         );
+      }
+
+      // Si la demande est liée à un patient et à un professionnel,
+      // créer automatiquement une tâche "DOSSIER - Demande" pour
+      // signaler le document de dossier à téléverser.
+      if (professionnelId && targetPatientId) {
+        await db.insert(tache).values({
+          patientId: targetPatientId,
+          professionnelId,
+          typeDemarche: "DOSSIER",
+          etat: "A_FAIRE",
+          date: new Date(),
+          details: `Demande de document à téléverser : "Dossier ${created.typeDemande}" (catégorie ADMINISTRATIF) pour le dossier du patient.`,
+        });
       }
 
       return created;
@@ -3669,6 +3702,39 @@ export const appRouter = {
       }
     }
 
+    // Pour les demandes ASH, vérifier s'il existe déjà un document "Dossier ASH"
+    const ashPatientIds = demandes
+      .filter(
+        (d) => d.typeDemande === "ASH" && d.patientId !== null,
+      )
+      .map((d) => d.patientId as string);
+
+    type AshDocInfo = {
+      cheminFichier: string;
+      typeMime: string;
+    };
+
+    let ashDocByPatientId = new Map<string, AshDocInfo>();
+
+    if (ashPatientIds.length > 0) {
+      const ashDocs = await db
+        .select()
+        .from(document)
+        .where(
+          and(
+            inArray(document.patientId, ashPatientIds),
+            eq(document.nom, "Dossier ASH"),
+          ),
+        );
+
+      for (const docRow of ashDocs) {
+        ashDocByPatientId.set(docRow.patientId, {
+          cheminFichier: docRow.cheminFichier,
+          typeMime: docRow.typeMime,
+        });
+      }
+    }
+
     const demandeIds = demandes.map((d) => d.id);
 
     let etapesMap = new Map<
@@ -3696,10 +3762,17 @@ export const appRouter = {
 
     return demandes.map((d) => {
       const patientInfo = d.patientId ? patientsMap.get(d.patientId) : null;
+      const ashDocInfo =
+        d.typeDemande === "ASH" && d.patientId
+          ? ashDocByPatientId.get(d.patientId)
+          : undefined;
+
       return {
         ...d,
         patientInfo: patientInfo ?? null,
         etapes: etapesMap.get(d.id) ?? [],
+        hasAshDocument: !!ashDocInfo,
+        ashDocumentUrl: ashDocInfo?.cheminFichier ?? null,
       };
     });
   }),
