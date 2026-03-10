@@ -8,8 +8,16 @@
         @click="coordonneesExpanded = !coordonneesExpanded"
         class="flex-1 text-left cursor-pointer"
       >
-        <h2 class="text-lg font-semibold secondary--text--color">
+        <h2
+          class="text-lg font-semibold secondary--text--color flex items-center gap-2"
+        >
           Coordonnées
+          <span
+            v-if="props.isRequested"
+            class="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-semibold text-white"
+          >
+            !
+          </span>
         </h2>
       </button>
       <div class="flex items-center gap-2">
@@ -207,6 +215,7 @@ const props = defineProps<{
   isEditing?: boolean;
   onSave?: (changes: Record<string, any>) => void;
   canRequestFill?: boolean;
+  isRequested?: boolean;
 }>();
 
 const emit = defineEmits<{

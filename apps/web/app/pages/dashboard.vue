@@ -320,6 +320,7 @@ const stats = computed(() => {
           v-for="task in formattedTasks"
           :key="task.id"
           v-bind="task"
+          :redirect-to-documents="true"
         />
       </section>
     </div>

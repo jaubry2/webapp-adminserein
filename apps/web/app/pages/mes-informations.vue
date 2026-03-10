@@ -156,6 +156,30 @@ const requestedDocumentsForParticulier = computed(() => {
     });
 });
 
+// Sections d'informations demandées à la complétion
+const requestedInfoSectionsForParticulier = computed(() => {
+  if (!tachesData.value) return new Set<string>();
+  const sections = new Set<string>();
+  for (const t of tachesData.value as Tache[]) {
+    if (
+      t.typeDemarche === "ADMINISTRATIVE" &&
+      t.etat !== "TERMINEE" &&
+      t.details.includes("pour compléter")
+    ) {
+      if (t.details.includes("vos informations d'identité")) {
+        sections.add("IDENTITE");
+      } else if (t.details.includes("vos coordonnées")) {
+        sections.add("COORDONNEES");
+      } else if (t.details.includes("les informations concernant votre conjoint")) {
+        sections.add("CONJOINT");
+      } else if (t.details.includes('la section "Personnes proches"')) {
+        sections.add("PERSONNES_PROCHES");
+      }
+    }
+  }
+  return sections;
+});
+
 // Personnes proches pour le patient connecté
 const {
   data: personnesProchesData,
@@ -895,6 +919,15 @@ const getAccentColorByType = (
           >
             <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
             {{ tab.label }}
+            <span
+              v-if="
+                tab.id === 'information' &&
+                requestedInfoSectionsForParticulier.size > 0
+              "
+              class="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-semibold text-white"
+            >
+              !
+            </span>
           </button>
         </div>
       </div>
@@ -906,16 +939,19 @@ const getAccentColorByType = (
           <OngletInformationIdentite
             :patient="patient"
             :is-editing="false"
+            :is-requested="requestedInfoSectionsForParticulier.has('IDENTITE')"
             @save="() => {}"
             @cancel="() => {}"
           />
           <OngletInformationConjoint
             :patient="patient"
+            :is-requested="requestedInfoSectionsForParticulier.has('CONJOINT')"
             @save="handleConjointChanges"
           />
           <OngletInformationCoordonnee
             :patient="patient"
             :is-editing="false"
+            :is-requested="requestedInfoSectionsForParticulier.has('COORDONNEES')"
             @save="() => {}"
             @cancel="() => {}"
           />
@@ -923,6 +959,7 @@ const getAccentColorByType = (
             :personnes-proches="personnesProches"
             :is-loading="isLoadingPersonnesProches"
             :is-error="isErrorPersonnesProches"
+            :is-requested="requestedInfoSectionsForParticulier.has('PERSONNES_PROCHES')"
             @create="handleCreatePersonneProcheParticulier"
             @update="handleUpdatePersonneProcheParticulier"
             @reorder="handleReorderPersonneProcheParticulier"
