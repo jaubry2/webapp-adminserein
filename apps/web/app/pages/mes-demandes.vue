@@ -381,7 +381,9 @@ const submitAshUpload = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white px-8 py-8 font--text">
+  <div
+    class="min-h-screen bg-white px-8 py-8 font--text overflow-y-auto no-scrollbar"
+  >
     <div class="mx-auto max-w-6xl">
       <header class="mb-6">
         <h1 class="text-3xl font-bold secondary--text--color mb-4 font--title">
@@ -547,3 +549,14 @@ const submitAshUpload = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE et Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+</style>

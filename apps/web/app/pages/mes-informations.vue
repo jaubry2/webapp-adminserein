@@ -86,7 +86,10 @@ const repondreDemandeAccesMutationOptions =
 const repondreDemandeAccesMutation = useMutation({
   ...repondreDemandeAccesMutationOptions,
   onSuccess: async () => {
-    await refetchDemandesAcces();
+    await Promise.all([
+      refetchDemandesAcces(),
+      refetchProfessionnelsAcces(),
+    ]);
     toast.add({
       title: "Réponse enregistrée",
       description: "Votre choix a bien été pris en compte.",
