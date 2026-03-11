@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DemandesSection from "~/components/DemandesSection.vue";
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
@@ -1330,7 +1331,7 @@ const cancelModifications = () => {
 
               <!-- Contenu de l'onglet Demande -->
               <div v-else-if="activeTab === 'demande'" class="pb-6 space-y-4">
-                <OngletInformationDemande
+                <DemandesSection
                   :demandes="patientDemandes"
                   :is-loading="isLoadingDemandes"
                   :is-error="isErrorDemandes"
@@ -1340,59 +1341,8 @@ const cancelModifications = () => {
                   :statut-colors="statutDemandeColors"
                   :get-creator-name="getDemandeCreateur"
                   :format-date="formatDemandeDate"
-                  :show-actions="true"
-            @updateComment="handleUpdateCommentPatient"
-                >
-                  <template #actions="{ demande: d }">
-                    <button
-                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                      @click="
-                        d.typeDemande === 'APA' && d.donneesFormulaire
-                          ? generateApaPdfFromDemande(d.donneesFormulaire, {
-                              download: false,
-                            })
-                          : navigateTo(
-                              `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
-                            )
-                      "
-                    >
-                      <UIcon name="i-lucide-file-text" class="h-3.5 w-3.5" />
-                      Voir
-                    </button>
-                    <button
-                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                      @click="
-                        d.typeDemande === 'APA' && d.donneesFormulaire
-                          ? generateApaPdfFromDemande(d.donneesFormulaire, {
-                              download: true,
-                            })
-                          : navigateTo(
-                              `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
-                            )
-                      "
-                    >
-                      <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
-                      Télécharger
-                    </button>
-                    <NuxtLink
-                      v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
-                      :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
-                      class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                    >
-                      <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
-                      Modifier
-                    </NuxtLink>
-                    <button
-                      v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
-                      @click="changeStatut(d.id, 'TERMINEE')"
-                      :disabled="updateStatutMutation.isPending.value"
-                      class="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50 disabled:opacity-50"
-                    >
-                      <UIcon name="i-lucide-check-circle" class="h-3.5 w-3.5" />
-                      Terminer
-                    </button>
-                  </template>
-                </OngletInformationDemande>
+                  @updateComment="handleUpdateCommentPatient"
+                />
               </div>
 
               <!-- Contenu des autres onglets -->

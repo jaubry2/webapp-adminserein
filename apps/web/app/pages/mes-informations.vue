@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DemandesSection from "~/components/DemandesSection.vue";
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
@@ -1117,8 +1118,7 @@ const getAccentColorByType = (
             </button>
           </div>
 
-          <OngletInformationDemande
-            title="Mes demandes"
+          <DemandesSection
             :demandes="patientDemandes"
             :is-loading="isLoadingDemandes"
             :is-error="isErrorDemandes"
@@ -1128,44 +1128,8 @@ const getAccentColorByType = (
             :statut-colors="statutDemandeColors"
             :get-creator-name="getDemandeCreateur"
             :format-date="formatDemandeDate"
-            :show-actions="true"
             @updateComment="handleUpdateCommentMesInfos"
-          >
-            <template #actions="{ demande: d }">
-              <div class="flex items-center justify-end gap-2">
-                <button
-                  class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                  @click="handleViewDemandeDocument(d)"
-                >
-                  <UIcon name="i-lucide-file-text" class="h-3.5 w-3.5" />
-                  Voir
-                </button>
-                <button
-                  class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                  @click="handleDownloadDemandeDocument(d)"
-                >
-                  <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
-                  Télécharger
-                </button>
-                <NuxtLink
-                  v-if="d.statut !== 'TERMINEE' && d.statut !== 'ANNULEE'"
-                  :to="`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`"
-                  class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium secondary--text--color transition-colors hover:bg-gray-50"
-                >
-                  <UIcon name="i-lucide-pencil" class="h-3.5 w-3.5" />
-                  Modifier
-                </NuxtLink>
-                <button
-                  v-if="d.statut === 'EN_ATTENTE_COMPLEMENT'"
-                  @click="changeStatutDemande(d.id, 'TERMINEE')"
-                  class="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
-                >
-                  <UIcon name="i-lucide-check-circle" class="h-3.5 w-3.5" />
-                  Terminer
-                </button>
-              </div>
-            </template>
-          </OngletInformationDemande>
+          />
 
           <NouvelleDemandeModal
             v-model="showNouvelleDemandeModal"
