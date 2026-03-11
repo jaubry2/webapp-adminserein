@@ -57,7 +57,18 @@ export const backendStepsByDemandeType: Record<TypeDemandeValue, BackendStepDef[
     {
       id: "collecte_documents",
       label: "Rassembler les documents",
-      defaultDescription: "Préparer tous les justificatifs nécessaires pour le dossier MDPH.",
+      defaultDescription:
+        "Préparer tous les justificatifs nécessaires pour le dossier MDPH.",
+      defaultTodos: [
+        { label: "Justificatif d'identité" },
+        { label: "Justificatif de domicile" },
+        { label: "Relevé d'identité bancaire" },
+        {
+          label:
+            "Photocopie du dernier avis d'imposition ou de non-imposition sur le revenu du demandeur et celui de son conjoint. Certains document sont demandés sous certaines conditions.",
+        },
+        { label: "Certificat médical MDPH" },
+      ],
     },
     {
       id: "remplir_formulaire",
@@ -120,22 +131,28 @@ export const backendStepsByDemandeType: Record<TypeDemandeValue, BackendStepDef[
   ],
   ASH: [
     {
-      id: "orientation_ccas",
-      label: "Identifier le bon CCAS / département",
+      id: "collecte_documents",
+      label: "Rassembler les documents",
       defaultDescription:
-        "Repérer le CCAS ou le service départemental compétent en fonction de la commune et du code postal.",
+        "Préparer tous les justificatifs nécessaires pour l’APA.",
+      defaultTodos: [
+        { label: "Justificatif d'identité" },
+        { label: "Justificatif de ressources" },
+        { label: "Devis des frais" },
+        { label: "Grille AGGIR" },
+      ],
     },
     {
-      id: "rdv_ccas",
-      label: "Contacter le CCAS / département",
+      id: "recuperer_formulaire",
+      label: "Recuperer le formulaire",
       defaultDescription:
-        "Prendre contact avec le CCAS ou le département pour connaître la procédure et récupérer le dossier de demande d’ASH.",
+        "Recuperer le formulaire officiel ASH auprès du CCAS départemental (annuaire des CCAS : https://www.pour-les-personnes-agees.gouv.fr/annuaire-ccas).",
     },
     {
-      id: "envoi_dossier",
-      label: "Déposer ou envoyer le dossier",
+      id: "remplir_formulaire",
+      label: "Remplir le formulaire",
       defaultDescription:
-        "Compléter le dossier papier avec les justificatifs demandés puis le déposer ou l’envoyer au service compétent.",
+        "Compléter le formulaire officiel ASH avec les informations du bénéficiaire.",
     },
   ],
 };
