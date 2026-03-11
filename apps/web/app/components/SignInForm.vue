@@ -20,8 +20,8 @@ const fields: AuthFormField[] = [
   {
     name: "password",
     type: "password",
-    label: "Password",
-    placeholder: "Enter your password",
+    label: "Mot de passe",
+    placeholder: "Entrez votre mot de passe",
     required: true,
   },
 ];
@@ -47,7 +47,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           navigateTo("/dashboard", { replace: true });
         },
         onError: (error) => {
-          toast.add({ title: "Sign in failed", description: error.error.message });
+          toast.add({
+            title: "Sign in failed",
+            description: error.error.message,
+          });
         },
       },
     );
@@ -68,14 +71,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UAuthForm
         :schema="schema"
         :fields="fields"
-        title="Welcome Back"
+        title="Bienvenue"
         icon="i-lucide-log-in"
-        :submit="{ label: 'Sign In', loading }"
+        :submit="{ label: 'Se connecter', loading }"
         @submit="onSubmit"
       >
         <template #description>
-          Need an account?
-          <ULink class="text-primary font-medium" @click="$emit('switchToSignUp')"> Sign Up </ULink>
+          Vous n'avez pas de compte ?
+          <ULink
+            class="text-primary font-medium"
+            @click="$emit('switchToSignUp')"
+          >
+            Créer un compte
+          </ULink>
         </template>
       </UAuthForm>
     </UPageCard>
