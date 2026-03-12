@@ -9,14 +9,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    env:
-      # Projet GCP et région Cloud Run
-      GCP_PROJECT_ID: adminserein
-      GCP_REGION: europe-west1
-      # Images dans Artifact Registry (adapté à partir de tes cloudbuild*)
-      SERVER_IMAGE: europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/server:latest
-      WEB_IMAGE: europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/web:latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,7 +23,7 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
+          project_id: adminserein
           install_components: gke-gcloud-auth-plugin
 
       - name: Configure Docker to use Artifact Registry
@@ -40,6 +32,8 @@ jobs:
       # -------- SERVER (backend) : build & push (déploiement géré par Terraform) --------
       - name: Build server Docker image
         run: |
+          SERVER_IMAGE="europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/server:${GITHUB_SHA}"
+          echo "SERVER_IMAGE=$SERVER_IMAGE" >> $GITHUB_ENV
           docker build \
             -t "$SERVER_IMAGE" \
             -f apps/server/Dockerfile \
@@ -51,6 +45,8 @@ jobs:
       # -------- WEB (frontend) : build & push (déploiement géré par Terraform) --------
       - name: Build web Docker image
         run: |
+          WEB_IMAGE="europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/web:${GITHUB_SHA}"
+          echo "WEB_IMAGE=$WEB_IMAGE" >> $GITHUB_ENV
           docker build \
             -t "$WEB_IMAGE" \
             -f apps/web/Dockerfile \
@@ -69,4 +65,7 @@ jobs:
 
       - name: Terraform apply (prod)
         working-directory: infra/terraform/envs/prod
+        env:
+          TF_VAR_server_image: ${{ env.SERVER_IMAGE }}
+          TF_VAR_web_image: ${{ env.WEB_IMAGE }}
         run: terraform apply -auto-approve -input=false
