@@ -20,5 +20,3 @@
 - Mettre un cursor sur les option du layout
 - Mettre des options
 - Mettre un thème light/dark
-
-Test
