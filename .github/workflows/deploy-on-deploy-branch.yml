@@ -67,4 +67,7 @@ jobs:
 
       - name: Terraform apply (prod)
         working-directory: infra/terraform/envs/prod
-        run: terraform apply -auto-approve -input=false
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var="server_image=${SERVER_IMAGE}" \
+            -var="web_image=${WEB_IMAGE}"
