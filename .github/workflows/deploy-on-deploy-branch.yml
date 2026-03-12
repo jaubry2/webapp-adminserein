@@ -80,36 +80,35 @@ jobs:
       # Si tu veux plus de contrôle (env vars, mémoire, CPU, etc.),
       # ajoute les flags gcloud run deploy appropriés.
 
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || '22' }}
-          script: |
-            set -e
+      #with:
+      #host: ${{ secrets.SSH_HOST }}
+      #username: ${{ secrets.SSH_USER }}
+      #key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #port: ${{ secrets.SSH_PORT || '22' }}
+      #script: |
+      #set -e
 
-            # Aller dans le dossier du projet sur le serveur
-            cd /var/www/webapp-adminserein
+      # Aller dans le dossier du projet sur le serveur
+      #cd /var/www/webapp-adminserein
 
-            # Récupérer les derniers changements de la branche deploy
-            git fetch origin
-            git checkout deploy
-            git pull origin deploy
+      # Récupérer les derniers changements de la branche deploy
+      #git fetch origin
+      #git checkout deploy
+      #git pull origin deploy
 
-            # Installer les dépendances en prod
-            bun install --production
+      # Installer les dépendances en prod
+      #bun install --production
 
-            # Rebuild server + web sur le serveur (si nécessaire)
-            bun run build
+      # Rebuild server + web sur le serveur (si nécessaire)
+      #bun run build
 
-            # Lancer les migrations base de données depuis le serveur
-            bun run db:migrate
+      # Lancer les migrations base de données depuis le serveur
+      #bun run db:migrate
 
-            # Redémarrer les services (à adapter à ton stack)
-            # Exemple avec docker compose :
-            # docker compose pull
-            # docker compose up -d --remove-orphans
+      # Redémarrer les services (à adapter à ton stack)
+      # Exemple avec docker compose :
+      # docker compose pull
+      # docker compose up -d --remove-orphans
 
-            # Exemple avec pm2 :
-            # pm2 reload all
-
+      # Exemple avec pm2 :
+      # pm2 reload all
