@@ -37,7 +37,7 @@ jobs:
       - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
 
-      # -------- SERVER (backend) --------
+      # -------- SERVER (backend) : build & push (déploiement géré par Terraform) --------
       - name: Build server Docker image
         run: |
           docker build \
@@ -48,17 +48,7 @@ jobs:
       - name: Push server image to Artifact Registry
         run: docker push "$SERVER_IMAGE"
 
-      - name: Deploy server to Cloud Run
-        run: |
-          gcloud run deploy server \
-            --image="$SERVER_IMAGE" \
-            --region="$GCP_REGION" \
-            --platform=managed \
-            --project="$GCP_PROJECT_ID" \
-            --allow-unauthenticated \
-            --set-env-vars=BUN_PORT=8080
-
-      # -------- WEB (frontend) --------
+      # -------- WEB (frontend) : build & push (déploiement géré par Terraform) --------
       - name: Build web Docker image
         run: |
           docker build \
@@ -69,47 +59,14 @@ jobs:
       - name: Push web image to Artifact Registry
         run: docker push "$WEB_IMAGE"
 
-      - name: Deploy web to Cloud Run
-        run: |
-          gcloud run deploy web \
-            --image="$WEB_IMAGE" \
-            --region="$GCP_REGION" \
-            --platform=managed \
-            --project="$GCP_PROJECT_ID" \
-            --allow-unauthenticated
+      # -------- INFRA (Terraform) : appliquer la config prod --------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-      # Si tu veux plus de contrôle (env vars, mémoire, CPU, etc.),
-      # ajoute les flags gcloud run deploy appropriés.
+      - name: Terraform init (prod)
+        working-directory: infra/terraform/envs/prod
+        run: terraform init -input=false
 
-      #with:
-      #host: ${{ secrets.SSH_HOST }}
-      #username: ${{ secrets.SSH_USER }}
-      #key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #port: ${{ secrets.SSH_PORT || '22' }}
-      #script: |
-      #set -e
-
-      # Aller dans le dossier du projet sur le serveur
-      #cd /var/www/webapp-adminserein
-
-      # Récupérer les derniers changements de la branche deploy
-      #git fetch origin
-      #git checkout deploy
-      #git pull origin deploy
-
-      # Installer les dépendances en prod
-      #bun install --production
-
-      # Rebuild server + web sur le serveur (si nécessaire)
-      #bun run build
-
-      # Lancer les migrations base de données depuis le serveur
-      #bun run db:migrate
-
-      # Redémarrer les services (à adapter à ton stack)
-      # Exemple avec docker compose :
-      # docker compose pull
-      # docker compose up -d --remove-orphans
-
-      # Exemple avec pm2 :
-      # pm2 reload all
+      - name: Terraform apply (prod)
+        working-directory: infra/terraform/envs/prod
+        run: terraform apply -auto-approve -input=false
