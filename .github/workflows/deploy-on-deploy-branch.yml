@@ -55,7 +55,8 @@ jobs:
             --region="$GCP_REGION" \
             --platform=managed \
             --project="$GCP_PROJECT_ID" \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars=BUN_PORT=8080
 
       # -------- WEB (frontend) --------
       - name: Build web Docker image
