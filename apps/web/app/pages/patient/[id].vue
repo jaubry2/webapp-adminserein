@@ -1342,6 +1342,32 @@ const cancelModifications = () => {
                   :get-creator-name="getDemandeCreateur"
                   :format-date="formatDemandeDate"
                   @updateComment="handleUpdateCommentPatient"
+                  @viewDemande="
+                    (d) =>
+                      d.typeDemande === 'APA' && d.donneesFormulaire
+                        ? generateApaPdfFromDemande(d.donneesFormulaire, {
+                            download: false,
+                          })
+                        : navigateTo(
+                            `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
+                          )
+                  "
+                  @downloadDemande="
+                    (d) =>
+                      d.typeDemande === 'APA' && d.donneesFormulaire
+                        ? generateApaPdfFromDemande(d.donneesFormulaire, {
+                            download: true,
+                          })
+                        : navigateTo(
+                            `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
+                          )
+                  "
+                  @editDemande="
+                    (d) =>
+                      navigateTo(
+                        `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
+                      )
+                  "
                 />
               </div>
 

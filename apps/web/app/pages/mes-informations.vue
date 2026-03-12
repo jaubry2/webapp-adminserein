@@ -1129,6 +1129,14 @@ const getAccentColorByType = (
             :get-creator-name="getDemandeCreateur"
             :format-date="formatDemandeDate"
             @updateComment="handleUpdateCommentMesInfos"
+            @viewDemande="handleViewDemandeDocument"
+            @downloadDemande="handleDownloadDemandeDocument"
+            @editDemande="
+              (d) =>
+                navigateTo(
+                  `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
+                )
+            "
           />
 
           <NouvelleDemandeModal

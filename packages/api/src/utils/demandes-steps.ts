@@ -154,6 +154,11 @@ export const backendStepsByDemandeType: Record<TypeDemandeValue, BackendStepDef[
       defaultDescription:
         "Compléter le formulaire officiel ASH avec les informations du bénéficiaire.",
     },
+    {
+      id: "envoi_dossier",
+      label: "Envoyer le dossier",
+      defaultDescription: "Vous pouvez maintenant envoyer le dossier au CCAS auquel vous avez récupérer le dossier.",
+    }
   ],
 };
 

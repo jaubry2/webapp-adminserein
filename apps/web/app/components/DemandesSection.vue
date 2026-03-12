@@ -17,6 +17,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "updateComment", payload: { id: string; details: string }): void;
+  (e: "viewDemande", demande: any): void;
+  (e: "downloadDemande", demande: any): void;
+  (e: "editDemande", demande: any): void;
 }>();
 
 const { $orpc } = useNuxtApp();
@@ -163,6 +166,9 @@ const submitAshUpload = async () => {
       :show-actions="true"
       @updateComment="emit('updateComment', $event)"
       @uploadAshDossier="openAshUploadModal"
+      @viewDemande="emit('viewDemande', $event)"
+      @downloadDemande="emit('downloadDemande', $event)"
+      @editDemande="emit('editDemande', $event)"
     >
       <template #actions="{ demande: d }">
         <div class="flex items-center justify-end gap-2">

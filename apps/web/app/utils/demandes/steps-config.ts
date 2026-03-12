@@ -100,6 +100,13 @@ export const stepsByDemandeType: DemandeStepsConfig = {
       defaultDescription: "Compléter le formulaire officiel ASH avec les informations du bénéficiaire.",
 
     },
+    {
+      id: "envoi_dossier",
+      label: "Envoyer le dossier",
+      icon: "i-lucide-send",
+      dependsOn: ["remplir_formulaire", "collecte_documents", "recuperer_formulaire"],
+      defaultDescription: "Vous pouvez maintenant envoyer le dossier au CCAS auquel vous avez récupérer le dossier.",
+    }
   ],
 };
 
