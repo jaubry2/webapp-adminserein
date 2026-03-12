@@ -1,0 +1,115 @@
+name: Deploy on deploy branch
+
+on:
+  push:
+    branches:
+      - deploy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      # Projet GCP et région Cloud Run
+      GCP_PROJECT_ID: adminserein
+      GCP_REGION: europe-west1
+      # Images dans Artifact Registry (adapté à partir de tes cloudbuild*)
+      SERVER_IMAGE: europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/server:latest
+      WEB_IMAGE: europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/web:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Authentification à GCP avec un service account JSON
+      # -> Ajoute GCP_SA_KEY dans les secrets du repo (contenu JSON du compte de service)
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          install_components: gke-gcloud-auth-plugin
+
+      - name: Configure Docker to use Artifact Registry
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
+      # -------- SERVER (backend) --------
+      - name: Build server Docker image
+        run: |
+          docker build \
+            -t "$SERVER_IMAGE" \
+            -f apps/server/Dockerfile \
+            .
+
+      - name: Push server image to Artifact Registry
+        run: docker push "$SERVER_IMAGE"
+
+      - name: Deploy server to Cloud Run
+        run: |
+          gcloud run deploy server \
+            --image="$SERVER_IMAGE" \
+            --region="$GCP_REGION" \
+            --platform=managed \
+            --project="$GCP_PROJECT_ID" \
+            --allow-unauthenticated
+
+      # -------- WEB (frontend) --------
+      - name: Build web Docker image
+        run: |
+          docker build \
+            -t "$WEB_IMAGE" \
+            -f apps/web/Dockerfile \
+            .
+
+      - name: Push web image to Artifact Registry
+        run: docker push "$WEB_IMAGE"
+
+      - name: Deploy web to Cloud Run
+        run: |
+          gcloud run deploy web \
+            --image="$WEB_IMAGE" \
+            --region="$GCP_REGION" \
+            --platform=managed \
+            --project="$GCP_PROJECT_ID" \
+            --allow-unauthenticated
+
+      # Si tu veux plus de contrôle (env vars, mémoire, CPU, etc.),
+      # ajoute les flags gcloud run deploy appropriés.
+
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            set -e
+
+            # Aller dans le dossier du projet sur le serveur
+            cd /var/www/webapp-adminserein
+
+            # Récupérer les derniers changements de la branche deploy
+            git fetch origin
+            git checkout deploy
+            git pull origin deploy
+
+            # Installer les dépendances en prod
+            bun install --production
+
+            # Rebuild server + web sur le serveur (si nécessaire)
+            bun run build
+
+            # Lancer les migrations base de données depuis le serveur
+            bun run db:migrate
+
+            # Redémarrer les services (à adapter à ton stack)
+            # Exemple avec docker compose :
+            # docker compose pull
+            # docker compose up -d --remove-orphans
+
+            # Exemple avec pm2 :
+            # pm2 reload all
+

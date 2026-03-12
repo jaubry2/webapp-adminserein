@@ -1,4 +1,5 @@
 steps:
+  # Build & push l'image Docker du frontend web (Nuxt)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -7,5 +8,18 @@ steps:
       - '-f'
       - 'apps/web/Dockerfile'
       - '.'
+
 images:
   - 'europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/web:latest'
+
+  # Déploiement sur Cloud Run (service frontend)
+  # Adapte le nom de service "web" si tu utilises un autre nom Cloud Run.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'web'
+      - '--image=europe-west1-docker.pkg.dev/adminserein/cloud-run-source-deploy/web:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
