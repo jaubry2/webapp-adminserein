@@ -14,6 +14,7 @@ export const categorieDocumentEnum = pgEnum("categorie_document", [
   "IDENTITE",
   "MEDICAL",
   "ADMINISTRATIF",
+  "FINANCIER",
   "JURIDIQUE",
   "LOGEMENT",
   "EMPLOI",

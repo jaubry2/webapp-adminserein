@@ -21,8 +21,3 @@ services:
 
 volumes:
   webapp-adminserein_postgres_data:
-
-networks:
-  default:
-    name: webapp-adminserein-net
-    external: true

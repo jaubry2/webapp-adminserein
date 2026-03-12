@@ -9,6 +9,7 @@
         est_identification_organisme_lever_oui: 'Oui',
         est_identification_organisme_lever_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'est_identification_organisme_lever')"
       @update="
         modifyValue('est_identification_organisme_lever', $event, fields)
       "
@@ -19,6 +20,7 @@
         est_identification_organisme_habiller_oui: 'Oui',
         est_identification_organisme_habiller_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'est_identification_organisme_habiller')"
       @update="
         modifyValue('est_identification_organisme_habiller', $event, fields)
       "
@@ -29,6 +31,7 @@
         est_identification_organisme_toilette_oui: 'Oui',
         est_identification_organisme_toilette_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'est_identification_organisme_toilette')"
       @update="
         modifyValue('est_identification_organisme_toilette', $event, fields)
       "
@@ -39,6 +42,7 @@
         est_identification_organisme_manger_oui: 'Oui',
         est_identification_organisme_manger_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'est_identification_organisme_manger')"
       @update="
         modifyValue('est_identification_organisme_manger', $event, fields)
       "
@@ -58,15 +62,12 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

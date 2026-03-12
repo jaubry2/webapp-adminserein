@@ -71,6 +71,13 @@
       "when": 1772447726827,
       "tag": "0009_giant_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772791362498,
+      "tag": "0010_shallow_mauler",
+      "breakpoints": true
     }
   ]
 }

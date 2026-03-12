@@ -95,15 +95,12 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 const adresses = ref([]);
 /**************************************************************************************************************/
 /* METHODES */

@@ -7,6 +7,7 @@
         est_demandeur_cmi_stationnement_oui: 'Oui',
         est_demandeur_cmi_stationnement_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'demandeur_cmi_stationnement')"
       @update="modifyValue('demandeur_cmi_stationnement', $event, fields)"
     />
     <FormRadioInput
@@ -15,6 +16,7 @@
         est_demandeur_cmi_priorite_invalidite_oui: 'Oui',
         est_demandeur_cmi_priorite_invalidite_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'demandeur_cmi_priorite_invalidite')"
       @update="modifyValue('demandeur_cmi_priorite_invalidite', $event, fields)"
     />
     <FormRadioInput
@@ -23,6 +25,7 @@
         est_demandeur_cmi_renouveller_oui: 'Oui',
         est_demandeur_cmi_renouveller_non: 'Non',
       }"
+      :modelValue="getValue(fields, 'demandeur_cmi_renouveller')"
       @update="modifyValue('demandeur_cmi_renouveller', $event, fields)"
     />
     <button
@@ -40,39 +43,15 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/
-function handleRadioInputValue(_key: string, _new_value: string) {
-  const primary_value = fields.value[_key];
-  const secondary_key = Object.keys(primary_value)[0];
-  const secondary_value = primary_value[secondary_key];
-  delete fields.value[_key][secondary_key];
-  fields.value[_key][_new_value] = secondary_value;
-}
-function handleInputValue(_key: string, _new_value: string) {
-  const primary_value = fields.value[_key];
-  const secondary_key = Object.keys(primary_value)[0];
-  const secondary_value = primary_value[secondary_key];
-  delete fields.value[_key][secondary_key];
-  fields.value[_key][_new_value] = secondary_value;
-}
-function handleDateValue(_key: string, _new_value: string) {
-  const primary_value = fields.value[_key];
-  const secondary_key = Object.keys(primary_value)[0];
-  const secondary_value = primary_value[secondary_key];
-  delete fields.value[_key][secondary_key];
-  fields.value[_key][_new_value] = secondary_value;
-}
 </script>
 
 <style></style>

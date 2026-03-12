@@ -39,6 +39,7 @@
     "ruler:apply": "bunx @intellectronica/ruler@latest apply --local-only"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@webapp-adminserein/env": "workspace:*",
     "dotenv": "catalog:",
     "html2pdf.js": "^0.14.0",

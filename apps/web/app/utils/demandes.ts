@@ -15,6 +15,21 @@ export const demandesData: DemandeDefinition[] = [
     organisme: "Département / Caisse de retraite",
   },
   {
+    id: "mdph",
+    titre: "Dossier MDPH",
+    description: "Constitution et suivi d’un dossier auprès de la MDPH.",
+    dureeMinutes: 15,
+    organisme: "MDPH",
+  },
+  {
+    id: "ash",
+    titre: "Aide sociale à l’hébergement (ASH)",
+    description: "Constitution et suivi d’un dossier auprès de l'Aide sociale à l’hébergement.",
+    dureeMinutes: 15,
+    organisme: "Département",
+  },
+  /*
+  {
     id: "caf-aide-logement",
     titre: "Aide au logement (CAF)",
     description: "Aide pour le paiement du loyer ou du prêt immobilier.",
@@ -35,6 +50,7 @@ export const demandesData: DemandeDefinition[] = [
     dureeMinutes: 15,
     organisme: "CAF / MDPH",
   },
+  */
 ];
 
 export function getAllDemandes(): DemandeDefinition[] {

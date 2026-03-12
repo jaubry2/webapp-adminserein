@@ -1,16 +1,22 @@
 <script setup lang="ts">
+import DemandesSection from "~/components/DemandesSection.vue";
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
-import { useQuery, useMutation } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient, skipToken } from "@tanstack/vue-query";
+import { PDFDocument } from "pdf-lib";
+import { getListFieldForm, getValue } from "~/composables/useInfoFormulaire";
+import NouvelleDemandeModal from "~/components/NouvelleDemandeModal.vue";
 
 definePageMeta({
   middleware: ["auth"],
 });
 
 const { $authClient, $orpc } = useNuxtApp();
+const route = useRoute();
 const session = $authClient.useSession();
 const toast = useToast();
+const queryClient = useQueryClient();
 
 // Récupérer le type d'utilisateur
 const { data: userTypeData } = useQuery({
@@ -43,6 +49,8 @@ const {
     );
   }),
 });
+
+// (Onboarding des informations de base géré sur la page /onboarding)
 
 // Demandes d'accès au dossier pour ce patient
 const {
@@ -79,7 +87,10 @@ const repondreDemandeAccesMutationOptions =
 const repondreDemandeAccesMutation = useMutation({
   ...repondreDemandeAccesMutationOptions,
   onSuccess: async () => {
-    await refetchDemandesAcces();
+    await Promise.all([
+      refetchDemandesAcces(),
+      refetchProfessionnelsAcces(),
+    ]);
     toast.add({
       title: "Réponse enregistrée",
       description: "Votre choix a bien été pris en compte.",
@@ -106,24 +117,74 @@ type TaskAccentColor =
   | "indigo"
   | "slate";
 
-const { data: tachesData } = useQuery({
+const { data: tachesData, refetch: refetchTaches } = useQuery({
   ...$orpc.listTachesByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
       !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
-}) as { data: Ref<Tache[] | undefined> };
+}) as { data: Ref<Tache[] | undefined>; refetch: () => Promise<any> };
 
 // Récupération des documents
-const { data: documentsData } = useQuery({
+const {
+  data: documentsData,
+  refetch: refetchDocuments,
+} = useQuery({
   ...$orpc.listDocumentsByParticulier.queryOptions(),
   enabled: computed(() => {
     return (
       !!session.value?.data && !session.value.isPending && isParticulier.value
     );
   }),
-}) as { data: Ref<Document[] | undefined> };
+}) as { data: Ref<Document[] | undefined>; refetch: () => Promise<any> };
+
+const requestedDocumentsForParticulier = computed(() => {
+  if (!tachesData.value) return [];
+  return (tachesData.value as Tache[])
+    .filter(
+      (t) =>
+        t.typeDemarche === "DOSSIER" &&
+        t.etat !== "TERMINEE" &&
+        t.details.startsWith('Demande de document à téléverser : "'),
+    )
+    .map((t) => {
+      const match = t.details.match(
+        /^Demande de document à téléverser : "(.+?)" \(catégorie ([A-Z_]+)\)/,
+      );
+      const nom = match?.[1] ?? t.details;
+      const categorie = match?.[2] ?? "AUTRE";
+      return {
+        id: t.id,
+        nom,
+        categorie,
+      };
+    });
+});
+
+// Sections d'informations demandées à la complétion
+const requestedInfoSectionsForParticulier = computed(() => {
+  if (!tachesData.value) return new Set<string>();
+  const sections = new Set<string>();
+  for (const t of tachesData.value as Tache[]) {
+    if (
+      t.typeDemarche === "DOSSIER" &&
+      t.etat !== "TERMINEE" &&
+      t.details.includes("pour compléter")
+    ) {
+      if (t.details.includes("vos informations d'identité")) {
+        sections.add("IDENTITE");
+      } else if (t.details.includes("vos coordonnées")) {
+        sections.add("COORDONNEES");
+      } else if (t.details.includes("les informations concernant votre conjoint")) {
+        sections.add("CONJOINT");
+      } else if (t.details.includes('la section "Personnes proches"')) {
+        sections.add("PERSONNES_PROCHES");
+      }
+    }
+  }
+  return sections;
+});
 
 // Personnes proches pour le patient connecté
 const {
@@ -161,6 +222,274 @@ const personnesProches = computed<PersonneProche[]>(() => {
     ordre: typeof p.ordre === "number" ? p.ordre : 0,
   }));
 });
+
+// Demandes liées au patient du particulier
+const patientIdForDemandes = computed(() => apiPatient.value?.id ?? null);
+
+const {
+  data: patientDemandes,
+  isLoading: isLoadingDemandes,
+  isError: isErrorDemandes,
+} = useQuery(
+  computed(() => ({
+    ...$orpc.listDemandesByPatient.queryOptions({
+      input: patientIdForDemandes.value
+        ? { patientId: patientIdForDemandes.value }
+        : skipToken,
+    }),
+    enabled:
+      !!session.value?.data &&
+      !session.value.isPending &&
+      isParticulier.value &&
+      !!patientIdForDemandes.value,
+  }))
+);
+
+const showNouvelleDemandeModal = ref(false);
+
+const typeDemandeLabels: Record<string, string> = {
+  APA: "APA",
+  CAF_AIDE_LOGEMENT: "Aide au logement (CAF)",
+  RSA: "RSA",
+  AAH: "AAH",
+  ASH: "ASH",
+};
+
+const statutDemandeLabels: Record<string, string> = {
+  BROUILLON: "Brouillon",
+  EN_COURS: "En cours",
+  EN_ATTENTE_COMPLEMENT: "En attente de réponse / validation",
+  TERMINEE: "Terminée",
+  ANNULEE: "Annulée",
+};
+
+const statutDemandeColors: Record<string, string> = {
+  BROUILLON: "bg-gray-100 text-gray-700",
+  EN_COURS: "bg-blue-100 text-blue-700",
+  EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
+  TERMINEE: "bg-green-100 text-green-700",
+  ANNULEE: "bg-red-100 text-red-700",
+};
+
+const getDemandeCreateur = (d: any): string => {
+  if (d.professionnelInfo) {
+    return `${d.professionnelInfo.prenom} ${d.professionnelInfo.nom}`;
+  }
+  return "Moi-même";
+};
+
+const formatDemandeDate = (dateStr: string | Date): string => {
+  const date = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const showCompleterModal = ref(false);
+const completerDemandeId = ref<string | null>(null);
+const completerNomBeneficiaire = ref("");
+const completerPrenomBeneficiaire = ref("");
+const completerDetails = ref("");
+const completerReponse = ref("");
+const completerCommentairePro = ref("");
+
+const openCompleterModal = (d: any) => {
+  completerDemandeId.value = d.id;
+  completerNomBeneficiaire.value = d.nomBeneficiaire || "";
+  completerPrenomBeneficiaire.value = d.prenomBeneficiaire || "";
+  completerDetails.value = d.details || "";
+  completerReponse.value = "";
+  completerCommentairePro.value = d.commentaireComplement || "";
+  showCompleterModal.value = true;
+};
+
+const completerDemandeMutation = useMutation({
+  ...$orpc.completerDemande.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Demande terminée",
+      description: "Le professionnel a été notifié et la demande est marquée comme terminée.",
+    });
+    showCompleterModal.value = false;
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible d'envoyer le complément.",
+      color: "error",
+    });
+  },
+});
+
+const submitComplement = async () => {
+  if (!completerDemandeId.value) return;
+  await completerDemandeMutation.mutateAsync({
+    demandeId: completerDemandeId.value,
+    nomBeneficiaire: completerNomBeneficiaire.value || undefined,
+    prenomBeneficiaire: completerPrenomBeneficiaire.value || undefined,
+    details: completerDetails.value || undefined,
+    reponseComplement: completerReponse.value || undefined,
+  });
+};
+
+const APA_OFFICIAL_PDF_PATH = "/pdf/apa_remplissable.pdf";
+
+const generateApaPdfFromDemande = async (
+  donneesFormulaire: any,
+  options: { download: boolean },
+) => {
+  if (!process.client) return;
+
+  const existingPdfBytes = await fetch(APA_OFFICIAL_PDF_PATH).then((res) =>
+    res.arrayBuffer(),
+  );
+  const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  const form = pdfDoc.getForm();
+  const field_names = form.getFields().map((field: any) => field.getName());
+
+  Object.keys(donneesFormulaire ?? {}).forEach((key) => {
+    const value = getValue(donneesFormulaire, key);
+    const fields_list = getListFieldForm(donneesFormulaire, key);
+    if (!value) {
+      return;
+    } else if (fields_list.length === 1) {
+      if (field_names.includes(fields_list[0])) {
+        form.getTextField(fields_list[0]).setText(value);
+      }
+    } else if (fields_list[0].startsWith("est")) {
+      if (field_names.includes(value)) {
+        form.getCheckBox(value).check();
+      }
+    } else {
+      let charList = value.split("");
+      if (charList.includes("-")) {
+        const wait = [
+          charList[8],
+          charList[9],
+          charList[5],
+          charList[6],
+          charList[0],
+          charList[1],
+          charList[2],
+          charList[3],
+        ];
+        charList = wait;
+      }
+      for (let i = 0; i < fields_list.length; i++) {
+        if (field_names.includes(fields_list[i])) {
+          form.getTextField(fields_list[i]).setText(charList[i] || "");
+        }
+      }
+    }
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
+  if (options.download) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "demande_APA_remplie.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  } else {
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    // libérer l'URL plus tard
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+};
+
+const handleViewDemandeDocument = (d: any) => {
+  if (d.typeDemande === "APA" && d.donneesFormulaire) {
+    generateApaPdfFromDemande(d.donneesFormulaire, { download: false });
+    return;
+  }
+
+  navigateTo(`/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`);
+};
+
+const handleDownloadDemandeDocument = (d: any) => {
+  if (d.typeDemande === "APA" && d.donneesFormulaire) {
+    generateApaPdfFromDemande(d.donneesFormulaire, { download: true });
+    return;
+  }
+
+  navigateTo(
+    `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
+  );
+};
+
+// Mise à jour en temps réel du statut des demandes (particulier)
+const updateDemandeStatutMutation = useMutation({
+  ...$orpc.updateDemandeStatut.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Demande mise à jour",
+      description: "Le statut de la demande a été mis à jour.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de mettre à jour le statut.",
+      color: "error",
+    });
+  },
+});
+
+const changeStatutDemande = async (demandeId: string, statut: string) => {
+  await updateDemandeStatutMutation.mutateAsync({
+    demandeId,
+    statut: statut as
+      | "BROUILLON"
+      | "EN_COURS"
+      | "EN_ATTENTE_COMPLEMENT"
+      | "TERMINEE"
+      | "ANNULEE",
+  });
+};
+
+const updateDetailsMutation = useMutation({
+  ...$orpc.updateDemandeDetails.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Commentaire mis à jour",
+      description: "Le commentaire de la demande a été enregistré.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description:
+        error?.message || "Impossible de mettre à jour le commentaire.",
+      color: "error",
+    });
+  },
+});
+
+const handleUpdateCommentMesInfos = async (payload: {
+  id: string;
+  details: string;
+}) => {
+  await updateDetailsMutation.mutateAsync({
+    demandeId: payload.id,
+    details: payload.details,
+  });
+};
 
 const createPersonneProcheParticulierMutationOptions =
   $orpc.createPersonneProcheByParticulier.mutationOptions();
@@ -294,6 +623,75 @@ const handleUpdatePersonneProcheParticulier = async (payload: {
     ...(rest.autresPrenoms !== undefined && {
       autresPrenoms: normalizeAutresPrenoms(rest.autresPrenoms),
     }),
+  });
+};
+
+const handleIdentiteChangesParticulier = async (
+  changes: Record<string, any>,
+) => {
+  if (!apiPatient.value) return;
+
+  const info: Record<string, any> = {};
+
+  if (changes.nomUsage !== undefined) info.nomUsage = changes.nomUsage;
+  if (changes.nomNaissance !== undefined)
+    info.nomNaissance = changes.nomNaissance;
+  if (changes.prenom !== undefined) info.prenom = changes.prenom;
+  if (changes.autresPrenoms !== undefined)
+    info.autresPrenoms = normalizeAutresPrenoms(changes.autresPrenoms);
+  if (changes.genre !== undefined) info.genre = changes.genre;
+  if (changes.dateNaissance !== undefined)
+    info.dateNaissance = changes.dateNaissance;
+  if (changes.villeNaissance !== undefined)
+    info.villeNaissance = changes.villeNaissance;
+  if (changes.departementNaissance !== undefined)
+    info.departementNaissance = changes.departementNaissance;
+  if (changes.paysNaissance !== undefined)
+    info.paysNaissance = changes.paysNaissance;
+  if (changes.nationalites !== undefined)
+    info.nationalites = normalizeAutresPrenoms(changes.nationalites);
+  if (changes.numeroSecuriteSociale !== undefined)
+    info.numeroSecuriteSociale = changes.numeroSecuriteSociale;
+  if (changes.situationFamiliale !== undefined)
+    info.situationFamiliale = changes.situationFamiliale;
+  if (changes.caisseRetraite !== undefined && changes.caisseRetraite !== "") {
+    info.caisseRetraite = changes.caisseRetraite;
+  }
+
+  if (Object.keys(info).length === 0) return;
+
+  await updatePatientMutation.mutateAsync({
+    patientId: apiPatient.value.id,
+    informationIdentite: info,
+  });
+};
+
+
+const handleCoordonneeChangesParticulier = async (
+  changes: Record<string, any>,
+) => {
+  if (!apiPatient.value) return;
+
+  const info: Record<string, any> = {};
+
+  if (changes.adresse !== undefined) info.adresse = changes.adresse;
+  if (changes.informationComplementaires !== undefined)
+    info.informationComplementaires = changes.informationComplementaires;
+  if (changes.codePostal !== undefined) info.codePostal = changes.codePostal;
+  if (changes.ville !== undefined) info.ville = changes.ville;
+  if (changes.departement !== undefined)
+    info.departement = changes.departement;
+  if (changes.pays !== undefined) info.pays = changes.pays;
+  if (changes.numeroTelephone !== undefined)
+    info.numeroTelephone = changes.numeroTelephone;
+  if (changes.adresseMail !== undefined)
+    info.adresseMail = changes.adresseMail;
+
+  if (Object.keys(info).length === 0) return;
+
+  await updatePatientMutation.mutateAsync({
+    patientId: apiPatient.value.id,
+    informationCoordonnee: info,
   });
 };
 
@@ -516,12 +914,17 @@ const age = computed(() => {
   return age;
 });
 
-const activeTab = ref("information");
+const activeTab = ref(
+  (route.query.tab as string) && ["information", "document", "tache", "demande", "acces"].includes(route.query.tab as string)
+    ? (route.query.tab as string)
+    : "information",
+);
 
 const tabs = [
   { id: "information", label: "Information", icon: "i-lucide-info" },
   { id: "document", label: "Document", icon: "i-lucide-file-text" },
   { id: "tache", label: "Tâche", icon: "i-lucide-check-square" },
+  { id: "demande", label: "Demande", icon: "i-lucide-folder-open" },
   { id: "acces", label: "Accès", icon: "i-lucide-shield-check" },
 ];
 
@@ -542,6 +945,8 @@ const getAccentColorByType = (
       return "teal";
     case "EMPLOI":
       return "indigo";
+    case "DOSSIER":
+      return "sky";
     case "AUTRE":
     default:
       return "slate";
@@ -591,6 +996,15 @@ const getAccentColorByType = (
           >
             <UIcon :name="tab.icon" class="h-4 w-4 font--title" />
             {{ tab.label }}
+            <span
+              v-if="
+                tab.id === 'information' &&
+                requestedInfoSectionsForParticulier.size > 0
+              "
+              class="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-semibold text-white"
+            >
+              !
+            </span>
           </button>
         </div>
       </div>
@@ -602,23 +1016,27 @@ const getAccentColorByType = (
           <OngletInformationIdentite
             :patient="patient"
             :is-editing="false"
-            @save="() => {}"
+            :is-requested="requestedInfoSectionsForParticulier.has('IDENTITE')"
+            @save="handleIdentiteChangesParticulier"
             @cancel="() => {}"
           />
           <OngletInformationConjoint
             :patient="patient"
+            :is-requested="requestedInfoSectionsForParticulier.has('CONJOINT')"
             @save="handleConjointChanges"
           />
           <OngletInformationCoordonnee
             :patient="patient"
             :is-editing="false"
-            @save="() => {}"
+            :is-requested="requestedInfoSectionsForParticulier.has('COORDONNEES')"
+            @save="handleCoordonneeChangesParticulier"
             @cancel="() => {}"
           />
           <OngletInformationPersonnesProches
             :personnes-proches="personnesProches"
             :is-loading="isLoadingPersonnesProches"
             :is-error="isErrorPersonnesProches"
+            :is-requested="requestedInfoSectionsForParticulier.has('PERSONNES_PROCHES')"
             @create="handleCreatePersonneProcheParticulier"
             @update="handleUpdatePersonneProcheParticulier"
             @reorder="handleReorderPersonneProcheParticulier"
@@ -632,6 +1050,11 @@ const getAccentColorByType = (
             :documents="documentsData || []"
             :is-loading="false"
             :is-error="false"
+            :requested-documents="requestedDocumentsForParticulier"
+            @uploaded="() => {
+              refetchDocuments();
+              refetchTaches();
+            }"
           />
         </div>
 
@@ -677,8 +1100,49 @@ const getAccentColorByType = (
                         : undefined
               "
               :tache="tache"
+              :redirect-to-documents="true"
             />
           </div>
+        </div>
+
+        <!-- Onglet Demande -->
+        <div v-if="activeTab === 'demande'" class="space-y-4">
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg bg-[var(--primary-color)] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90"
+              @click="showNouvelleDemandeModal = true"
+            >
+              <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+              Nouvelle demande
+            </button>
+          </div>
+
+          <DemandesSection
+            :demandes="patientDemandes"
+            :is-loading="isLoadingDemandes"
+            :is-error="isErrorDemandes"
+            empty-text="Aucune demande pour le moment."
+            :type-labels="typeDemandeLabels"
+            :statut-labels="statutDemandeLabels"
+            :statut-colors="statutDemandeColors"
+            :get-creator-name="getDemandeCreateur"
+            :format-date="formatDemandeDate"
+            @updateComment="handleUpdateCommentMesInfos"
+            @viewDemande="handleViewDemandeDocument"
+            @downloadDemande="handleDownloadDemandeDocument"
+            @editDemande="
+              (d) =>
+                navigateTo(
+                  `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
+                )
+            "
+          />
+
+          <NouvelleDemandeModal
+            v-model="showNouvelleDemandeModal"
+            :patient-id="patient?.id ?? null"
+          />
         </div>
 
         <!-- Onglet Accès -->
@@ -816,6 +1280,95 @@ const getAccentColorByType = (
               </div>
             </div>
           </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Modal compléter une demande -->
+    <div
+      v-if="showCompleterModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      @click.self="showCompleterModal = false"
+    >
+      <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-lg font-semibold secondary--text--color mb-2">
+          Compléter la demande
+        </h2>
+
+        <div
+          v-if="completerCommentairePro"
+          class="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-3"
+        >
+          <p class="text-xs font-medium text-orange-700 mb-1">
+            Message du professionnel :
+          </p>
+          <p class="text-sm text-orange-800">
+            {{ completerCommentairePro }}
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Nom du bénéficiaire
+            </label>
+            <input
+              v-model="completerNomBeneficiaire"
+              type="text"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
+              placeholder="Nom"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Prénom du bénéficiaire
+            </label>
+            <input
+              v-model="completerPrenomBeneficiaire"
+              type="text"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary"
+              placeholder="Prénom"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Détails
+            </label>
+            <textarea
+              v-model="completerDetails"
+              rows="3"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary resize-none"
+              placeholder="Informations complémentaires"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium quaternary--text--color mb-1">
+              Votre réponse au professionnel
+            </label>
+            <textarea
+              v-model="completerReponse"
+              rows="3"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm secondary--text--color input-focus-primary resize-none"
+              placeholder="Ex : Voici les informations demandées..."
+            />
+          </div>
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-3">
+          <button
+            @click="showCompleterModal = false"
+            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium quaternary--text--color transition-colors hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            @click="submitComplement"
+            :disabled="completerDemandeMutation.isPending.value"
+            class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="completerDemandeMutation.isPending.value">Envoi...</span>
+            <span v-else>Envoyer le complément</span>
+          </button>
         </div>
       </div>
     </div>

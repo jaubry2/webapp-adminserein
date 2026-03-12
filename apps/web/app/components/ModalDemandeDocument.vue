@@ -22,7 +22,7 @@
                 Demander un document
               </h2>
               <p class="text-xs quaternary--text--color">
-                Indiquez la nature précise du document que vous souhaitez que le
+                Indiquez le nom et la catégorie du document que vous souhaitez que le
                 patient dépose.
               </p>
             </div>
@@ -36,18 +36,41 @@
           </header>
 
           <div class="px-6 py-4 space-y-3">
-            <label class="block text-xs font-medium quaternary--text--color">
-              Nature du document demandé
-            </label>
-            <input
-              v-model="localNature"
-              type="text"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
-              placeholder="Ex : Attestation CAF, Compte-rendu médical, Justificatif de domicile..."
-              @keyup.enter="handleConfirm"
-            />
+            <div class="space-y-1">
+              <label class="block text-xs font-medium quaternary--text--color">
+                Nom du document demandé
+              </label>
+              <input
+                v-model="localNom"
+                type="text"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
+                placeholder="Ex : Relevé de compte janvier 2026, Bail de location signé..."
+                @keyup.enter="handleConfirm"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <label class="block text-xs font-medium quaternary--text--color">
+                Catégorie du document
+              </label>
+              <select
+                v-model="localCategorie"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent bg-white"
+              >
+                <option disabled value="">Sélectionner une catégorie</option>
+                <option value="IDENTITE">Identité</option>
+                <option value="MEDICAL">Médical</option>
+                <option value="ADMINISTRATIF">Administratif</option>
+                <option value="FINANCIER">Financier</option>
+                <option value="JURIDIQUE">Juridique</option>
+                <option value="LOGEMENT">Logement</option>
+                <option value="EMPLOI">Emploi</option>
+                <option value="AUTRE">Autre</option>
+              </select>
+            </div>
+
             <p class="text-[11px] quaternary--text--color">
-              Cette information sera visible par le patient dans sa notification
+              Ces informations seront visibles par le patient dans sa notification
               et dans la description de la tâche.
             </p>
           </div>
@@ -68,7 +91,7 @@
               color="gray"
               size="sm"
               class="rounded-full"
-              :disabled="!localNature.trim()"
+              :disabled="!localNom.trim() || !localCategorie"
               @click="handleConfirm"
             >
               Envoyer la demande
@@ -88,24 +111,29 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  confirm: [nature: string];
+  confirm: [payload: { nomDocument: string; categorie: string }];
   cancel: [];
 }>();
 
-const localNature = ref("");
+const localNom = ref("");
+const localCategorie = ref<string>("");
 
 watch(
   () => props.isOpen,
   (open) => {
     if (open) {
-      localNature.value = "";
+      localNom.value = "";
+      localCategorie.value = "";
     }
   },
 );
 
 const handleConfirm = () => {
-  if (!localNature.value.trim()) return;
-  emit("confirm", localNature.value.trim());
+  if (!localNom.value.trim() || !localCategorie.value) return;
+  emit("confirm", {
+    nomDocument: localNom.value.trim(),
+    categorie: localCategorie.value,
+  });
 };
 
 const emitCancel = () => {

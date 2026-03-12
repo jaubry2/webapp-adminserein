@@ -13,9 +13,20 @@
         est_demandeur_veuf: 'Veuf / Veuve',
       }"
       :col="true"
+      :modelValue="getValue(fields, 'demandeur_situation_familiale')"
       @update="modifyValue('demandeur_situation_familiale', $event, fields)"
     />
-    <div v-show="isOpen" class="flex flex-col gap-2">
+    <div
+      v-show="
+        getValue(fields, 'demandeur_situation_familiale') ==
+          'est_demandeur_marie' ||
+        getValue(fields, 'demandeur_situation_familiale') ==
+          'est_demandeur_pacse' ||
+        getValue(fields, 'demandeur_situation_familiale') ==
+          'est_demandeur_concubinage'
+      "
+      class="flex flex-col gap-2"
+    >
       <h2 class="text-3xl text-center">Information du conjoint</h2>
       <div class="flex justify-center">
         <FormRadioInput
@@ -24,47 +35,56 @@
             est_demandeur_femme: 'Madame',
             est_demandeur_homme: 'Monsieur',
           }"
+          :modelValue="getValue(fields, 'conjoint_sexe')"
           @update="modifyValue('conjoint_sexe', $event, fields)"
         />
       </div>
       <FormInput
         placeholder="Nom de naissance"
+        :value="getValue(fields, 'conjoint_nom_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_nom_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Nom d'usage (Si différent du nom de naissance)"
+        :value="getValue(fields, 'conjoint_nom_usage')"
         @updateValue="(val) => modifyValue('conjoint_nom_usage', val, fields)"
       />
       <FormInput
         placeholder="Prénom"
+        :value="getValue(fields, 'conjoint_prenom')"
         @updateValue="(val) => modifyValue('conjoint_prenom', val, fields)"
       />
       <FormDate
         placeholder="Date de naissance :"
+        :modelValue="getValue(fields, 'conjoint_date_naissance')"
         @updateValue="modifyValue('conjoint_date_naissance', $event, fields)"
       />
       <FormInput
         placeholder="Lieu de naissance"
+        :value="getValue(fields, 'conjoint_ville_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_ville_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Département de naissance"
+        :value="getValue(fields, 'conjoint_departement_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_departement_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Pays de naissance"
+        :value="getValue(fields, 'conjoint_pays_naissance')"
         @updateValue="
           (val) => modifyValue('conjoint_pays_naissance', val, fields)
         "
       />
       <FormInput
         placeholder="Numéro de sécurité sociale"
+        :value="getValue(fields, 'conjoint_numero_securite_sociale')"
         @updateValue="
           (val) => modifyValue('conjoint_numero_securite_sociale', val, fields)
         "
@@ -81,10 +101,12 @@
           est_conjoint_domicile_autre: 'Autre',
         }"
         :col="true"
+        :modelValue="getValue(fields, 'conjoint_domicile')"
         @update="(val) => modifyValue('conjoint_domicile', val, fields)"
       />
       <FormInput
         placeholder="Précisez le domicile"
+        :value="getValue(fields, 'conjoint_domicile_autre')"
         @updateValue="
           (val) => modifyValue('conjoint_domicile_autre', val, fields)
         "
@@ -95,6 +117,7 @@
       />
       <FormDate
         placeholder="Date d'entrée dans l'EHPAD :"
+        :modelValue="getValue(fields, 'conjoint_domicile_ehpad_date_entree')"
         @updateValue="
           modifyValue('conjoint_domicile_ehpad_date_entree', $event, fields)
         "
@@ -119,15 +142,12 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 /* VARIABLES CALCULEES */
 const isOpen = computed(() => {
   switch (getValue(fields.value, "demandeur_situation_familiale")) {

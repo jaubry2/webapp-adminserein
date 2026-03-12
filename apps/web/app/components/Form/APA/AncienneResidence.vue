@@ -18,22 +18,26 @@
     <div v-show="isOpen" class="flex flex-col gap-2">
       <FormInput
         placeholder="Ancienne adresse du demandeur (numéro et voie)"
+        :value="getValue(fields, 'demandeur_old_adresse')"
         @updateValue="
           (val) => modifyValue('demandeur_old_adresse', val, fields)
         "
       />
       <FormInput
         placeholder="Code postal de l'ancienne résidence"
+        :value="getValue(fields, 'demandeur_old_code_postal')"
         @updateValue="
           (val) => modifyValue('demandeur_old_code_postal', val, fields)
         "
       />
       <FormInput
         placeholder="Ville de l'ancienne résidence"
+        :value="getValue(fields, 'demandeur_old_ville')"
         @updateValue="(val) => modifyValue('demandeur_old_ville', val, fields)"
       />
       <FormDate
         placeholder="Date d'entrée dans la nouvelle résidence :"
+        :modelValue="getValue(fields, 'demandeur_date_arrivee')"
         @updateValue="modifyValue('demandeur_date_arrivee', $event, fields)"
       />
     </div>
@@ -52,15 +56,12 @@ import { defineProps, defineEmits } from "vue";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  apa_fields: Ref<any>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 const isOpen = ref(false);
 /**************************************************************************************************************/
 /* METHODES */

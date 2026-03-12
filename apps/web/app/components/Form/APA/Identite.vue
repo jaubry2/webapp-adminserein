@@ -102,15 +102,13 @@ import type { infoFormulaire } from "~/types";
 /* PARAMETRES */
 /**************************************************************************************************************/
 /* VARIABLES SYSTEMES */
-const props = defineProps({
-  apa_fields: {
-    type: Object as () => infoFormulaire,
-    required: true,
-  },
-});
+const props = defineProps<{
+  // On reçoit directement la ref `fields` du parent
+  apa_fields: Ref<infoFormulaire>;
+}>();
 const emit = defineEmits(["updateApaFields"]);
 /* VARIABLES REACTIVES */
-const fields = ref(props.apa_fields);
+const fields = props.apa_fields;
 /**************************************************************************************************************/
 /* METHODES */
 /**************************************************************************************************************/

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs (we build fresh)
+apps/*/dist
+apps/*/.nuxt
+apps/*/.output
+packages/*/dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+.cursor
+
+# Env (secrets - use Cloud Run env vars)
+.env
+.env.*
+!.env.example
+
+# Terraform
+infra/
+*.tfstate
+*.tfstate.*
+
+# Docs & misc
+*.md
+.agents

@@ -21,6 +21,12 @@ const props = withDefaults(
     accentColor?: TaskAccentColor;
     statusLabel?: string;
     tache?: Tache;
+    /**
+     * Si true, pour les tâches de type "demande de document à téléverser",
+     * le clic "Afficher profil patient" redirige vers l'onglet Documents
+     * de la page mes-informations (plutôt que la fiche patient).
+     */
+    redirectToDocuments?: boolean;
   }>(),
   {
     accentColor: "peach",
@@ -87,9 +93,17 @@ const professionnelName = computed(() => {
 });
 
 const handleViewPatient = () => {
-  if (props.tache?.patientId) {
-    navigateTo(`/patient/${props.tache.patientId}`);
+  if (!props.tache?.patientId) return;
+
+  // Lorsque cette card est utilisée côté particulier (mes-informations),
+  // on force la redirection vers l'onglet Documents.
+  if (props.redirectToDocuments) {
+    navigateTo("/mes-informations?tab=document");
+    return;
   }
+
+  // Comportement par défaut côté professionnel : fiche patient.
+  navigateTo(`/patient/${props.tache.patientId}`);
 };
 </script>
 

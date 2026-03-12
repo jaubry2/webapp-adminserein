@@ -1,9 +1,18 @@
 <script setup lang="ts">
+import DemandesSection from "~/components/DemandesSection.vue";
 import type { Patient, PersonneProche } from "~/types/patient";
 import type { Tache } from "~/types/tache";
 import type { Document } from "~/types/document";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  skipToken,
+} from "@tanstack/vue-query";
 import type { Change } from "~/components/OngletInformation/ModificationSummary.vue";
+import { PDFDocument } from "pdf-lib";
+import { getListFieldForm, getValue } from "~/composables/useInfoFormulaire";
+import NouvelleDemandeModal from "~/components/NouvelleDemandeModal.vue";
 
 definePageMeta({
   middleware: ["auth"],
@@ -17,6 +26,7 @@ const { calculateAge, getHistoriqueByPatientId } =
   await import("~/utils/patients");
 
 const patientId = computed(() => String(route.params.id));
+const showNouvelleDemandeModal = ref(false);
 
 // Vérifier la session avant de faire les requêtes
 const session = $authClient.useSession();
@@ -187,6 +197,31 @@ const {
   }),
 });
 
+const requestedDocuments = computed(() => {
+  if (!patientTaches.value) return [];
+  return (patientTaches.value as Tache[])
+    .filter(
+      (t) =>
+        t.typeDemarche === "ADMINISTRATIVE" &&
+        t.etat !== "TERMINEE" &&
+        t.details.startsWith('Demande de document à téléverser : "'),
+    )
+    .map((t) => {
+      // extraire nomDocument et categorie du détail
+      // format: Demande de document à téléverser : "Nom" (catégorie CATEGORIE) ...
+      const match = t.details.match(
+        /^Demande de document à téléverser : "(.+?)" \(catégorie ([A-Z_]+)\)/,
+      );
+      const nom = match?.[1] ?? t.details;
+      const categorie = match?.[2] ?? "AUTRE";
+      return {
+        id: t.id,
+        nom,
+        categorie,
+      };
+    });
+});
+
 // Récupération des documents du patient
 // Ne faire la requête que si la session est chargée et valide
 const {
@@ -236,7 +271,7 @@ const personnesProches = computed<PersonneProche[]>(() => {
     prenom: p.prenom,
     autresPrenoms: Array.isArray(p.autresPrenoms)
       ? p.autresPrenoms.join(", ")
-      : p.autresPrenoms ?? "",
+      : (p.autresPrenoms ?? ""),
     adresse: p.adresse,
     codePostal: p.codePostal,
     ville: p.ville,
@@ -246,6 +281,193 @@ const personnesProches = computed<PersonneProche[]>(() => {
     ordre: typeof p.ordre === "number" ? p.ordre : 0,
   }));
 });
+
+// Demandes liées au patient
+const {
+  data: patientDemandes,
+  isLoading: isLoadingDemandes,
+  isError: isErrorDemandes,
+} = useQuery(
+  computed(() => ({
+    ...$orpc.listDemandesByPatient.queryOptions({
+      input: patientId.value ? { patientId: patientId.value } : skipToken,
+    }),
+    enabled:
+      !!session.value?.data && !session.value.isPending && !!patientId.value,
+  })),
+);
+
+const typeDemandeLabels: Record<string, string> = {
+  APA: "APA",
+  CAF_AIDE_LOGEMENT: "Aide au logement (CAF)",
+  RSA: "RSA",
+  AAH: "AAH",
+  ASH: "ASH",
+};
+
+const statutDemandeLabels: Record<string, string> = {
+  BROUILLON: "Brouillon",
+  EN_COURS: "En cours",
+  EN_ATTENTE_COMPLEMENT: "En attente de réponse / validation",
+  TERMINEE: "Terminée",
+  ANNULEE: "Annulée",
+};
+
+const statutDemandeColors: Record<string, string> = {
+  BROUILLON: "bg-gray-100 text-gray-700",
+  EN_COURS: "bg-blue-100 text-blue-700",
+  EN_ATTENTE_COMPLEMENT: "bg-orange-100 text-orange-700",
+  TERMINEE: "bg-green-100 text-green-700",
+  ANNULEE: "bg-red-100 text-red-700",
+};
+
+const updateStatutMutation = useMutation({
+  ...$orpc.updateDemandeStatut.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Demande mise à jour",
+      description: "Le statut a été mis à jour en temps réel.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description: error?.message || "Impossible de mettre à jour le statut.",
+      color: "error",
+    });
+  },
+});
+
+const changeStatut = async (demandeId: string, statut: string) => {
+  await updateStatutMutation.mutateAsync({
+    demandeId,
+    statut: statut as
+      | "BROUILLON"
+      | "EN_COURS"
+      | "EN_ATTENTE_COMPLEMENT"
+      | "TERMINEE"
+      | "ANNULEE",
+  });
+};
+
+const updateDetailsDemandeMutation = useMutation({
+  ...$orpc.updateDemandeDetails.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["listDemandesByPatient"],
+    });
+    toast.add({
+      title: "Commentaire mis à jour",
+      description: "Le commentaire de la demande a été enregistré.",
+    });
+  },
+  onError: (error: any) => {
+    toast.add({
+      title: "Erreur",
+      description:
+        error?.message || "Impossible de mettre à jour le commentaire.",
+      color: "error",
+    });
+  },
+});
+
+const handleUpdateCommentPatient = async (payload: {
+  id: string;
+  details: string;
+}) => {
+  await updateDetailsDemandeMutation.mutateAsync({
+    demandeId: payload.id,
+    details: payload.details,
+  });
+};
+
+const getDemandeCreateur = (d: any): string => {
+  if (d.professionnelInfo) {
+    return `${d.professionnelInfo.prenom} ${d.professionnelInfo.nom}`;
+  }
+  return "Particulier";
+};
+
+const formatDemandeDate = (dateStr: string | Date): string => {
+  const date = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const APA_OFFICIAL_PDF_PATH = "/pdf/apa_remplissable.pdf";
+
+const generateApaPdfFromDemande = async (
+  donneesFormulaire: any,
+  options: { download: boolean },
+) => {
+  if (!process.client) return;
+
+  const existingPdfBytes = await fetch(APA_OFFICIAL_PDF_PATH).then((res) =>
+    res.arrayBuffer(),
+  );
+  const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  const form = pdfDoc.getForm();
+  const field_names = form.getFields().map((field: any) => field.getName());
+
+  Object.keys(donneesFormulaire ?? {}).forEach((key) => {
+    const value = getValue(donneesFormulaire, key);
+    const fields_list = getListFieldForm(donneesFormulaire, key);
+    if (!value) {
+      return;
+    } else if (fields_list.length === 1) {
+      if (field_names.includes(fields_list[0])) {
+        form.getTextField(fields_list[0]).setText(value);
+      }
+    } else if (fields_list[0].startsWith("est")) {
+      if (field_names.includes(value)) {
+        form.getCheckBox(value).check();
+      }
+    } else {
+      let charList = value.split("");
+      if (charList.includes("-")) {
+        const wait = [
+          charList[8],
+          charList[9],
+          charList[5],
+          charList[6],
+          charList[0],
+          charList[1],
+          charList[2],
+          charList[3],
+        ];
+        charList = wait;
+      }
+      for (let i = 0; i < fields_list.length; i++) {
+        if (field_names.includes(fields_list[i])) {
+          form.getTextField(fields_list[i]).setText(charList[i] || "");
+        }
+      }
+    }
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
+  if (options.download) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "demande_APA_remplie.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  } else {
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+};
 
 // Formater les tâches pour l'affichage
 type TaskAccentColor =
@@ -283,9 +505,14 @@ const formattedPatientTaches = computed(() => {
               ? "À faire"
               : undefined;
 
+    const label =
+      tache.typeDemarche === "DOSSIER"
+        ? getDossierTaskLabel(tache.details)
+        : `Démarche - ${getTypeDemarcheLabel(tache.typeDemarche)}`;
+
     return {
       id: tache.id,
-      label: `Démarche - ${getTypeDemarcheLabel(tache.typeDemarche)}`,
+      label,
       patientName: `${patient.value?.nom} ${patient.value?.prenom}`,
       date,
       accentColor,
@@ -296,9 +523,7 @@ const formattedPatientTaches = computed(() => {
 });
 
 // Fonction pour obtenir la couleur d'accent selon le type de démarche
-const getAccentColorByType = (
-  type: Tache["typeDemarche"],
-): TaskAccentColor => {
+const getAccentColorByType = (type: Tache["typeDemarche"]): TaskAccentColor => {
   switch (type) {
     case "ADMINISTRATIVE":
       return "amber";
@@ -312,6 +537,8 @@ const getAccentColorByType = (
       return "teal";
     case "EMPLOI":
       return "indigo";
+    case "DOSSIER":
+      return "sky";
     case "AUTRE":
     default:
       return "slate";
@@ -327,9 +554,32 @@ const getTypeDemarcheLabel = (type: Tache["typeDemarche"]): string => {
     JURIDIQUE: "Juridique",
     LOGEMENT: "Logement",
     EMPLOI: "Emploi",
+    DOSSIER: "Dossier",
     AUTRE: "Autre",
   };
   return labels[type] || type;
+};
+
+const getDossierTaskLabel = (details: string): string => {
+  if (details.includes("Demande d'accès au dossier")) {
+    return "Dossier - Accès";
+  }
+  if (details.startsWith('Demande de document à téléverser : "')) {
+    return "Dossier - Document";
+  }
+  if (details.includes("vos informations d'identité")) {
+    return "Dossier - Identité";
+  }
+  if (details.includes("vos coordonnées")) {
+    return "Dossier - Coordonnées";
+  }
+  if (details.includes("les informations concernant votre conjoint")) {
+    return "Dossier - Conjoint";
+  }
+  if (details.includes('la section "Personnes proches"')) {
+    return "Dossier - Personnes proches";
+  }
+  return "Dossier";
 };
 
 const tabs = [
@@ -337,6 +587,7 @@ const tabs = [
   { id: "document", label: "Document", icon: "i-lucide-file-text" },
   { id: "historique", label: "Historique", icon: "i-lucide-clock" },
   { id: "tache", label: "Tâche", icon: "i-lucide-check-square" },
+  { id: "demande", label: "Demande", icon: "i-lucide-folder-open" },
 ];
 
 // État d'édition
@@ -581,9 +832,7 @@ const generateSummary = (
   return changes;
 };
 
-const normalizeAutresPrenoms = (
-  value?: string[] | string,
-): string[] => {
+const normalizeAutresPrenoms = (value?: string[] | string): string[] => {
   if (Array.isArray(value)) {
     return value;
   }
@@ -716,18 +965,9 @@ const handleReorderPersonneProche = async (payload: {
   if (index === -1) return;
 
   if (payload.direction === "up" && index > 0) {
-    [current[index - 1], current[index]] = [
-      current[index],
-      current[index - 1],
-    ];
-  } else if (
-    payload.direction === "down" &&
-    index < current.length - 1
-  ) {
-    [current[index], current[index + 1]] = [
-      current[index + 1],
-      current[index],
-    ];
+    [current[index - 1], current[index]] = [current[index], current[index - 1]];
+  } else if (payload.direction === "down" && index < current.length - 1) {
+    [current[index], current[index + 1]] = [current[index + 1], current[index]];
   } else {
     return;
   }
@@ -801,12 +1041,16 @@ const handleDemanderDocument = () => {
   showDemandeDocumentModal.value = true;
 };
 
-const handleConfirmDemandeDocument = async (nature: string) => {
+const handleConfirmDemandeDocument = async (payload: {
+  nomDocument: string;
+  categorie: string;
+}) => {
   if (!patient.value) return;
 
   await demanderDocumentMutation.mutateAsync({
     patientId: patient.value.id,
-    nature,
+    nomDocument: payload.nomDocument,
+    categorie: payload.categorie as any,
   });
 
   showDemandeDocumentModal.value = false;
@@ -922,6 +1166,7 @@ const cancelModifications = () => {
                 label="Nouvelle demande"
                 bg_color="corail-soft-color"
                 text_color="tertiary-color"
+                @click="showNouvelleDemandeModal = true"
               />
               <ButtonSecondary
                 icon="i-lucide-plus"
@@ -1023,7 +1268,20 @@ const cancelModifications = () => {
                   :is-loading="isLoadingDocuments"
                   :is-error="isErrorDocuments"
                   :can-request-document="true"
+                  :requested-documents="requestedDocuments"
                   @request-document="handleDemanderDocument"
+                  @uploaded="() => {
+                    queryClient.invalidateQueries({
+                      queryKey: $orpc.listDocumentsByPatient.queryKey({
+                        input: { patientId: patientId.value },
+                      }),
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: $orpc.listTachesByPatient.queryKey({
+                        input: { patientId: patientId.value },
+                      }),
+                    });
+                  }"
                 />
 
                 <ModalDemandeDocument
@@ -1071,6 +1329,48 @@ const cancelModifications = () => {
                 </div>
               </div>
 
+              <!-- Contenu de l'onglet Demande -->
+              <div v-else-if="activeTab === 'demande'" class="pb-6 space-y-4">
+                <DemandesSection
+                  :demandes="patientDemandes"
+                  :is-loading="isLoadingDemandes"
+                  :is-error="isErrorDemandes"
+                  empty-text="Aucune demande pour ce patient."
+                  :type-labels="typeDemandeLabels"
+                  :statut-labels="statutDemandeLabels"
+                  :statut-colors="statutDemandeColors"
+                  :get-creator-name="getDemandeCreateur"
+                  :format-date="formatDemandeDate"
+                  @updateComment="handleUpdateCommentPatient"
+                  @viewDemande="
+                    (d) =>
+                      d.typeDemande === 'APA' && d.donneesFormulaire
+                        ? generateApaPdfFromDemande(d.donneesFormulaire, {
+                            download: false,
+                          })
+                        : navigateTo(
+                            `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
+                          )
+                  "
+                  @downloadDemande="
+                    (d) =>
+                      d.typeDemande === 'APA' && d.donneesFormulaire
+                        ? generateApaPdfFromDemande(d.donneesFormulaire, {
+                            download: true,
+                          })
+                        : navigateTo(
+                            `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}&action=download`,
+                          )
+                  "
+                  @editDemande="
+                    (d) =>
+                      navigateTo(
+                        `/demande/${d.typeDemande.toLowerCase()}?demandeId=${d.id}`,
+                      )
+                  "
+                />
+              </div>
+
               <!-- Contenu des autres onglets -->
               <div
                 v-else
@@ -1096,5 +1396,9 @@ const cancelModifications = () => {
         @cancel="cancelModifications"
       />
     </div>
+    <NouvelleDemandeModal
+      v-model="showNouvelleDemandeModal"
+      :patient-id="patientId"
+    />
   </div>
 </template>

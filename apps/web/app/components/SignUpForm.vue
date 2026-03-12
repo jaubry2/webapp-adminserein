@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent, AuthFormField } from "@nuxt/ui";
+import { useMutation } from "@tanstack/vue-query";
 
-const { $authClient } = useNuxtApp();
+const { $authClient, $orpc } = useNuxtApp();
 
 const emit = defineEmits(["switchToSignIn"]);
 
@@ -13,22 +14,22 @@ const fields: AuthFormField[] = [
   {
     name: "name",
     type: "text",
-    label: "Name",
-    placeholder: "Enter your name",
+    label: "Nom / Prénom",
+    placeholder: "Entrez votre nom / prénom",
     required: true,
   },
   {
     name: "email",
     type: "email",
     label: "Email",
-    placeholder: "Enter your email",
+    placeholder: "Entrez votre email",
     required: true,
   },
   {
     name: "password",
     type: "password",
-    label: "Password",
-    placeholder: "Enter your password",
+    label: "Mot de passe",
+    placeholder: "Entrez votre mot de passe",
     required: true,
   },
 ];
@@ -51,12 +52,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         password: event.data.password,
       },
       {
-        onSuccess: () => {
-          toast.add({ title: "Sign up successful" });
-          navigateTo("/dashboard", { replace: true });
+        onSuccess: async () => {
+          toast.add({
+            title: "Compte créé",
+            description: "Nous allons configurer votre espace particulier.",
+          });
+          navigateTo("/onboarding", { replace: true });
         },
         onError: (error) => {
-          toast.add({ title: "Sign up failed", description: error.error.message });
+          toast.add({
+            title: "Sign up failed",
+            description: error.error.message,
+          });
         },
       },
     );
@@ -77,14 +84,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UAuthForm
         :schema="schema"
         :fields="fields"
-        title="Create Account"
+        title="Créer un compte"
         icon="i-lucide-user-plus"
-        :submit="{ label: 'Sign Up', loading }"
+        :submit="{ label: 'Créer un compte', loading }"
         @submit="onSubmit"
       >
         <template #description>
           Already have an account?
-          <ULink class="text-primary font-medium" @click="$emit('switchToSignIn')"> Sign In </ULink>
+          <ULink
+            class="text-primary font-medium"
+            @click="$emit('switchToSignIn')"
+          >
+            Se connecter
+          </ULink>
         </template>
       </UAuthForm>
     </UPageCard>
